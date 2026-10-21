@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # PixoBooks
 
 Offline-capable point-of-sale, inventory, client billing, payroll and
@@ -47,3 +48,7 @@ npm run test       # vitest (offline queue, UOM engine, billing, mappers)
 Build with the default `/pixobooks/` base and serve `dist/` under that path.
 Environment needed at runtime: `VITE_SUPABASE_URL`,
 `VITE_SUPABASE_PUBLISHABLE_KEY`, optional `VITE_SENTRY_DSN`.
+=======
+# pixobooks
+PixoBooks is an all-in-one cloud-based business management SaaS for SMEs, integrating POS, inventory, finance, HR, payroll, reporting, and business intelligence. Manage operations, automate processes, gain real-time insights, and make smarter decisions to drive business growth—anytime, anywhere.
+>>>>>>> 87a8b8f0856e0238c7696e3f9a81a31837cfdd2d
