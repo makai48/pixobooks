@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Sales Report UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.sr-root { padding: var(--margin); display: flex; flex-direction: column; gap: 16px; max-width: 1280px; margin: 0 auto; }
+@media (min-width: 768px) { .sr-root { padding: var(--margin-desktop); } }
+.sr-subnav { padding: 6px; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.sr-subnav::-webkit-scrollbar { display: none; }
+.sr-subnav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all var(--transition-base); cursor: pointer; border: none; background: transparent; }
+.sr-subnav-item.active { background: var(--ink-solid); color: var(--paper-canvas); }
+.sr-subnav-item:not(.active) { color: var(--ink-mute); }
+.sr-subnav-item:not(.active):hover { color: var(--ink-solid); background: var(--paper-card); }
+.sr-subnav-item svg { width: 14px; height: 14px; }
+.sr-stats-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 640px) { .sr-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .sr-stats-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1280px) { .sr-stats-grid { grid-template-columns: repeat(7, 1fr); } }
+.sr-stat-card { padding: 16px; }
+.sr-stat-card .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); }
+.sr-stat-card .stat-value { font-size: 24px; font-weight: 700; font-family: var(--font-sans); margin-top: 4px; }
+.sr-stat-card .stat-value.tone-success { color: var(--status-success); }
+.sr-stat-card .stat-value.tone-warning { color: var(--status-warning); }
+.sr-stat-card .stat-value.tone-danger { color: var(--status-danger); }
+.sr-stat-card .stat-value.tone-cyan { color: var(--reg-cyan); }
+.sr-stat-card .stat-value.tone-magenta { color: var(--reg-magenta); }
+.sr-stat-card .stat-desc { font-size: 12px; color: var(--ink-mute); margin-top: 4px; }
+.sr-filter-bar { padding: 16px; display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .sr-filter-bar { grid-template-columns: 2fr 1fr 1fr 1fr; } }
+.sr-filter-bar .filter-search { position: relative; }
+.sr-filter-bar .filter-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--ink-mute); pointer-events: none; }
+.sr-filter-bar .filter-search .input { padding-left: 32px; }
+.sr-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.sr-table-panel { overflow: hidden; }
+.sr-table-panel .table-body { overflow: auto; max-height: 60vh; }
+.sr-table-panel table { width: 100%; font-size: 14px; border-collapse: collapse; }
+.sr-table-panel thead { position: sticky; top: 0; }
+.sr-table-panel thead tr { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); background: rgba(253, 251, 247, 0.6); }
+.sr-table-panel thead th { padding: 12px 16px; font-weight: 600; }
+.sr-table-panel tbody tr { border-top: 1px solid var(--line-border); }
+.sr-table-panel tbody tr:hover { background: rgba(253, 251, 247, 0.4); }
+.sr-table-panel tbody td { padding: 12px 16px; }
+.sr-table-panel tbody td.num { font-family: var(--font-mono); }
+.sr-status-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--radius-full); font-size: 12px; font-weight: 500; border: 1px solid; }
+.sr-status-badge.completed { background: rgba(41, 132, 83, 0.1); color: var(--status-success); border-color: rgba(41, 132, 83, 0.3); }
+.sr-status-badge.pending { background: rgba(216, 107, 9, 0.1); color: var(--status-warning); border-color: rgba(216, 107, 9, 0.3); }
+.sr-status-badge.cancelled { background: rgba(211, 34, 42, 0.1); color: var(--status-danger); border-color: rgba(211, 34, 42, 0.3); }
+.sr-status-badge.refunded { background: rgba(20, 165, 199, 0.1); color: var(--reg-cyan); border-color: rgba(20, 165, 199, 0.3); }
+.sr-modal { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; padding: 16px; animation: fade-in 160ms ease-out; }
+.sr-modal-box { width: 100%; max-width: 640px; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; background: var(--paper-card); border: 1px solid var(--line-border); overflow: hidden; }
+.sr-modal-header { padding: 16px; border-bottom: 1px solid var(--line-border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.sr-modal-header .header-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); }
+.sr-modal-header .header-title { font-size: 18px; font-weight: 700; font-family: var(--font-sans); }
+.sr-modal-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.sr-modal-footer { padding: 16px; border-top: 1px solid var(--line-border); display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
+.sr-receipt { border: 1px solid var(--line-border); border-radius: 8px; padding: 16px; background: var(--surface-elevated); }
+.sr-receipt-header { text-align: center; padding-bottom: 12px; border-bottom: 1px dashed var(--line-border); margin-bottom: 12px; }
+.sr-receipt-header .receipt-title { font-size: 16px; font-weight: 700; font-family: var(--font-sans); }
+.sr-receipt-header .receipt-sub { font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
+.sr-receipt-items { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.sr-receipt-item { display: flex; justify-content: space-between; font-size: 13px; }
+.sr-receipt-item .item-name { font-weight: 500; }
+.sr-receipt-item .item-qty { color: var(--ink-mute); margin-left: 4px; }
+.sr-receipt-item .item-price { font-family: var(--font-mono); }
+.sr-receipt-totals { border-top: 1px dashed var(--line-border); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.sr-receipt-total-row { display: flex; justify-content: space-between; font-size: 13px; }
+.sr-receipt-total-row.grand { font-size: 16px; font-weight: 700; font-family: var(--font-sans); margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line-border); }
+.sr-receipt-footer { text-align: center; padding-top: 12px; border-top: 1px dashed var(--line-border); margin-top: 12px; font-size: 11px; color: var(--ink-mute); }
+.sr-invoice-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.sr-invoice-table th { text-align: left; padding: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); border-bottom: 1px solid var(--line-border); }
+.sr-invoice-table td { padding: 8px; border-bottom: 1px solid var(--outline-variant); }
+.sr-invoice-table td.num { font-family: var(--font-mono); text-align: right; }
+</style>
+</head>
+<body>
+<div class="sr-root" id="srRoot">
+  <nav class="sr-subnav paper-card" aria-label="Sales section">
+    <button class="sr-subnav-item active" onclick="srNavSubNav('Sales Report',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Sales Report</button>
+    <button class="sr-subnav-item" onclick="srNavSubNav('Sales POS',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Sales POS</button>
+    <button class="sr-subnav-item" onclick="srNavSubNav('Held Tickets',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Held Tickets</button>
+    <button class="sr-subnav-item" onclick="srNavSubNav('Quotes',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Quotes</button>
+  </nav>
+  <div class="sr-stats-grid">
+    <div class="paper-card sr-stat-card">
+      <div class="stat-label">Sales in period</div>
+      <div class="stat-value num" id="srStatSales">0</div>
+      <div class="stat-desc" id="srStatSalesDesc">transactions</div>
+    </div>
+    <div class="paper-card sr-stat-card">
+      <div class="stat-label">Revenue</div>
+      <div class="stat-value num tone-success" id="srStatRevenue">USh 0</div>
+      <div class="stat-desc">gross sales</div>
+    </div>
+    <div class="paper-card sr-stat-card">
+      <div class="stat-label">Collected</div>
+      <div class="stat-value num tone-cyan" id="srStatCollected">USh 0</div>
+      <div class="stat-desc">payments received</div>
+    </div>
+    <div class="paper-card sr-stat-card">
+      <div class="stat-label">Outstanding</div>
+      <div class="stat-value num tone-warning" id="srStatOutstanding">USh 0</div>
+      <div class="stat-desc">unpaid balance</div>
+    </div>
+    <div class="paper-card sr-stat-card">
+      <div class="stat-label">Cost of goods</div>
+      <div class="stat-value num tone-magenta" id="srStatCogs">USh 0</div>
+      <div class="stat-desc">direct costs</div>
+    </div>
+    <div class="paper-card sr-stat-card">
+      <div class="stat-label">Gross profit</div>
+      <div class="stat-value num tone-success" id="srStatGrossProfit">USh 0</div>
+      <div class="stat-desc">revenue − COGS</div>
+    </div>
+    <div class="paper-card sr-stat-card">
+      <div class="stat-label">Tax collected</div>
+      <div class="stat-value num" id="srStatTax">USh 0</div>
+      <div class="stat-desc">VAT / sales tax</div>
+    </div>
+  </div>
+  <div class="paper-card sr-filter-bar">
+    <div class="filter-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="input" id="srSearch" placeholder="Search transactions..." oninput="srFilterTransactions()">
+    </div>
+    <div><label class="label-form">From</label><input type="date" class="input" id="srDateFrom" value="2025-10-01" onchange="srFilterTransactions()"></div>
+    <div><label class="label-form">To</label><input type="date" class="input" id="srDateTo" value="2025-10-15" onchange="srFilterTransactions()"></div>
+    <div><label class="label-form">Payment method</label><select class="input" id="srPaymentMethod" onchange="srFilterTransactions()"><option value="">All</option><option value="cash">Cash</option><option value="card">Card</option><option value="transfer">Transfer</option><option value="credit">Credit</option></select></div>
+    <div><label class="label-form">Status</label><select class="input" id="srStatus" onchange="srFilterTransactions()"><option value="">All</option><option value="completed">Completed</option><option value="pending">Pending</option><option value="cancelled">Cancelled</option><option value="refunded">Refunded</option></select></div>
+  </div>
+  <div class="sr-toolbar">
+    <select class="input" id="srCashierFilter" style="width:auto;" onchange="srFilterTransactions()"><option value="">All cashiers</option><option value="Amina K.">Amina K.</option><option value="John M.">John M.</option><option value="Sarah O.">Sarah O.</option></select>
+    <button class="btn btn-outline" onclick="srResetFilters()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Reset</button>
+    <button class="btn btn-outline" onclick="srExportCsv()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button>
+  </div>
+  <div class="paper-card sr-table-panel">
+    <div class="table-body"><table><thead><tr><th>Date</th><th>Receipt #</th><th>Customer</th><th>Cashier</th><th>Method</th><th>Status</th><th style="text-align:right;">Amount</th><th></th></tr></thead><tbody id="srTableBody"></tbody></table></div>
+  </div>
+</div>
+<div class="sr-modal hidden" id="srModal" style="display:none;">
+  <div class="sr-modal-box">
+    <div class="sr-modal-header"><div><div class="header-label" id="srModalLabel">Transaction</div><div class="header-title" id="srModalTitle">Receipt #001</div></div><button class="modal-close" onclick="srCloseModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="sr-modal-body" id="srModalBody"></div>
+    <div class="sr-modal-footer"><button class="btn btn-outline" onclick="srCloseModal()">Close</button><button class="btn btn-primary" onclick="srPrintReceipt()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print</button></div>
+  </div>
+</div>
+<script>
+const SR_TRANSACTIONS = [
+  { id: '1', date: '2025-10-15', receipt: 'RCP-001', customer: 'Walk-in Customer', cashier: 'Amina K.', method: 'cash', status: 'completed', amount: 19000, cogs: 8000, tax: 0, items: [{ name: 'A4 Photocopy', qty: 50, price: 100 }, { name: 'Spiral Binding', qty: 2, price: 3000 }, { name: 'Business Cards', qty: 1, price: 8000 }] },
+  { id: '2', date: '2025-10-15', receipt: 'RCP-002', customer: 'ABC Printers', cashier: 'John M.', method: 'card', status: 'completed', amount: 45000, cogs: 20000, tax: 0, items: [{ name: 'A4 Paper Ream', qty: 30, price: 1500 }] },
+  { id: '3', date: '2025-10-14', receipt: 'RCP-003', customer: 'XYZ Designs', cashier: 'Sarah O.', method: 'transfer', status: 'pending', amount: 25000, cogs: 10000, tax: 0, items: [{ name: 'Flyer Design', qty: 1, price: 25000 }] },
+  { id: '4', date: '2025-10-14', receipt: 'RCP-004', customer: 'Walk-in Customer', cashier: 'Amina K.', method: 'cash', status: 'completed', amount: 12000, cogs: 5000, tax: 0, items: [{ name: 'Hard Cover Book', qty: 1, price: 12000 }] },
+  { id: '5', date: '2025-10-13', receipt: 'RCP-005', customer: 'Photo Studio Ltd', cashier: 'John M.', method: 'card', status: 'completed', amount: 15000, cogs: 6000, tax: 0, items: [{ name: 'Photo Print 4x6', qty: 30, price: 500 }] },
+  { id: '6', date: '2025-10-13', receipt: 'RCP-006', customer: 'Event Planners Co', cashier: 'Sarah O.', method: 'transfer', status: 'completed', amount: 8000, cogs: 3000, tax: 0, items: [{ name: 'Sticker Sheet', qty: 1, price: 5000 }, { name: 'T-Shirt Printing', qty: 1, price: 15000 }] },
+  { id: '7', date: '2025-10-12', receipt: 'RCP-007', customer: 'Walk-in Customer', cashier: 'Amina K.', method: 'cash', status: 'cancelled', amount: 5000, cogs: 2000, tax: 0, items: [{ name: 'A4 Photocopy', qty: 50, price: 100 }] },
+  { id: '8', date: '2025-10-12', receipt: 'RCP-008', customer: 'Marketing Agency', cashier: 'John M.', method: 'credit', status: 'pending', amount: 35000, cogs: 15000, tax: 0, items: [{ name: 'Flyer Design', qty: 1, price: 25000 }, { name: 'Business Cards', qty: 10, price: 8000 }] },
+  { id: '9', date: '2025-10-11', receipt: 'RCP-009', customer: 'Walk-in Customer', cashier: 'Sarah O.', method: 'cash', status: 'refunded', amount: 3000, cogs: 1200, tax: 0, items: [{ name: 'Spiral Binding', qty: 1, price: 3000 }] },
+  { id: '10', date: '2025-10-10', receipt: 'RCP-010', customer: 'Bookstore Ltd', cashier: 'Amina K.', method: 'transfer', status: 'completed', amount: 60000, cogs: 25000, tax: 0, items: [{ name: 'A4 Paper Ream', qty: 40, price: 1500 }] },
+];
+function srNavSubNav(label, btn) { document.querySelectorAll('.sr-subnav-item').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+function srFilterTransactions() {
+  const search = document.getElementById('srSearch').value.toLowerCase();
+  const from = document.getElementById('srDateFrom').value;
+  const to = document.getElementById('srDateTo').value;
+  const method = document.getElementById('srPaymentMethod').value;
+  const status = document.getElementById('srStatus').value;
+  const cashier = document.getElementById('srCashierFilter').value;
+  const filtered = SR_TRANSACTIONS.filter(t => {
+    if (search && !t.receipt.toLowerCase().includes(search) && !t.customer.toLowerCase().includes(search)) return false;
+    if (from && t.date < from) return false;
+    if (to && t.date > to) return false;
+    if (method && t.method !== method) return false;
+    if (status && t.status !== status) return false;
+    if (cashier && t.cashier !== cashier) return false;
+    return true;
+  });
+  srRenderTable(filtered);
+  srUpdateStats(filtered);
+}
+function srRenderTable(transactions) {
+  const tbody = document.getElementById('srTableBody');
+  tbody.innerHTML = transactions.map(t => `<tr style="border-top:1px solid var(--line-border);"><td style="padding:12px 16px;font-size:12px;">Oct ${t.date.slice(8)}</td><td style="padding:12px 16px;font-weight:500;">${t.receipt}</td><td style="padding:12px 16px;">${t.customer}</td><td style="padding:12px 16px;font-size:12px;color:var(--ink-mute);">${t.cashier}</td><td style="padding:12px 16px;font-size:12px;text-transform:capitalize;">${t.method}</td><td style="padding:12px 16px;"><span class="sr-status-badge ${t.status}">${t.status}</span></td><td class="num" style="padding:12px 16px;text-align:right;font-weight:600;">USh ${t.amount.toLocaleString()}</td><td style="padding:12px 16px;"><button class="btn btn-ghost" style="height:32px;padding:0 8px;" onclick="srOpenModal('${t.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td></tr>`).join('');
+}
+function srUpdateStats(transactions) {
+  const sales = transactions.length;
+  const revenue = transactions.filter(t => t.status !== 'cancelled' && t.status !== 'refunded').reduce((s, t) => s + t.amount, 0);
+  const collected = transactions.filter(t => t.status === 'completed').reduce((s, t) => s + t.amount, 0);
+  const outstanding = transactions.filter(t => t.status === 'pending').reduce((s, t) => s + t.amount, 0);
+  const cogs = transactions.filter(t => t.status !== 'cancelled' && t.status !== 'refunded').reduce((s, t) => s + t.cogs, 0);
+  const grossProfit = revenue - cogs;
+  const tax = transactions.reduce((s, t) => s + t.tax, 0);
+  document.getElementById('srStatSales').textContent = sales;
+  document.getElementById('srStatSalesDesc').textContent = sales + ' transactions';
+  document.getElementById('srStatRevenue').textContent = 'USh ' + revenue.toLocaleString();
+  document.getElementById('srStatCollected').textContent = 'USh ' + collected.toLocaleString();
+  document.getElementById('srStatOutstanding').textContent = 'USh ' + outstanding.toLocaleString();
+  document.getElementById('srStatCogs').textContent = 'USh ' + cogs.toLocaleString();
+  document.getElementById('srStatGrossProfit').textContent = 'USh ' + grossProfit.toLocaleString();
+  document.getElementById('srStatTax').textContent = 'USh ' + tax.toLocaleString();
+}
+function srResetFilters() {
+  document.getElementById('srSearch').value = '';
+  document.getElementById('srDateFrom').value = '2025-10-01';
+  document.getElementById('srDateTo').value = '2025-10-15';
+  document.getElementById('srPaymentMethod').value = '';
+  document.getElementById('srStatus').value = '';
+  document.getElementById('srCashierFilter').value = '';
+  srFilterTransactions();
+}
+function srExportCsv() {
+  const search = document.getElementById('srSearch').value.toLowerCase();
+  const from = document.getElementById('srDateFrom').value;
+  const to = document.getElementById('srDateTo').value;
+  const method = document.getElementById('srPaymentMethod').value;
+  const status = document.getElementById('srStatus').value;
+  const cashier = document.getElementById('srCashierFilter').value;
+  const filtered = SR_TRANSACTIONS.filter(t => {
+    if (search && !t.receipt.toLowerCase().includes(search) && !t.customer.toLowerCase().includes(search)) return false;
+    if (from && t.date < from) return false;
+    if (to && t.date > to) return false;
+    if (method && t.method !== method) return false;
+    if (status && t.status !== status) return false;
+    if (cashier && t.cashier !== cashier) return false;
+    return true;
+  });
+  const csv = ['Date,Receipt,Customer,Cashier,Method,Status,Amount,Tax', ...filtered.map(t => `${t.date},${t.receipt},"${t.customer}","${t.cashier}",${t.method},${t.status},${t.amount},${t.tax}`)].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'sales-report.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+function srOpenModal(id) {
+  const t = SR_TRANSACTIONS.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('srModalLabel').textContent = 'Transaction';
+  document.getElementById('srModalTitle').textContent = t.receipt;
+  const itemsHtml = t.items.map(i => `<div class="sr-receipt-item"><span class="item-name">${i.name}<span class="item-qty">×${i.qty}</span></span><span class="item-price">USh ${(i.price * i.qty).toLocaleString()}</span></div>`).join('');
+  const subtotal = t.items.reduce((s, i) => s + i.price * i.qty, 0);
+  document.getElementById('srModalBody').innerHTML = `<div class="sr-receipt"><div class="sr-receipt-header"><div class="receipt-title">PixoBooks</div><div class="receipt-sub">${t.receipt} · ${t.date}</div></div><div class="sr-receipt-items">${itemsHtml}</div><div class="sr-receipt-totals"><div class="sr-receipt-total-row"><span>Subtotal</span><span class="num">USh ${subtotal.toLocaleString()}</span></div><div class="sr-receipt-total-row"><span>Tax</span><span class="num">USh ${t.tax.toLocaleString()}</span></div><div class="sr-receipt-total-row grand"><span>Total</span><span class="num">USh ${t.amount.toLocaleString()}</span></div></div><div class="sr-receipt-footer">Customer: ${t.customer} · Cashier: ${t.cashier} · ${t.method}</div></div><table class="sr-invoice-table"><thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th style="text-align:right;">Total</th></tr></thead><tbody>${t.items.map(i => `<tr><td>${i.name}</td><td>${i.qty}</td><td class="num">USh ${i.price.toLocaleString()}</td><td class="num">USh ${(i.price * i.qty).toLocaleString()}</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('srModal').style.display = 'flex';
+  document.getElementById('srModal').classList.remove('hidden');
+}
+function srCloseModal() { document.getElementById('srModal').style.display = 'none'; document.getElementById('srModal').classList.add('hidden'); }
+function srPrintReceipt() { window.print(); }
+srFilterTransactions();
+</script>
+</body>
+</html>

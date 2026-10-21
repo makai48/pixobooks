@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Unit Conversions UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.uc-root { padding: 1rem; display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 768px) { .uc-root { padding: 1.5rem; } }
+.uc-subnav { padding: 6px; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.uc-subnav::-webkit-scrollbar { display: none; }
+.uc-subnav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all 150ms ease; cursor: pointer; border: none; background: transparent; }
+.uc-subnav-item.active { background: hsl(var(--ink)); color: hsl(var(--paper)); }
+.uc-subnav-item:not(.active) { color: hsl(var(--ink-mute)); }
+.uc-subnav-item:not(.active):hover { color: hsl(var(--ink)); background: hsl(var(--paper)); }
+.uc-subnav-item svg { width: 14px; height: 14px; }
+.uc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.uc-title { font-size: 20px; font-weight: 700; font-family: "Fraunces", Georgia, serif; }
+.uc-internal-tabs { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid hsl(var(--line)); }
+.uc-internal-tab { padding: 0 16px; height: 44px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; border-bottom: 2px solid transparent; transition: all 150ms ease; white-space: nowrap; cursor: pointer; border-top: none; border-left: none; border-right: none; background: transparent; }
+.uc-internal-tab.active { border-bottom-color: hsl(var(--reg-magenta)); color: hsl(var(--reg-magenta)); }
+.uc-internal-tab:not(.active) { color: hsl(var(--ink-mute)); }
+.uc-internal-tab:not(.active):hover { color: hsl(var(--ink)); }
+.uc-tab-content { display: none; }
+.uc-tab-content.active { display: block; }
+.uc-filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.uc-filter-bar .input { max-width: 240px; }
+.uc-filter-bar select.input { min-width: 140px; }
+.uc-table-wrapper { overflow-x: auto; }
+.uc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.uc-table th { text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: hsl(var(--ink-mute)); border-bottom: 1px solid hsl(var(--line)); white-space: nowrap; }
+.uc-table td { padding: 8px 12px; border-bottom: 1px solid hsl(var(--line) / 0.5); white-space: nowrap; }
+.uc-table td.num { font-family: "JetBrains Mono", ui-monospace, monospace; text-align: right; }
+.uc-table .actions-cell { display: flex; gap: 4px; }
+.uc-table .actions-cell button { width: 28px; height: 28px; border: 1px solid hsl(var(--line)); border-radius: 4px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.uc-table .actions-cell button:hover { border-color: hsl(var(--ink)); }
+.uc-table .actions-cell svg { width: 12px; height: 12px; }
+</style>
+</head>
+<body>
+<div class="uc-root" id="ucRoot">
+  <nav class="uc-subnav paper-card" aria-label="Unit Conversions section">
+    <button class="uc-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Sales POS</button>
+    <button class="uc-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Sales Report</button>
+    <button class="uc-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Held Tickets</button>
+    <button class="uc-subnav-item active" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Unit Conversions</button>
+    <button class="uc-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Purchase Orders</button>
+  </nav>
+  <div class="paper-card" style="padding: 16px;">
+    <div class="uc-header">
+      <div class="uc-title">Units of Measure</div>
+      <button class="btn btn-primary" style="height:36px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Unit</button>
+    </div>
+    <div class="uc-internal-tabs">
+      <button class="uc-internal-tab active" onclick="switchUcTab('units',this)">Units</button>
+      <button class="uc-internal-tab" onclick="switchUcTab('conversions',this)">Conversions</button>
+      <button class="uc-internal-tab" onclick="switchUcTab('categories',this)">Categories</button>
+    </div>
+    <div style="padding: 16px 0;">
+      <div class="uc-tab-content active" id="ucTab-units">
+        <div class="uc-filter-bar" style="margin-bottom: 12px;">
+          <input class="input" placeholder="Search units...">
+        </div>
+        <div class="uc-table-wrapper">
+          <table class="uc-table">
+            <thead><tr><th>Unit</th><th>Category</th><th>Behavior</th><th>Reference ratio</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td>Each</td><td>Count</td><td>Base</td><td class="num">1</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Ream</td><td>Paper</td><td>Derived</td><td class="num">500</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Sheet</td><td>Paper</td><td>Base</td><td class="num">1</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Pack</td><td>Stationery</td><td>Derived</td><td class="num">10</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Box</td><td>Stationery</td><td>Derived</td><td class="num">50</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Meter</td><td>Length</td><td>Base</td><td class="num">1</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Centimeter</td><td>Length</td><td>Derived</td><td class="num">0.01</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Kilogram</td><td>Weight</td><td>Base</td><td class="num">1</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Gram</td><td>Weight</td><td>Derived</td><td class="num">0.001</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Liter</td><td>Volume</td><td>Base</td><td class="num">1</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="uc-tab-content" id="ucTab-conversions">
+        <div class="uc-filter-bar" style="margin-bottom: 12px;">
+          <input class="input" placeholder="Search conversions...">
+          <select class="input"><option>All Categories</option><option>Paper</option><option>Count</option><option>Length</option><option>Weight</option><option>Volume</option></select>
+        </div>
+        <div class="uc-table-wrapper">
+          <table class="uc-table">
+            <thead><tr><th>Conversion</th><th>Factor</th><th>Category</th><th>Notes</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td>Ream → Sheet</td><td class="num">500</td><td>Paper</td><td>1 ream = 500 sheets</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Box → Each</td><td class="num">10</td><td>Count</td><td>1 box = 10 each</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Pack → Each</td><td class="num">10</td><td>Count</td><td>1 pack = 10 each</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Meter → Centimeter</td><td class="num">100</td><td>Length</td><td>1 m = 100 cm</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Kilogram → Gram</td><td class="num">1000</td><td>Weight</td><td>1 kg = 1000 g</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Liter → Milliliter</td><td class="num">1000</td><td>Volume</td><td>1 L = 1000 mL</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="uc-tab-content" id="ucTab-categories">
+        <div class="uc-filter-bar" style="margin-bottom: 12px;">
+          <input class="input" placeholder="Search categories...">
+        </div>
+        <div class="uc-table-wrapper">
+          <table class="uc-table">
+            <thead><tr><th>Category</th><th>Reference UOM</th><th>Units</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td>Count</td><td>Each</td><td>3</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Paper</td><td>Sheet</td><td>2</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Length</td><td>Meter</td><td>2</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Weight</td><td>Kilogram</td><td>2</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+              <tr><td>Volume</td><td>Liter</td><td>1</td><td>Active</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function navSubNav(btn) { document.querySelectorAll('.uc-subnav-item').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+function switchUcTab(tab, btn) { document.querySelectorAll('.uc-internal-tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.uc-tab-content').forEach(c => c.classList.remove('active')); document.getElementById('ucTab-' + tab).classList.add('active'); }
+</script>
+</body>
+</html>

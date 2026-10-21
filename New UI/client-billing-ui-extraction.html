@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Client Billing UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+
+.bill-root { padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-lg); }
+.bill-header { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md); }
+@media (min-width: 768px) { .bill-header { flex-direction: row; align-items: center; justify-content: space-between; } }
+.bill-title-group h1 { font-size: 1.25rem; font-weight: 700; }
+.bill-title-group p { font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
+.bill-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+.bill-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-md); }
+@media (min-width: 1024px) { .bill-stats { grid-template-columns: repeat(4, 1fr); } }
+.bill-stat-card { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); padding: var(--space-lg); }
+.bill-stat-label { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); }
+.bill-stat-value { font-family: var(--font-sans); font-weight: 700; font-size: 1.25rem; margin-top: var(--space-xs); font-variant-numeric: tabular-nums; }
+.bill-stat-value.success { color: var(--status-success); }
+.bill-stat-value.danger { color: var(--status-danger); }
+.bill-table-card { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); overflow: hidden; }
+.bill-table-wrap { overflow-x: auto; }
+.bill-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.bill-table thead tr { background: rgba(0,0,0,0.03); }
+.bill-table th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); padding: var(--space-sm) var(--space-md); }
+.bill-table td { padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--line-border); }
+.bill-table tbody tr:hover { background: rgba(0,0,0,0.02); }
+.bill-chip { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-full); padding: 2px 8px; font-size: 11px; font-weight: 500; }
+.bill-chip-paid { background: rgba(41,132,83,0.1); color: var(--status-success); border: 1px solid rgba(41,132,83,0.3); }
+.bill-chip-pending { background: rgba(246,167,30,0.1); color: var(--reg-yellow); border: 1px solid rgba(246,167,30,0.3); }
+.bill-chip-overdue { background: rgba(211,34,42,0.1); color: var(--status-danger); border: 1px solid rgba(211,34,42,0.3); }
+.bill-chip-partial { background: rgba(20,165,199,0.1); color: var(--reg-cyan); border: 1px solid rgba(20,165,199,0.3); }
+.bill-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.bill-date { font-size: 11px; color: var(--ink-mute); }
+.bill-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line-border); overflow-x: auto; }
+.bill-tab { padding: 10px 16px; font-size: 13px; font-weight: 600; border: none; background: transparent; cursor: pointer; color: var(--ink-mute); border-bottom: 2px solid transparent; white-space: nowrap; transition: all var(--transition-base); }
+.bill-tab.active { color: var(--reg-magenta); border-bottom-color: var(--reg-magenta); }
+.bill-tab:hover:not(.active) { color: var(--ink-solid); }
+.bill-section-title { font-size: 14px; font-weight: 600; margin-bottom: var(--space-sm); }
+.bill-payment-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-sm) 0; border-bottom: 1px solid var(--line-border); font-size: 13px; }
+.bill-payment-row:last-child { border-bottom: none; }
+.bill-payment-info { min-width: 0; }
+.bill-payment-date { font-size: 11px; color: var(--ink-mute); }
+
+</style>
+</head>
+<body>
+<div class="bill-root" id="billRoot">
+  <div class="bill-header">
+    <div class="bill-title-group">
+      <h1>Client Billing</h1>
+      <p>Manage client accounts, billing periods, invoices and payments.</p>
+    </div>
+    <div class="bill-actions">
+      <button class="btn btn-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> New client</button>
+      <button class="btn btn-outline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export</button>
+    </div>
+  </div>
+
+  <div class="bill-stats">
+    <div class="bill-stat-card"><div class="bill-stat-label">Active clients</div><div class="bill-stat-value">12</div></div>
+    <div class="bill-stat-card"><div class="bill-stat-label">Outstanding</div><div class="bill-stat-value danger">UGX 8,450,000</div></div>
+    <div class="bill-stat-card"><div class="bill-stat-label">Billed this month</div><div class="bill-stat-value">UGX 15,200,000</div></div>
+    <div class="bill-stat-card"><div class="bill-stat-label">Paid this month</div><div class="bill-stat-value success">UGX 12,800,000</div></div>
+  </div>
+
+  <div class="bill-table-card">
+    <div class="bill-tabs">
+      <button class="bill-tab active">Client Accounts</button>
+      <button class="bill-tab">Invoices</button>
+      <button class="bill-tab">Payments</button>
+      <button class="bill-tab">Billing Periods</button>
+    </div>
+    <div class="bill-table-wrap">
+      <table class="bill-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Contact</th>
+            <th>Billing period</th>
+            <th>Last invoice</th>
+            <th>Outstanding</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div style="font-weight:600">Uganda Printing Corp</div><div class="bill-date">Client since Jan 2024</div></td>
+            <td><div style="font-size:12px">accounts@upc.ug</div><div class="bill-date">0312 245 678</div></td>
+            <td style="font-size:12px">Monthly</td>
+            <td><div class="bill-num">INV-2025-001</div><div class="bill-date">Oct 1, 2025</div></td>
+            <td class="bill-num" style="font-weight:600">UGX 3,200,000</td>
+            <td><span class="bill-chip bill-chip-overdue">Overdue</span></td>
+          </tr>
+          <tr>
+            <td><div style="font-weight:600">Kampala Design Studio</div><div class="bill-date">Client since Mar 2024</div></td>
+            <td><div style="font-size:12px">info@kds.ug</div><div class="bill-date">0772 345 678</div></td>
+            <td style="font-size:12px">Monthly</td>
+            <td><div class="bill-num">INV-2025-002</div><div class="bill-date">Oct 1, 2025</div></td>
+            <td class="bill-num" style="font-weight:600">UGX 0</td>
+            <td><span class="bill-chip bill-chip-paid">Paid</span></td>
+          </tr>
+          <tr>
+            <td><div style="font-weight:600">City Printers Ltd</div><div class="bill-date">Client since Jun 2024</div></td>
+            <td><div style="font-size:12px">finance@cityprinters.ug</div><div class="bill-date">0414 567 890</div></td>
+            <td style="font-size:12px">Bi-weekly</td>
+            <td><div class="bill-num">INV-2025-003</div><div class="bill-date">Oct 5, 2025</div></td>
+            <td class="bill-num" style="font-weight:600">UGX 2,100,000</td>
+            <td><span class="bill-chip bill-chip-pending">Pending</span></td>
+          </tr>
+          <tr>
+            <td><div style="font-weight:600">New Vision Press</div><div class="bill-date">Client since Aug 2024</div></td>
+            <td><div style="font-size:12px">billing@nvpress.ug</div><div class="bill-date">0312 789 012</div></td>
+            <td style="font-size:12px">Monthly</td>
+            <td><div class="bill-num">INV-2025-004</div><div class="bill-date">Oct 1, 2025</div></td>
+            <td class="bill-num" style="font-weight:600">UGX 1,800,000</td>
+            <td><span class="bill-chip bill-chip-partial">Partial</span></td>
+          </tr>
+          <tr>
+            <td><div style="font-weight:600">Spear Publications</div><div class="bill-date">Client since Sep 2024</div></td>
+            <td><div style="font-size:12px">accounts@spear.ug</div><div class="bill-date">0701 234 567</div></td>
+            <td style="font-size:12px">Monthly</td>
+            <td><div class="bill-num">INV-2025-005</div><div class="bill-date">Oct 1, 2025</div></td>
+            <td class="bill-num" style="font-weight:600">UGX 1,350,000</td>
+            <td><span class="bill-chip bill-chip-pending">Pending</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="bill-table-card" style="padding: var(--space-lg)">
+    <div class="bill-section-title">Recent Payments</div>
+    <div class="bill-payment-row">
+      <div class="bill-payment-info"><div style="font-weight:500">Uganda Printing Corp</div><div class="bill-payment-date">Oct 10, 2025 — Bank transfer</div></div>
+      <div class="bill-num" style="font-weight:600;color:var(--status-success)">UGX 2,000,000</div>
+    </div>
+    <div class="bill-payment-row">
+      <div class="bill-payment-info"><div style="font-weight:500">Kampala Design Studio</div><div class="bill-payment-date">Oct 8, 2025 — Cash</div></div>
+      <div class="bill-num" style="font-weight:600;color:var(--status-success)">UGX 4,500,000</div>
+    </div>
+    <div class="bill-payment-row">
+      <div class="bill-payment-info"><div style="font-weight:500">City Printers Ltd</div><div class="bill-payment-date">Oct 5, 2025 — Mobile money</div></div>
+      <div class="bill-num" style="font-weight:600;color:var(--status-success)">UGX 1,500,000</div>
+    </div>
+    <div class="bill-payment-row">
+      <div class="bill-payment-info"><div style="font-weight:500">New Vision Press</div><div class="bill-payment-date">Oct 3, 2025 — Cheque</div></div>
+      <div class="bill-num" style="font-weight:600;color:var(--status-success)">UGX 2,800,000</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,243 @@
+import type { ItemType } from "@/types";
+
+export type SeedItem = {
+  key: string;
+  sku: string;
+  barcode?: string;
+  name: string;
+  category: string;
+  price: number;
+  cost: number;
+  stock: number;
+  baseUnit: string;
+  units: { code: string; label: string; ratio: number }[];
+  bomKeys?: { materialKey: string; qty: number }[];
+  itemType: ItemType;
+  emoji?: string;
+};
+
+export const seedItems: SeedItem[] = [
+  // Raw Materials
+  {
+    key: "mat_a4",
+    sku: "MAT-A4-80",
+    barcode: "80100001",
+    name: "A4 Paper 80gsm",
+    category: "Paper",
+    price: 0,
+    cost: 0.02,
+    stock: 5000,
+    baseUnit: "sheet",
+    units: [
+      { code: "sheet", label: "Sheet", ratio: 1 },
+      { code: "ream", label: "Ream (500)", ratio: 500 },
+    ],
+    itemType: "material",
+    emoji: "📄",
+  },
+  {
+    key: "mat_a3",
+    sku: "MAT-A3-120",
+    barcode: "80100002",
+    name: "A3 Paper 120gsm",
+    category: "Paper",
+    price: 0,
+    cost: 0.06,
+    stock: 1200,
+    baseUnit: "sheet",
+    units: [
+      { code: "sheet", label: "Sheet", ratio: 1 },
+      { code: "pack", label: "Pack (250)", ratio: 250 },
+    ],
+    itemType: "material",
+    emoji: "🗒️",
+  },
+  {
+    key: "mat_ink_black",
+    sku: "MAT-INK-K",
+    name: "Toner Black",
+    category: "Ink",
+    price: 0,
+    cost: 0.002,
+    stock: 100000,
+    baseUnit: "impression",
+    units: [{ code: "impression", label: "Impression", ratio: 1 }],
+    itemType: "material",
+    emoji: "🖤",
+  },
+  {
+    key: "mat_ink_color",
+    sku: "MAT-INK-CMY",
+    name: "Toner Color",
+    category: "Ink",
+    price: 0,
+    cost: 0.012,
+    stock: 60000,
+    baseUnit: "impression",
+    units: [{ code: "impression", label: "Impression", ratio: 1 }],
+    itemType: "material",
+    emoji: "🎨",
+  },
+  {
+    key: "mat_binding",
+    sku: "MAT-BND",
+    name: "Ring Binding",
+    category: "Finishing",
+    price: 0,
+    cost: 0.35,
+    stock: 800,
+    baseUnit: "pc",
+    units: [{ code: "pc", label: "Piece", ratio: 1 }],
+    itemType: "material",
+    emoji: "🔗",
+  },
+  {
+    key: "mat_bizcard",
+    sku: "MAT-BC-350",
+    name: "Business Card Stock 350gsm",
+    category: "Paper",
+    price: 0,
+    cost: 0.05,
+    stock: 4000,
+    baseUnit: "sheet",
+    units: [{ code: "sheet", label: "Sheet", ratio: 1 }],
+    itemType: "material",
+    emoji: "🪪",
+  },
+  // Products (made from BOM)
+  {
+    key: "prd_bw_copy",
+    sku: "SVC-BW",
+    barcode: "70200001",
+    name: "B&W Copy A4",
+    category: "Copies",
+    price: 0.15,
+    cost: 0,
+    stock: 0,
+    baseUnit: "page",
+    units: [{ code: "page", label: "Page", ratio: 1 }],
+    bomKeys: [
+      { materialKey: "mat_a4", qty: 1 },
+      { materialKey: "mat_ink_black", qty: 1 },
+    ],
+    itemType: "product",
+    emoji: "📃",
+  },
+  {
+    key: "prd_color_copy",
+    sku: "SVC-CLR",
+    barcode: "70200002",
+    name: "Color Copy A4",
+    category: "Copies",
+    price: 0.85,
+    cost: 0,
+    stock: 0,
+    baseUnit: "page",
+    units: [{ code: "page", label: "Page", ratio: 1 }],
+    bomKeys: [
+      { materialKey: "mat_a4", qty: 1 },
+      { materialKey: "mat_ink_color", qty: 1 },
+    ],
+    itemType: "product",
+    emoji: "🖨️",
+  },
+  {
+    key: "prd_a3_color",
+    sku: "SVC-A3-CLR",
+    barcode: "70200003",
+    name: "Color Print A3",
+    category: "Copies",
+    price: 1.9,
+    cost: 0,
+    stock: 0,
+    baseUnit: "page",
+    units: [{ code: "page", label: "Page", ratio: 1 }],
+    bomKeys: [
+      { materialKey: "mat_a3", qty: 1 },
+      { materialKey: "mat_ink_color", qty: 1 },
+    ],
+    itemType: "product",
+    emoji: "🖼️",
+  },
+  {
+    key: "prd_bizcards",
+    sku: "PRD-BC-100",
+    barcode: "70300001",
+    name: "Business Cards (100)",
+    category: "Business Cards",
+    price: 24.0,
+    cost: 0,
+    stock: 0,
+    baseUnit: "pack",
+    units: [{ code: "pack", label: "Pack of 100", ratio: 1 }],
+    bomKeys: [
+      { materialKey: "mat_bizcard", qty: 25 },
+      { materialKey: "mat_ink_color", qty: 100 },
+    ],
+    itemType: "product",
+    emoji: "💳",
+  },
+  {
+    key: "prd_binding",
+    sku: "SVC-BIND",
+    name: "Ring Binding Service",
+    category: "Finishing",
+    price: 3.5,
+    cost: 0,
+    stock: 0,
+    baseUnit: "pc",
+    units: [{ code: "pc", label: "Piece", ratio: 1 }],
+    bomKeys: [{ materialKey: "mat_binding", qty: 1 }],
+    itemType: "product",
+    emoji: "📚",
+  },
+  // Ready Items (resold, no BOM)
+  {
+    key: "rdy_pen",
+    sku: "RDY-PEN-01",
+    barcode: "60400001",
+    name: "Ballpoint Pen (Blue)",
+    category: "Stationery",
+    price: 1.5,
+    cost: 0.6,
+    stock: 200,
+    baseUnit: "pc",
+    units: [{ code: "pc", label: "Piece", ratio: 1 }],
+    itemType: "ready",
+    emoji: "🖊️",
+  },
+  {
+    key: "rdy_notebook",
+    sku: "RDY-NB-A5",
+    barcode: "60400002",
+    name: "A5 Notebook",
+    category: "Stationery",
+    price: 5.5,
+    cost: 2.2,
+    stock: 80,
+    baseUnit: "pc",
+    units: [{ code: "pc", label: "Piece", ratio: 1 }],
+    itemType: "ready",
+    emoji: "📓",
+  },
+  // Intermediate (both used and sold)
+  {
+    key: "int_lamsheet",
+    sku: "INT-LAM-A4",
+    name: "A4 Lamination Sheet",
+    category: "Finishing",
+    price: 1.25,
+    cost: 0.35,
+    stock: 500,
+    baseUnit: "sheet",
+    units: [{ code: "sheet", label: "Sheet", ratio: 1 }],
+    itemType: "intermediate",
+    emoji: "✨",
+  },
+];
+
+export const seedCustomers = [
+  { name: "Northside School", phone: "555-0134", email: "office@northside.edu" },
+  { name: "Bloom Café", phone: "555-0182", email: "hi@bloomcafe.co" },
+  { name: "Harbor Realty", phone: "555-0155", email: "team@harbor.co" },
+];

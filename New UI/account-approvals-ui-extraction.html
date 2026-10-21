@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Account Approvals UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+
+.appr-root { padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-lg); }
+.appr-nav { display: flex; align-items: center; gap: 4px; padding: 4px; background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); overflow-x: auto; scrollbar-width: none; }
+.appr-nav::-webkit-scrollbar { display: none; }
+.appr-nav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all var(--transition-base); cursor: pointer; border: none; background: transparent; color: var(--ink-mute); }
+.appr-nav-item.active { background: var(--ink-solid); color: var(--paper-canvas); }
+.appr-nav-item:not(.active):hover { color: var(--ink-solid); background: var(--paper-canvas); }
+.appr-nav-item svg { width: 14px; height: 14px; }
+.appr-header { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md); }
+@media (min-width: 768px) { .appr-header { flex-direction: row; align-items: center; justify-content: space-between; } }
+.appr-title-group { display: flex; align-items: flex-start; gap: var(--space-md); }
+.appr-title-group > svg { width: 20px; height: 20px; color: var(--reg-magenta); flex-shrink: 0; margin-top: 2px; }
+.appr-title-group h1 { font-size: 1.125rem; font-weight: 700; }
+.appr-title-group p { font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
+.appr-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+.appr-filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; height: 32px; border-radius: var(--radius-full); border: 1px solid var(--line-border); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; background: transparent; transition: all var(--transition-base); color: var(--ink-mute); }
+.appr-filter-chip.active { background: var(--ink-solid); color: var(--paper-canvas); border-color: var(--ink-solid); }
+.appr-filter-chip:not(.active):hover { border-color: var(--ink-solid); }
+.appr-filter-chip .count { padding: 0 4px; border-radius: 4px; font-size: 9px; background: rgba(0,0,0,0.1); }
+.appr-table-card { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); overflow: hidden; }
+.appr-table-wrap { overflow-x: auto; max-height: 70vh; }
+.appr-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.appr-table thead tr { background: rgba(0,0,0,0.03); }
+.appr-table th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); padding: var(--space-md) var(--space-lg); }
+.appr-table td { padding: var(--space-md) var(--space-lg); border-top: 1px solid var(--line-border); vertical-align: top; }
+.appr-table tbody tr:hover { background: rgba(0,0,0,0.02); }
+.appr-badge { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-full); padding: 2px 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.appr-badge-pending { background: rgba(246,167,30,0.1); color: var(--reg-yellow); border: 1px solid rgba(246,167,30,0.3); }
+.appr-badge-approved { background: rgba(41,132,83,0.1); color: var(--status-success); border: 1px solid rgba(41,132,83,0.3); }
+.appr-badge-rejected { background: rgba(211,34,42,0.1); color: var(--status-danger); border: 1px solid rgba(211,34,42,0.3); }
+.appr-date { font-size: 11px; color: var(--ink-mute); }
+.appr-time-ago { font-size: 10px; color: var(--ink-mute); }
+.appr-empty { padding: 3rem; text-align: center; }
+.appr-empty svg { width: 32px; height: 32px; margin: 0 auto var(--space-sm); color: var(--status-success); }
+.appr-empty-title { font-weight: 600; }
+.appr-empty-text { font-size: 12px; color: var(--ink-mute); margin-top: 4px; }
+
+</style>
+</head>
+<body>
+<div class="appr-root" id="apprRoot">
+  <nav class="appr-nav" aria-label="Section navigation">
+    <button class="appr-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Team</button>
+    <button class="appr-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Payroll</button>
+    <button class="appr-nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>Approvals</button>
+    <button class="appr-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Password Resets</button>
+    <button class="appr-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
+  </nav>
+
+  <div class="appr-header">
+    <div class="appr-title-group">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+      <div>
+        <h1>Account approvals</h1>
+        <p>Approve or reject new employees whose accounts are pending activation.</p>
+      </div>
+    </div>
+    <div class="appr-filters">
+      <button class="appr-filter-chip active">Pending <span class="count">3</span></button>
+      <button class="appr-filter-chip">Approved <span class="count">5</span></button>
+      <button class="appr-filter-chip">Rejected <span class="count">1</span></button>
+      <button class="appr-filter-chip">All <span class="count">9</span></button>
+    </div>
+  </div>
+
+  <div class="appr-table-card">
+    <div class="appr-table-wrap">
+      <table class="appr-table">
+        <thead>
+          <tr><th>Employee</th><th>Email</th><th>Role</th><th>Requested</th><th>Status</th><th>Handled by</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600">Irene Namirembe</td>
+            <td style="font-size:12px">irene.n@pixobooks.ug</td>
+            <td style="font-size:12px">Cashier</td>
+            <td><div class="appr-date">Oct 12, 2025 14:30</div><div class="appr-time-ago">2 days ago</div></td>
+            <td><span class="appr-badge appr-badge-pending">Pending</span></td>
+            <td style="font-size:12px">—</td>
+            <td style="text-align:right"><div style="display:flex;justify-content:flex-end;gap:4px"><button class="btn btn-primary" style="height:32px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approve</button><button class="btn btn-ghost" style="height:32px;color:var(--status-danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reject</button></div></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Paul Sserwanga</td>
+            <td style="font-size:12px">paul.s@pixobooks.ug</td>
+            <td style="font-size:12px">Sales</td>
+            <td><div class="appr-date">Oct 10, 2025 09:15</div><div class="appr-time-ago">4 days ago</div></td>
+            <td><span class="appr-badge appr-badge-pending">Pending</span></td>
+            <td style="font-size:12px">—</td>
+            <td style="text-align:right"><div style="display:flex;justify-content:flex-end;gap:4px"><button class="btn btn-primary" style="height:32px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approve</button><button class="btn btn-ghost" style="height:32px;color:var(--status-danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reject</button></div></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Fatuma Nalwoga</td>
+            <td style="font-size:12px">fatuma.n@pixobooks.ug</td>
+            <td style="font-size:12px">Storekeeper</td>
+            <td><div class="appr-date">Oct 8, 2025 16:45</div><div class="appr-time-ago">6 days ago</div></td>
+            <td><span class="appr-badge appr-badge-pending">Pending</span></td>
+            <td style="font-size:12px">—</td>
+            <td style="text-align:right"><div style="display:flex;justify-content:flex-end;gap:4px"><button class="btn btn-primary" style="height:32px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approve</button><button class="btn btn-ghost" style="height:32px;color:var(--status-danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reject</button></div></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Robert Kato</td>
+            <td style="font-size:12px">robert.k@pixobooks.ug</td>
+            <td style="font-size:12px">Manager</td>
+            <td><div class="appr-date">Sep 28, 2025 11:00</div><div class="appr-time-ago">2 weeks ago</div></td>
+            <td><span class="appr-badge appr-badge-approved">Approved</span></td>
+            <td style="font-size:12px">Grace Namuli<div class="appr-date">Sep 28, 2025</div></td>
+            <td style="text-align:right;color:var(--ink-mute);font-size:12px">Closed</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Susan Ayo</td>
+            <td style="font-size:12px">susan.a@pixobooks.ug</td>
+            <td style="font-size:12px">Cashier</td>
+            <td><div class="appr-date">Sep 20, 2025 10:30</div><div class="appr-time-ago">3 weeks ago</div></td>
+            <td><span class="appr-badge appr-badge-rejected">Rejected</span></td>
+            <td style="font-size:12px">Owner<div class="appr-date">Sep 21, 2025</div><div style="font-size:10px;color:var(--ink-mute);font-style:italic;margin-top:2px">"Insufficient documentation"</div></td>
+            <td style="text-align:right;color:var(--ink-mute);font-size:12px">Closed</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Pending Approval UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.pa-root { min-height: 100dvh; background: var(--paper-canvas); display: flex; align-items: center; justify-content: center; padding: 1rem 1.5rem; }
+.pa-card { width: 100%; max-width: 28rem; padding: 24px; text-align: center; }
+@media (min-width: 768px) { .pa-card { padding: 32px; } }
+.pa-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(246,167,30,0.1); margin: 0 auto; display: flex; align-items: center; justify-content: center; animation: pulse 1.5s ease-in-out infinite; }
+.pa-icon svg { width: 32px; height: 32px; color: var(--reg-yellow); }
+.pa-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); margin-top: 16px; }
+.pa-title { font-family: var(--font-sans); font-weight: 700; font-size: 1.5rem; margin-top: 4px; }
+@media (min-width: 768px) { .pa-title { font-size: 1.875rem; } }
+.pa-desc { font-size: 14px; color: var(--ink-mute); margin-top: 12px; line-height: 1.6; }
+.pa-info { margin-top: 20px; border-radius: 8px; border: 1px solid var(--line-border); padding: 12px; font-size: 12px; color: var(--ink-mute); background: rgba(248,245,238,0.4); }
+.pa-info .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono); font-weight: 600; }
+.pa-info .value { margin-top: 4px; font-weight: 600; color: var(--ink-solid); }
+.pa-actions { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+.pa-actions .btn { height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.pa-actions .btn svg { width: 16px; height: 16px; }
+.pa-signout { color: var(--ink-mute); }
+</style>
+</head>
+<body>
+<div class="pa-root">
+  <div class="paper-card pa-card">
+    <div class="pa-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </div>
+    <div class="pa-eyebrow">Awaiting approval</div>
+    <h2 class="pa-title">Your account is pending</h2>
+    <p class="pa-desc">Thanks — your first sign-in has been logged. An approval request has been sent to the shop owner. As soon as they approve, sign in again and you'll be asked to set a permanent password.</p>
+
+    <div class="pa-info">
+      <div class="label">Signed in as</div>
+      <div class="value">user@example.com</div>
+    </div>
+
+    <div class="pa-actions">
+      <button class="btn btn-outline">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Check status again
+      </button>
+      <button class="btn btn-ghost pa-signout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign out
+      </button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

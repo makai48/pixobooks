@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Suppliers UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.sup-root { padding: 1rem; display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 768px) { .sup-root { padding: 1.5rem; } }
+.sup-subnav { padding: 6px; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.sup-subnav::-webkit-scrollbar { display: none; }
+.sup-subnav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all 150ms ease; cursor: pointer; border: none; background: transparent; }
+.sup-subnav-item.active { background: hsl(var(--ink)); color: hsl(var(--paper)); }
+.sup-subnav-item:not(.active) { color: hsl(var(--ink-mute)); }
+.sup-subnav-item:not(.active):hover { color: hsl(var(--ink)); background: hsl(var(--paper)); }
+.sup-subnav-item svg { width: 14px; height: 14px; }
+.sup-search-bar { display: flex; align-items: center; gap: 8px; }
+.sup-search-bar .input { max-width: 320px; }
+.sup-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .sup-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1280px) { .sup-grid { grid-template-columns: repeat(3, 1fr); } }
+.sup-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.sup-card-header { display: flex; align-items: center; gap: 12px; }
+.sup-card-avatar { width: 48px; height: 48px; border-radius: 50%; background: hsl(var(--reg-magenta) / 0.1); color: hsl(var(--reg-magenta)); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+.sup-card-info { flex: 1; min-width: 0; }
+.sup-card-name { font-size: 16px; font-weight: 700; font-family: "Fraunces", Georgia, serif; }
+.sup-card-contact { font-size: 12px; color: hsl(var(--ink-mute)); }
+.sup-card-details { display: flex; flex-direction: column; gap: 6px; }
+.sup-card-detail-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.sup-card-detail-row svg { width: 14px; height: 14px; color: hsl(var(--ink-mute)); flex-shrink: 0; }
+.sup-card-items-table { margin-top: 8px; border-top: 1px solid hsl(var(--line)); padding-top: 8px; }
+.sup-card-items-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: hsl(var(--ink-mute)); margin-bottom: 4px; }
+.sup-card-items-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.sup-card-item-tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: hsl(var(--ink) / 0.05); }
+.sup-card-actions { display: flex; gap: 8px; margin-top: 4px; }
+.sup-card-actions .btn { flex: 1; height: 32px; }
+</style>
+</head>
+<body>
+<div class="sup-root" id="supRoot">
+  <nav class="sup-subnav paper-card" aria-label="Suppliers section">
+    <button class="sup-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Sales POS</button>
+    <button class="sup-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Sales Report</button>
+    <button class="sup-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Held Tickets</button>
+    <button class="sup-subnav-item active" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Suppliers</button>
+  </nav>
+  <div class="sup-search-bar">
+    <input class="input" placeholder="Search suppliers...">
+  </div>
+  <div class="sup-grid">
+    <div class="paper-card sup-card">
+      <div class="sup-card-header">
+        <div class="sup-card-avatar">P</div>
+        <div class="sup-card-info"><div class="sup-card-name">Paper Supplies Ltd</div><div class="sup-card-contact">John Mugisha</div></div>
+      </div>
+      <div class="sup-card-details">
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>john@papersupplies.ug</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>+256 772 123 456</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Kampala, Uganda</div>
+      </div>
+      <div class="sup-card-items-table"><div class="sup-card-items-title">Items supplied</div><div class="sup-card-items-list"><span class="sup-card-item-tag">A4 Paper</span><span class="sup-card-item-tag">A3 Paper</span><span class="sup-card-item-tag">Photo Paper</span><span class="sup-card-item-tag">Glossy Paper</span></div></div>
+      <div class="sup-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline text-danger" style="border-color:hsl(var(--danger) / 0.4);">Delete</button></div>
+    </div>
+    <div class="paper-card sup-card">
+      <div class="sup-card-header">
+        <div class="sup-card-avatar">P</div>
+        <div class="sup-card-info"><div class="sup-card-name">PrintTech Uganda</div><div class="sup-card-contact">Sarah Nakato</div></div>
+      </div>
+      <div class="sup-card-details">
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>sarah@printtech.ug</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>+256 782 234 567</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Jinja, Uganda</div>
+      </div>
+      <div class="sup-card-items-table"><div class="sup-card-items-title">Items supplied</div><div class="sup-card-items-list"><span class="sup-card-item-tag">Toner</span><span class="sup-card-item-tag">Drum Unit</span><span class="sup-card-item-tag">Ink</span></div></div>
+      <div class="sup-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline text-danger" style="border-color:hsl(var(--danger) / 0.4);">Delete</button></div>
+    </div>
+    <div class="paper-card sup-card">
+      <div class="sup-card-header">
+        <div class="sup-card-avatar">B</div>
+        <div class="sup-card-info"><div class="sup-card-name">BindWell Supplies</div><div class="sup-card-contact">Michael Okello</div></div>
+      </div>
+      <div class="sup-card-details">
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>michael@bindwell.ug</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>+256 755 345 678</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Kampala, Uganda</div>
+      </div>
+      <div class="sup-card-items-table"><div class="sup-card-items-title">Items supplied</div><div class="sup-card-items-list"><span class="sup-card-item-tag">Spiral Binding</span><span class="sup-card-item-tag">Cover Stock</span><span class="sup-card-item-tag">Glue</span></div></div>
+      <div class="sup-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline text-danger" style="border-color:hsl(var(--danger) / 0.4);">Delete</button></div>
+    </div>
+    <div class="paper-card sup-card">
+      <div class="sup-card-header">
+        <div class="sup-card-avatar">I</div>
+        <div class="sup-card-info"><div class="sup-card-name">Ink Solutions</div><div class="sup-card-contact">Grace Auma</div></div>
+      </div>
+      <div class="sup-card-details">
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>grace@inksolutions.ug</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>+256 766 456 789</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Entebbe, Uganda</div>
+      </div>
+      <div class="sup-card-items-table"><div class="sup-card-items-title">Items supplied</div><div class="sup-card-items-list"><span class="sup-card-item-tag">Ink Cartridge</span><span class="sup-card-item-tag">Toner</span></div></div>
+      <div class="sup-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline text-danger" style="border-color:hsl(var(--danger) / 0.4);">Delete</button></div>
+    </div>
+    <div class="paper-card sup-card">
+      <div class="sup-card-header">
+        <div class="sup-card-avatar">O</div>
+        <div class="sup-card-info"><div class="sup-card-name">Office Mart</div><div class="sup-card-contact">David Ssemakula</div></div>
+      </div>
+      <div class="sup-card-details">
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>david@officemart.ug</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>+256 700 567 890</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Kampala, Uganda</div>
+      </div>
+      <div class="sup-card-items-table"><div class="sup-card-items-title">Items supplied</div><div class="sup-card-items-list"><span class="sup-card-item-tag">Pens</span><span class="sup-card-item-tag">Notebooks</span><span class="sup-card-item-tag">Folders</span></div></div>
+      <div class="sup-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline text-danger" style="border-color:hsl(var(--danger) / 0.4);">Delete</button></div>
+    </div>
+    <div class="paper-card sup-card">
+      <div class="sup-card-header">
+        <div class="sup-card-avatar">C</div>
+        <div class="sup-card-info"><div class="sup-card-name">Creative Print</div><div class="sup-card-contact">Lisa Nambooze</div></div>
+      </div>
+      <div class="sup-card-details">
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>lisa@creativeprint.ug</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>+256 712 678 901</div>
+        <div class="sup-card-detail-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Kampala, Uganda</div>
+      </div>
+      <div class="sup-card-items-table"><div class="sup-card-items-title">Items supplied</div><div class="sup-card-items-list"><span class="sup-card-item-tag">T-Shirts</span><span class="sup-card-item-tag">Mugs</span><span class="sup-card-item-tag">Caps</span></div></div>
+      <div class="sup-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline text-danger" style="border-color:hsl(var(--danger) / 0.4);">Delete</button></div>
+    </div>
+  </div>
+</div>
+<script>
+function navSubNav(btn) { document.querySelectorAll('.sup-subnav-item').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+</script>
+</body>
+</html>

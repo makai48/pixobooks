@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Sales POS UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.pos-root { padding: 1rem; display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 768px) { .pos-root { padding: 1.5rem; } }
+.pos-subnav { padding: 6px; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.pos-subnav::-webkit-scrollbar { display: none; }
+.pos-subnav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all 150ms ease; cursor: pointer; border: none; background: transparent; }
+.pos-subnav-item.active { background: hsl(var(--ink)); color: hsl(var(--paper)); }
+.pos-subnav-item:not(.active) { color: hsl(var(--ink-mute)); }
+.pos-subnav-item:not(.active):hover { color: hsl(var(--ink)); background: hsl(var(--paper)); }
+.pos-subnav-item svg { width: 14px; height: 14px; }
+.pos-layout { display: grid; grid-template-columns: 1fr; gap: 16px; flex: 1; min-height: 0; }
+@media (min-width: 1024px) { .pos-layout { grid-template-columns: 1fr 360px; } }
+.pos-products-panel { overflow: hidden; display: flex; flex-direction: column; }
+.pos-search-bar { padding: 12px; border-bottom: 1px solid hsl(var(--line)); }
+.pos-search-bar .input { height: 36px; }
+.pos-category-chips { padding: 8px 12px; display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid hsl(var(--line)); }
+.pos-category-chips::-webkit-scrollbar { display: none; }
+.pos-category-chip { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid hsl(var(--line)); background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; transition: all 150ms ease; }
+.pos-category-chip.active { background: hsl(var(--ink)); color: hsl(var(--paper)); border-color: hsl(var(--ink)); }
+.pos-category-chip:not(.active):hover { border-color: hsl(var(--ink)); }
+.pos-product-grid { padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; flex: 1; overflow-y: auto; }
+.pos-product-tile { border: 1px solid hsl(var(--line)); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 150ms ease; background: hsl(var(--card)); display: flex; flex-direction: column; gap: 6px; }
+.pos-product-tile:hover { border-color: hsl(var(--ink)); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.pos-product-tile .pos-product-img { width: 100%; aspect-ratio: 1; border-radius: 6px; background: hsl(var(--ink) / 0.05); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.pos-product-tile .pos-product-img svg { width: 32px; height: 32px; color: hsl(var(--ink-mute)); }
+.pos-product-tile .pos-product-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-product-tile .pos-product-price { font-size: 14px; font-weight: 700; font-family: "JetBrains Mono", ui-monospace, monospace; }
+.pos-product-tile .pos-product-stock { font-size: 11px; color: hsl(var(--ink-mute)); }
+.pos-product-tile .pos-product-stock.low { color: hsl(var(--danger)); }
+.pos-cart-panel { overflow: hidden; display: flex; flex-direction: column; }
+.pos-cart-header { padding: 12px 16px; border-bottom: 1px solid hsl(var(--line)); display: flex; align-items: center; justify-content: space-between; }
+.pos-cart-header .header-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: hsl(var(--ink-mute)); }
+.pos-cart-header .header-title { font-size: 18px; font-weight: 700; font-family: "Fraunces", Georgia, serif; }
+.pos-cart-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.pos-cart-item { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid hsl(var(--line)); border-radius: 6px; }
+.pos-cart-item .pos-cart-item-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-cart-item .pos-cart-item-qty { display: flex; align-items: center; gap: 4px; }
+.pos-cart-item .pos-cart-item-qty button { width: 24px; height: 24px; border: 1px solid hsl(var(--line)); border-radius: 4px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.pos-cart-item .pos-cart-item-qty span { font-size: 13px; font-weight: 600; min-width: 20px; text-align: center; }
+.pos-cart-item .pos-cart-item-price { font-size: 13px; font-weight: 600; font-family: "JetBrains Mono", ui-monospace, monospace; }
+.pos-cart-item .pos-cart-item-remove { background: none; border: none; cursor: pointer; color: hsl(var(--danger)); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+.pos-cart-item .pos-cart-item-remove:hover { background: hsl(var(--danger) / 0.1); }
+.pos-cart-empty { text-align: center; padding: 24px; color: hsl(var(--ink-mute)); font-size: 13px; }
+.pos-cart-footer { border-top: 1px solid hsl(var(--line)); padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.pos-cart-footer .pos-cart-totals { display: flex; flex-direction: column; gap: 4px; }
+.pos-cart-footer .pos-cart-total-row { display: flex; justify-content: space-between; font-size: 13px; }
+.pos-cart-footer .pos-cart-total-row.grand { font-size: 16px; font-weight: 700; font-family: "Fraunces", Georgia, serif; margin-top: 4px; padding-top: 8px; border-top: 1px solid hsl(var(--line)); }
+.pos-payment-methods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.pos-payment-method { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 1px solid hsl(var(--line)); border-radius: 6px; cursor: pointer; transition: all 150ms ease; background: transparent; font-size: 11px; font-weight: 600; }
+.pos-payment-method.active { border-color: hsl(var(--ink)); background: hsl(var(--ink)); color: hsl(var(--paper)); }
+.pos-payment-method:not(.active):hover { border-color: hsl(var(--ink)); }
+.pos-payment-method svg { width: 18px; height: 18px; }
+.pos-checkout-btn { width: 100%; height: 40px; font-size: 14px; font-weight: 700; }
+.pos-hold-btn { width: 100%; height: 36px; }
+</style>
+</head>
+<body>
+<div class="pos-root" id="posRoot">
+  <nav class="pos-subnav paper-card" aria-label="Sales section">
+    <button class="pos-subnav-item active" onclick="navSubNav('Sales POS',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Sales POS</button>
+    <button class="pos-subnav-item" onclick="navSubNav('Sales Report',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Sales Report</button>
+    <button class="pos-subnav-item" onclick="navSubNav('Held Tickets',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Held Tickets</button>
+    <button class="pos-subnav-item" onclick="navSubNav('Quotes',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Quotes</button>
+  </nav>
+  <div class="pos-layout">
+    <div class="pos-products-panel paper-card">
+      <div class="pos-search-bar"><input class="input" placeholder="Search products..."></div>
+      <div class="pos-category-chips">
+        <button class="pos-category-chip active">All</button>
+        <button class="pos-category-chip">Printing</button>
+        <button class="pos-category-chip">Binding</button>
+        <button class="pos-category-chip">Stationery</button>
+        <button class="pos-category-chip">Design</button>
+        <button class="pos-category-chip">Photo</button>
+      </div>
+      <div class="pos-product-grid">
+        <div class="pos-product-tile"><div class="pos-product-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div class="pos-product-name">A4 Photocopy</div><div class="pos-product-price">100</div><div class="pos-product-stock">Stock: 5000</div></div>
+        <div class="pos-product-tile"><div class="pos-product-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div class="pos-product-name">A4 Paper Ream</div><div class="pos-product-price">15000</div><div class="pos-product-stock">Stock: 200</div></div>
+        <div class="pos-product-tile"><div class="pos-product-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="pos-product-name">Spiral Binding</div><div class="pos-product-price">3000</div><div class="pos-product-stock">Stock: 150</div></div>
+        <div class="pos-product-tile"><div class="pos-product-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div class="pos-product-name">Photo Print 4x6</div><div class="pos-product-price">500</div><div class="pos-product-stock">Stock: 300</div></div>
+        <div class="pos-product-tile"><div class="pos-product-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div><div class="pos-product-name">Business Cards</div><div class="pos-product-price">8000</div><div class="pos-product-stock">Stock: 80</div></div>
+        <div class="pos-product-tile"><div class="pos-product-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><div class="pos-product-name">Flyer Design</div><div class="pos-product-price">25000</div><div class="pos-product-stock">Stock: 20</div></div>
+        <div class="pos-product-tile"><div class="pos-product-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div><div class="pos-product-name">Sticker Sheet</div><div class="pos-product-price">5000</div><div class="pos-product-stock low">Stock: 5</div></div>
+        <div class="pos-product-tile"><div class="pos-product-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div><div class="pos-product-name">T-Shirt Printing</div><div class="pos-product-price">15000</div><div class="pos-product-stock">Stock: 45</div></div>
+        <div class="pos-product-tile"><div class="pos-product-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div><div class="pos-product-name">Hard Cover Book</div><div class="pos-product-price">12000</div><div class="pos-product-stock">Stock: 60</div></div>
+      </div>
+    </div>
+    <div class="pos-cart-panel paper-card">
+      <div class="pos-cart-header"><div><div class="header-label">Current sale</div><div class="header-title">Ticket #001</div></div><button class="btn btn-ghost" style="height:32px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Clear</button></div>
+      <div class="pos-cart-body">
+        <div class="pos-cart-item"><div class="pos-cart-item-name">A4 Photocopy x50</div><div class="pos-cart-item-qty"><button>-</button><span>50</span><button>+</button></div><div class="pos-cart-item-price num">5,000</div><button class="pos-cart-item-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+        <div class="pos-cart-item"><div class="pos-cart-item-name">Spiral Binding x2</div><div class="pos-cart-item-qty"><button>-</button><span>2</span><button>+</button></div><div class="pos-cart-item-price num">6,000</div><button class="pos-cart-item-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+        <div class="pos-cart-item"><div class="pos-cart-item-name">Business Cards x1</div><div class="pos-cart-item-qty"><button>-</button><span>1</span><button>+</button></div><div class="pos-cart-item-price num">8,000</div><button class="pos-cart-item-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      </div>
+      <div class="pos-cart-footer">
+        <div class="pos-cart-totals">
+          <div class="pos-cart-total-row"><span>Subtotal</span><span class="num">19,000</span></div>
+          <div class="pos-cart-total-row"><span>Tax (0%)</span><span class="num">0</span></div>
+          <div class="pos-cart-total-row grand"><span>Total</span><span class="num">19,000</span></div>
+        </div>
+        <div class="pos-payment-methods">
+          <button class="pos-payment-method active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Cash</button>
+          <button class="pos-payment-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Card</button>
+          <button class="pos-payment-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Transfer</button>
+          <button class="pos-payment-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Credit</button>
+        </div>
+        <button class="btn btn-primary pos-checkout-btn">Complete Sale</button>
+        <button class="btn btn-outline pos-hold-btn">Hold Ticket</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function navSubNav(label, btn) { document.querySelectorAll('.pos-subnav-item').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+</script>
+</body>
+</html>

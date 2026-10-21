@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Stock Taking UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.st-root { padding: 1rem; display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 768px) { .st-root { padding: 1.5rem; } }
+.st-subnav { padding: 6px; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.st-subnav::-webkit-scrollbar { display: none; }
+.st-subnav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all 150ms ease; cursor: pointer; border: none; background: transparent; }
+.st-subnav-item.active { background: hsl(var(--ink)); color: hsl(var(--paper)); }
+.st-subnav-item:not(.active) { color: hsl(var(--ink-mute)); }
+.st-subnav-item:not(.active):hover { color: hsl(var(--ink)); background: hsl(var(--paper)); }
+.st-subnav-item svg { width: 14px; height: 14px; }
+.st-period-selector { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.st-period-selector .input { width: auto; }
+.st-summary-tiles { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .st-summary-tiles { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1280px) { .st-summary-tiles { grid-template-columns: repeat(6, 1fr); } }
+.st-summary-tile { padding: 12px; text-align: center; }
+.st-summary-tile .tile-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: hsl(var(--ink-mute)); }
+.st-summary-tile .tile-value { font-size: 18px; font-weight: 700; font-family: "Fraunces", Georgia, serif; margin-top: 4px; }
+.st-summary-tile .tile-value.tone-danger { color: hsl(var(--danger)); }
+.st-summary-tile .tile-value.tone-success { color: hsl(var(--success)); }
+.st-filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.st-filter-bar .input { width: auto; }
+.st-filter-bar select.input { min-width: 140px; }
+.st-table-wrapper { overflow-x: auto; }
+.st-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.st-table th { text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: hsl(var(--ink-mute)); border-bottom: 1px solid hsl(var(--line)); white-space: nowrap; }
+.st-table td { padding: 8px 12px; border-bottom: 1px solid hsl(var(--line) / 0.5); white-space: nowrap; }
+.st-table td.num { font-family: "JetBrains Mono", ui-monospace, monospace; text-align: right; }
+.st-table .actions-cell { display: flex; gap: 4px; }
+.st-table .actions-cell button { width: 28px; height: 28px; border: 1px solid hsl(var(--line)); border-radius: 4px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.st-table .actions-cell button:hover { border-color: hsl(var(--ink)); }
+.st-table .actions-cell svg { width: 12px; height: 12px; }
+.st-adjustments-table { margin-top: 16px; }
+.st-adjustments-title { font-size: 14px; font-weight: 700; font-family: "Fraunces", Georgia, serif; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="st-root" id="stRoot">
+  <nav class="st-subnav paper-card" aria-label="Stock Taking section">
+    <button class="st-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Sales POS</button>
+    <button class="st-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Sales Report</button>
+    <button class="st-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Held Tickets</button>
+    <button class="st-subnav-item active" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Stock Taking</button>
+    <button class="st-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Purchase Orders</button>
+  </nav>
+  <div class="st-period-selector">
+    <select class="input"><option>Monthly</option><option>Custom</option></select>
+    <select class="input"><option>October 2025</option><option>September 2025</option><option>August 2025</option></select>
+  </div>
+  <div class="st-summary-tiles">
+    <div class="paper-card st-summary-tile"><div class="tile-label">Opening</div><div class="tile-value num">1,250,000</div></div>
+    <div class="paper-card st-summary-tile"><div class="tile-label">Purchases</div><div class="tile-value num">450,000</div></div>
+    <div class="paper-card st-summary-tile"><div class="tile-label">Sold</div><div class="tile-value num">-380,000</div></div>
+    <div class="paper-card st-summary-tile"><div class="tile-label">Adjustments</div><div class="tile-value num">-15,000</div></div>
+    <div class="paper-card st-summary-tile"><div class="tile-label">Closing</div><div class="tile-value num">1,305,000</div></div>
+    <div class="paper-card st-summary-tile"><div class="tile-label">Variance</div><div class="tile-value num tone-danger">-5,000</div></div>
+  </div>
+  <div class="st-filter-bar">
+    <select class="input"><option>All Categories</option><option>Printing</option><option>Binding</option><option>Stationery</option><option>Design</option><option>Photo</option></select>
+    <select class="input"><option>All Types</option><option>Raw Material</option><option>Finished Good</option><option>Consumable</option></select>
+  </div>
+  <div class="paper-card" style="padding: 16px;">
+    <div class="st-table-wrapper">
+      <table class="st-table">
+        <thead><tr><th>Item</th><th>Type</th><th>Opening</th><th>Purchases</th><th>Sold</th><th>Adjustments</th><th>Closing</th><th>Unit cost</th><th>Closing value</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td>A4 Photocopy</td><td>Raw Material</td><td class="num">5000</td><td class="num">2000</td><td class="num">-1800</td><td class="num">0</td><td class="num">5200</td><td class="num">100</td><td class="num">520,000</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+          <tr><td>A4 Paper Ream</td><td>Raw Material</td><td class="num">200</td><td class="num">100</td><td class="num">-80</td><td class="num">0</td><td class="num">220</td><td class="num">15,000</td><td class="num">3,300,000</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+          <tr><td>Spiral Binding</td><td>Consumable</td><td class="num">150</td><td class="num">50</td><td class="num">-45</td><td class="num">-5</td><td class="num">150</td><td class="num">3,000</td><td class="num">450,000</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+          <tr><td>Photo Print 4x6</td><td>Finished Good</td><td class="num">300</td><td class="num">0</td><td class="num">-120</td><td class="num">0</td><td class="num">180</td><td class="num">500</td><td class="num">90,000</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+          <tr><td>Business Cards</td><td>Finished Good</td><td class="num">80</td><td class="num">0</td><td class="num">-30</td><td class="num">0</td><td class="num">50</td><td class="num">8,000</td><td class="num">400,000</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+          <tr><td>Flyer Design</td><td>Finished Good</td><td class="num">20</td><td class="num">0</td><td class="num">-8</td><td class="num">0</td><td class="num">12</td><td class="num">25,000</td><td class="num">300,000</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+          <tr><td>Sticker Sheet</td><td>Finished Good</td><td class="num">5</td><td class="num">10</td><td class="num">-3</td><td class="num">0</td><td class="num">12</td><td class="num">5,000</td><td class="num">60,000</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+          <tr><td>T-Shirt Printing</td><td>Finished Good</td><td class="num">45</td><td class="num">0</td><td class="num">-15</td><td class="num">0</td><td class="num">30</td><td class="num">15,000</td><td class="num">450,000</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+          <tr><td>Hard Cover Book</td><td>Finished Good</td><td class="num">60</td><td class="num">20</td><td class="num">-25</td><td class="num">0</td><td class="num">55</td><td class="num">12,000</td><td class="num">660,000</td><td class="actions-cell"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="st-adjustments-table">
+      <div class="st-adjustments-title">Adjustments Log</div>
+      <div class="st-table-wrapper">
+        <table class="st-table">
+          <thead><tr><th>Date</th><th>Item</th><th>Reason</th><th>Qty</th><th>By</th></tr></thead>
+          <tbody>
+            <tr><td>2025-10-05</td><td>Spiral Binding</td><td>Damaged</td><td class="num">-5</td><td>Amina K.</td></tr>
+            <tr><td>2025-10-03</td><td>A4 Paper Ream</td><td>Count error</td><td class="num">+2</td><td>John M.</td></tr>
+            <tr><td>2025-10-01</td><td>Photo Print 4x6</td><td>Theft</td><td class="num">-3</td><td>Sarah O.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function navSubNav(btn) { document.querySelectorAll('.st-subnav-item').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+</script>
+</body>
+</html>

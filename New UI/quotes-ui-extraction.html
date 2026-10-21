@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Quotes UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.quote-root { padding: 1rem; display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 768px) { .quote-root { padding: 1.5rem; } }
+.quote-subnav { padding: 6px; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.quote-subnav::-webkit-scrollbar { display: none; }
+.quote-subnav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all 150ms ease; cursor: pointer; border: none; background: transparent; }
+.quote-subnav-item.active { background: hsl(var(--ink)); color: hsl(var(--paper)); }
+.quote-subnav-item:not(.active) { color: hsl(var(--ink-mute)); }
+.quote-subnav-item:not(.active):hover { color: hsl(var(--ink)); background: hsl(var(--paper)); }
+.quote-subnav-item svg { width: 14px; height: 14px; }
+.quote-stats { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .quote-stats { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1280px) { .quote-stats { grid-template-columns: repeat(5, 1fr); } }
+.quote-stat-card { padding: 16px; }
+.quote-stat-card .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: hsl(var(--ink-mute)); }
+.quote-stat-card .stat-value { font-size: 22px; font-weight: 700; font-family: "Fraunces", Georgia, serif; margin-top: 4px; }
+.quote-stat-card .stat-value.tone-success { color: hsl(var(--success)); }
+.quote-stat-card .stat-value.tone-warning { color: hsl(var(--warning)); }
+.quote-filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.quote-filter-bar .input { max-width: 240px; }
+.quote-status-tabs { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.quote-status-tabs::-webkit-scrollbar { display: none; }
+.quote-status-tab { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid hsl(var(--line)); background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; transition: all 150ms ease; }
+.quote-status-tab.active { background: hsl(var(--ink)); color: hsl(var(--paper)); border-color: hsl(var(--ink)); }
+.quote-status-tab:not(.active):hover { border-color: hsl(var(--ink)); }
+.quote-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .quote-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1280px) { .quote-grid { grid-template-columns: repeat(3, 1fr); } }
+.quote-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.quote-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.quote-card-number { font-size: 16px; font-weight: 700; font-family: "Fraunces", Georgia, serif; }
+.quote-card-customer { font-size: 12px; color: hsl(var(--ink-mute)); }
+.quote-card-items { display: flex; flex-direction: column; gap: 4px; }
+.quote-card-item-row { display: flex; justify-content: space-between; font-size: 13px; }
+.quote-card-item-row .item-name { font-weight: 500; }
+.quote-card-item-row .item-qty { color: hsl(var(--ink-mute)); }
+.quote-card-total { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid hsl(var(--line)); font-size: 14px; font-weight: 700; font-family: "Fraunces", Georgia, serif; }
+.quote-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.quote-card-actions .btn { flex: 1; height: 32px; font-size: 12px; min-width: 0; }
+</style>
+</head>
+<body>
+<div class="quote-root" id="quoteRoot">
+  <nav class="quote-subnav paper-card" aria-label="Quotes section">
+    <button class="quote-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Sales POS</button>
+    <button class="quote-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Sales Report</button>
+    <button class="quote-subnav-item" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Held Tickets</button>
+    <button class="quote-subnav-item active" onclick="navSubNav(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Quotes</button>
+  </nav>
+  <div class="quote-stats">
+    <div class="paper-card quote-stat-card"><div class="stat-label">Drafts</div><div class="stat-value num">3</div></div>
+    <div class="paper-card quote-stat-card"><div class="stat-label">Sent</div><div class="stat-value num">5</div></div>
+    <div class="paper-card quote-stat-card"><div class="stat-label">Accepted</div><div class="stat-value num tone-success">2</div></div>
+    <div class="paper-card quote-stat-card"><div class="stat-label">Proformas</div><div class="stat-value num">1</div></div>
+    <div class="paper-card quote-stat-card"><div class="stat-label">Pipeline value</div><div class="stat-value num tone-warning">4,200,000</div></div>
+  </div>
+  <div class="quote-filter-bar">
+    <input class="input" placeholder="Search quotes...">
+  </div>
+  <div class="quote-status-tabs">
+    <button class="quote-status-tab active">All</button>
+    <button class="quote-status-tab">Draft</button>
+    <button class="quote-status-tab">Sent</button>
+    <button class="quote-status-tab">Accepted</button>
+    <button class="quote-status-tab">Rejected</button>
+    <button class="quote-status-tab">Proforma</button>
+    <button class="quote-status-tab">Ordered</button>
+    <button class="quote-status-tab">Converted</button>
+  </div>
+  <div class="quote-grid">
+    <div class="paper-card quote-card">
+      <div class="quote-card-header"><div><div class="quote-card-number">Q-001</div><div class="quote-card-customer">Acme Corp</div></div><span class="chip" style="background:hsl(var(--warning) / 0.1);color:hsl(var(--warning));">Sent</span></div>
+      <div class="quote-card-items">
+        <div class="quote-card-item-row"><span class="item-name">Flyer Design x2</span><span class="item-qty num">50,000</span></div>
+        <div class="quote-card-item-row"><span class="item-name">Business Cards x3</span><span class="item-qty num">24,000</span></div>
+      </div>
+      <div class="quote-card-total"><span>Total</span><span class="num">74,000</span></div>
+      <div class="quote-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline">Send</button><button class="btn btn-primary">Accept</button><button class="btn btn-ghost text-danger">Delete</button></div>
+    </div>
+    <div class="paper-card quote-card">
+      <div class="quote-card-header"><div><div class="quote-card-number">Q-002</div><div class="quote-card-customer">Global Tech</div></div><span class="chip" style="background:hsl(var(--success) / 0.1);color:hsl(var(--success));">Accepted</span></div>
+      <div class="quote-card-items">
+        <div class="quote-card-item-row"><span class="item-name">Hard Cover Book x10</span><span class="item-qty num">120,000</span></div>
+        <div class="quote-card-item-row"><span class="item-name">Spiral Binding x5</span><span class="item-qty num">15,000</span></div>
+      </div>
+      <div class="quote-card-total"><span>Total</span><span class="num">135,000</span></div>
+      <div class="quote-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-primary">Proforma</button><button class="btn btn-outline">Order</button><button class="btn btn-ghost text-danger">Delete</button></div>
+    </div>
+    <div class="paper-card quote-card">
+      <div class="quote-card-header"><div><div class="quote-card-number">Q-003</div><div class="quote-card-customer">Local School</div></div><span class="chip" style="background:hsl(var(--ink) / 0.1);color:hsl(var(--ink));">Draft</span></div>
+      <div class="quote-card-items">
+        <div class="quote-card-item-row"><span class="item-name">A4 Photocopy x500</span><span class="item-qty num">50,000</span></div>
+        <div class="quote-card-item-row"><span class="item-name">A4 Paper Ream x10</span><span class="item-qty num">150,000</span></div>
+      </div>
+      <div class="quote-card-total"><span>Total</span><span class="num">200,000</span></div>
+      <div class="quote-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline">Send</button><button class="btn btn-primary">Accept</button><button class="btn btn-ghost text-danger">Delete</button></div>
+    </div>
+    <div class="paper-card quote-card">
+      <div class="quote-card-header"><div><div class="quote-card-number">Q-004</div><div class="quote-card-customer">Event Planners</div></div><span class="chip" style="background:hsl(var(--danger) / 0.1);color:hsl(var(--danger));">Rejected</span></div>
+      <div class="quote-card-items">
+        <div class="quote-card-item-row"><span class="item-name">T-Shirt Printing x50</span><span class="item-qty num">750,000</span></div>
+      </div>
+      <div class="quote-card-total"><span>Total</span><span class="num">750,000</span></div>
+      <div class="quote-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline">Send</button><button class="btn btn-primary">Accept</button><button class="btn btn-ghost text-danger">Delete</button></div>
+    </div>
+    <div class="paper-card quote-card">
+      <div class="quote-card-header"><div><div class="quote-card-number">Q-005</div><div class="quote-card-customer">NGO Office</div></div><span class="chip" style="background:hsl(var(--reg-cyan) / 0.1);color:hsl(var(--reg-cyan));">Proforma</span></div>
+      <div class="quote-card-items">
+        <div class="quote-card-item-row"><span class="item-name">Banner Print x3</span><span class="item-qty num">45,000</span></div>
+        <div class="quote-card-item-row"><span class="item-name">Sticker Sheet x20</span><span class="item-qty num">100,000</span></div>
+      </div>
+      <div class="quote-card-total"><span>Total</span><span class="num">145,000</span></div>
+      <div class="quote-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline">Send</button><button class="btn btn-primary">Order</button><button class="btn btn-outline">Cash sale</button><button class="btn btn-ghost text-danger">Delete</button></div>
+    </div>
+    <div class="paper-card quote-card">
+      <div class="quote-card-header"><div><div class="quote-card-number">Q-006</div><div class="quote-card-customer">Startup Hub</div></div><span class="chip" style="background:hsl(var(--success) / 0.1);color:hsl(var(--success));">Converted</span></div>
+      <div class="quote-card-items">
+        <div class="quote-card-item-row"><span class="item-name">Business Cards x10</span><span class="item-qty num">80,000</span></div>
+        <div class="quote-card-item-row"><span class="item-name">Flyer Design x1</span><span class="item-qty num">25,000</span></div>
+      </div>
+      <div class="quote-card-total"><span>Total</span><span class="num">105,000</span></div>
+      <div class="quote-card-actions"><button class="btn btn-outline">Edit</button><button class="btn btn-outline">Send</button><button class="btn btn-primary">Order</button><button class="btn btn-outline">Cash sale</button><button class="btn btn-ghost text-danger">Delete</button></div>
+    </div>
+  </div>
+</div>
+<script>
+function navSubNav(btn) { document.querySelectorAll('.quote-subnav-item').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+</script>
+</body>
+</html>

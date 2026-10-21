@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html data-theme="light" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Sales Report</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+/* Sales Report specific styles */
+.sr-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.sr-stats-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+@media (max-width: 1024px) {
+  .sr-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .sr-stats-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .sr-stats-grid { grid-template-columns: 1fr; }
+  .sr-stats-grid-3 { grid-template-columns: 1fr; }
+}
+
+.sr-stat-card {
+  border: 1px solid var(--border-light); border-radius: 12px; padding: 16px 18px;
+  background: #ffffff; transition: all 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sr-stat-card:hover { border-color: var(--border-input); box-shadow: 0 4px 16px -4px rgba(15,23,42,0.04); transform: translateY(-1px); }
+
+.sr-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted); display: flex; align-items: center; gap: 6px; }
+.sr-stat-value { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink-primary); margin-top: 6px; font-family: var(--font-mono); }
+.sr-stat-value.tone-success { color: var(--success); }
+.sr-stat-value.tone-danger { color: var(--danger); }
+.sr-stat-value.tone-blue { color: var(--apple-blue); }
+.sr-stat-value.tone-warning { color: var(--warning); }
+.sr-stat-desc { font-size: 11px; color: var(--ink-muted); margin-top: 4px; }
+
+/* Filter bar */
+.sr-filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.sr-filter-bar .field-box { flex: 1; min-width: 140px; }
+
+/* Transaction table */
+.sr-table-wrap { border: 1px solid var(--border-light); border-radius: 12px; overflow: hidden; background: #ffffff; }
+.sr-table-header-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-bottom: 1px solid #f1f5f9;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted);
+}
+
+.sr-txn-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease; cursor: pointer;
+}
+
+.sr-txn-row:last-child { border-bottom: none; }
+.sr-txn-row:hover { background: #f8fafc; }
+
+.sr-txn-status {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 22px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0;
+}
+
+.sr-txn-status.paid { background: rgba(22,163,74,0.1); color: #16a34a; border: 1px solid rgba(22,163,74,0.2); }
+.sr-txn-status.partial { background: rgba(245,158,11,0.1); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+.sr-txn-status.credit { background: rgba(220,38,38,0.1); color: #dc2626; border: 1px solid rgba(220,38,38,0.2); }
+
+.sr-txn-info { flex: 1; min-width: 0; }
+.sr-txn-number { font-size: 13px; font-weight: 600; color: var(--ink-secondary); font-family: var(--font-mono); }
+.sr-txn-customer { font-size: 12px; color: var(--ink-muted); margin-top: 1px; }
+.sr-txn-meta { display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--ink-muted); font-family: var(--font-mono); }
+.sr-txn-total { font-size: 14px; font-weight: 700; color: var(--ink-primary); font-family: var(--font-mono); white-space: nowrap; }
+.sr-txn-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* Modal */
+.sr-modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+  padding: 20px; animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.sr-modal {
+  width: 100%; max-width: 768px; max-height: 92vh; display: flex; flex-direction: column;
+  background: #ffffff; border-radius: 20px; overflow: hidden;
+  box-shadow: 0 24px 60px -15px rgba(15,23,42,0.28), 0 4px 16px -2px rgba(15,23,42,0.12);
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlideUp { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.sr-modal-header {
+  padding: 20px 24px; border-bottom: 1px solid var(--border-light);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+
+.sr-modal-title { font-size: 18px; font-weight: 700; color: var(--ink-primary); }
+.sr-modal-subtitle { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+
+.sr-modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+.sr-modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+
+/* Receipt/Invoice document inside modal */
+.sr-doc { background: #ffffff; border: 1px solid var(--border-light); border-radius: 12px; overflow: hidden; }
+.sr-doc-header { padding: 16px; text-align: center; border-bottom: 1px solid var(--border-light); }
+.sr-doc-shop-name { font-size: 16px; font-weight: 800; color: var(--ink-primary); }
+.sr-doc-meta { font-size: 11px; color: var(--ink-muted); margin-top: 4px; }
+.sr-doc-table { width: 100%; border-collapse: collapse; }
+.sr-doc-table th { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border-light); }
+.sr-doc-table td { font-size: 12px; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: var(--ink-secondary); }
+.sr-doc-table td.num { font-family: var(--font-mono); text-align: right; }
+.sr-doc-totals { padding: 12px 16px; border-top: 2px solid var(--ink-primary); }
+.sr-doc-total-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+.sr-doc-total-row.grand { font-weight: 800; font-size: 16px; color: var(--ink-primary); font-family: var(--font-mono); border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 8px; }
+
+/* Collect payment form */
+.sr-collect-form { border-top: 1px solid var(--border-light); padding: 16px 24px; background: var(--bg-subtle); }
+.sr-collect-row { display: flex; gap: 12px; align-items: center; }
+.sr-collect-row .input { flex: 1; }
+</style>
+</head>
+<body>
+<div class="window-frame" id="srRoot">
+<div class="window-handle"></div>
+
+<!-- Sticky Header -->
+<header class="sticky-header">
+<div class="header-top">
+<div class="header-title-block">
+<div class="eyebrow-category">
+<span>PIXOBOOKS LEDGER</span>
+<span>•</span>
+<span>TRANSACTION AUDIT</span>
+</div>
+<h1 class="header-main-title">Sales Report</h1>
+<div class="header-badge-row">
+<span class="badge-tag"><span class="badge-tag-dot"></span>Live Register</span>
+<span class="badge-subtitle">Complete sales audit trail with filtering and export</span>
+</div>
+</div>
+<div class="header-actions">
+<button class="btn btn-outline btn-sm" onclick="triggerReset()">
+<svg class="icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg>
+Reset
+</button>
+<button class="btn btn-primary btn-sm" onclick="exportCsv()">
+<svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
+Export CSV
+</button>
+</div>
+</div>
+<!-- Navigation Pills -->
+<div class="section-nav-wrapper">
+<nav class="section-nav">
+<button class="nav-pill" onclick="navTo('POS',this)">Sales POS</button>
+<button class="nav-pill active" onclick="navTo('Report',this)">Sales Report</button>
+<button class="nav-pill" onclick="navTo('Held',this)">Held Tickets</button>
+<button class="nav-pill" onclick="navTo('Quotes',this)">Quotes</button>
+</nav>
+</div>
+</header>
+
+<!-- Main Content -->
+<main class="content-body">
+
+<!-- Stat Cards -->
+<div>
+<div class="section-title-row">
+<div class="section-number-title">
+<h2 class="sec-title-title">Transaction Overview</h2>
+</div>
+<span class="sec-desc-text">Revenue, collection and outstanding summary for the selected period</span>
+</div>
+<div class="sr-stats-grid">
+<div class="sr-stat-card">
+<div class="sr-stat-label">Sales in Period</div>
+<div class="sr-stat-value">47</div>
+<div class="sr-stat-desc">Completed transactions</div>
+</div>
+<div class="sr-stat-card">
+<div class="sr-stat-label">Revenue</div>
+<div class="sr-stat-value tone-blue">USh 12.5M</div>
+<div class="sr-stat-desc">Total billed amount</div>
+</div>
+<div class="sr-stat-card">
+<div class="sr-stat-label">Collected</div>
+<div class="sr-stat-value tone-success">USh 10.2M</div>
+<div class="sr-stat-desc">Cash + card + wire received</div>
+</div>
+<div class="sr-stat-card">
+<div class="sr-stat-label">Outstanding</div>
+<div class="sr-stat-value tone-danger">USh 2.3M</div>
+<div class="sr-stat-desc">Unpaid credit balances</div>
+</div>
+</div>
+</div>
+
+<!-- Cost Stats (permission-gated) -->
+<div>
+<div class="section-title-row">
+<div class="section-number-title">
+<h2 class="sec-title-text">Cost Analysis</h2>
+</div>
+<span class="sec-desc-text">Cost of goods, gross profit and tax collected</span>
+</div>
+<div class="sr-stats-grid-3">
+<div class="sr-stat-card">
+<div class="sr-stat-label">Cost of Goods</div>
+<div class="sr-stat-value">USh 7.8M</div>
+<div class="sr-stat-desc">Material + labor costs</div>
+</div>
+<div class="sr-stat-card">
+<div class="sr-stat-label">Gross Profit</div>
+<div class="sr-stat-value tone-success">USh 4.7M</div>
+<div class="sr-stat-desc">Revenue minus COGS</div>
+</div>
+<div class="sr-stat-card">
+<div class="sr-stat-label">Tax Collected</div>
+<div class="sr-stat-value">USh 1.9M</div>
+<div class="sr-stat-desc">VAT at 18%</div>
+</div>
+</div>
+</div>
+
+<!-- Filter Bar -->
+<div class="config-section">
+<div class="section-title-row">
+<div class="section-number-title">
+<h2 class="sec-title-text">Filter & Search</h2>
+</div>
+<span class="sec-desc-text">Narrow transactions by date, payment method or status</span>
+</div>
+<div class="sr-filter-bar">
+<div class="field-box">
+<label class="field-label">Search</label>
+<input class="input" id="srSearch" placeholder="Number, customer, cashier..." type="text">
+</div>
+<div class="field-box">
+<label class="field-label">From Date</label>
+<input class="input" type="date" value="2025-10-01">
+</div>
+<div class="field-box">
+<label class="field-label">To Date</label>
+<input class="input" type="date" value="2025-10-15">
+</div>
+<div class="field-box">
+<label class="field-label">Payment Method</label>
+<select class="input">
+<option value="all">All Methods</option>
+<option value="cash">Cash</option>
+<option value="card">Card</option>
+<option value="transfer">Wire</option>
+<option value="credit">Credit</option>
+<option value="partial">Partial</option>
+</select>
+</div>
+<div class="field-box">
+<label class="field-label">Status</label>
+<select class="input">
+<option value="all">All Statuses</option>
+<option value="paid">Paid</option>
+<option value="partial">Partial</option>
+<option value="credit">Credit</option>
+</select>
+</div>
+</div>
+</div>
+
+<!-- Transaction Table -->
+<div class="config-section">
+<div class="section-title-row">
+<div class="section-number-title">
+<h2 class="sec-title-text">Transaction Register</h2>
+</div>
+<span class="sec-desc-text">47 of 47 transactions · tap any row to view receipt or invoice</span>
+</div>
+<div class="sr-table-wrap" id="srTableWrap"></div>
+</div>
+
+</main>
+
+<!-- Sticky Footer -->
+<footer class="sticky-footer">
+<div class="footer-status-clue">
+<span class="status-indicator-dot"></span>
+<span>Ledger synced · Tap any transaction to view receipt or invoice</span>
+</div>
+<div style="display:flex; gap:10px;">
+<button class="btn btn-outline" onclick="triggerReset()">Reset Filters</button>
+<button class="btn btn-primary" onclick="triggerExport()">
+<svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
+Export CSV
+</button>
+</div>
+</footer>
+</div>
+
+<!-- Transaction Viewer Modal -->
+<div class="sr-modal-overlay hidden" id="srModal" style="display:none;">
+<div class="sr-modal">
+<div class="sr-modal-header">
+<div>
+<div class="sr-modal-title" id="srModalTitle">RCPT-001</div>
+<div class="sr-modal-subtitle" id="srModalSubtitle">Sales Receipt</div>
+</div>
+<button class="btn btn-outline btn-sm" onclick="closeModal()">
+<svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+Close
+</button>
+</div>
+<div class="sr-modal-body" id="srModalBody"></div>
+<div class="sr-modal-footer">
+<button class="btn btn-outline" onclick="window.print()">
+<svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+Print
+</button>
+<div style="display:flex; gap:10px;">
+<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+<button class="btn btn-primary" onclick="closeModal()">Done</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Toast -->
+<div class="toast-notice" id="srToast">
+<svg class="icon" style="color:var(--success);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+<span id="srToastMsg">Settings saved successfully</span>
+</div>
+
+<script>
+const TRANSACTIONS = [
+  { id: '1', number: 'RCPT-001', date: '2025-10-15', cashier: 'Amina K.', customer: 'Walk-in', method: 'cash', status: 'paid', total: 58100, items: [{ name: 'Business Cards (1000)', qty: 2, price: 25000 }] },
+  { id: '2', number: 'INV-1001', date: '2025-10-15', cashier: 'John M.', customer: 'Acme Corp', method: 'credit', status: 'credit', total: 286150, items: [{ name: 'A4 Printing (500)', qty: 10, price: 15000 }, { name: 'Lamination', qty: 500, price: 200 }] },
+  { id: '3', number: 'RCPT-002', date: '2025-10-14', cashier: 'Sarah O.', customer: 'Walk-in', method: 'card', status: 'paid', total: 37170, items: [{ name: 'Flyers A5 (1000)', qty: 1, price: 35000 }] },
+  { id: '4', number: 'RCPT-003', date: '2025-10-14', cashier: 'Amina K.', customer: 'Jane Doe', method: 'transfer', status: 'paid', total: 295000, items: [{ name: 'Stickers (die-cut)', qty: 50, price: 5000 }] },
+  { id: '5', number: 'INV-1002', date: '2025-10-13', cashier: 'John M.', customer: 'TechStart Ltd', method: 'partial', status: 'partial', total: 218300, items: [{ name: 'Banner 2x1m', qty: 3, price: 45000 }, { name: 'Installation', qty: 1, price: 50000 }] },
+  { id: '6', number: 'RCPT-004', date: '2025-10-12', cashier: 'Sarah O.', customer: 'Walk-in', method: 'cash', status: 'paid', total: 127440, items: [{ name: 'T-Shirts (custom)', qty: 10, price: 12000 }] },
+  { id: '7', number: 'RCPT-005', date: '2025-10-12', cashier: 'Amina K.', customer: 'Mike Johnson', method: 'card', status: 'paid', total: 106200, items: [{ name: 'Mugs (sublimation)', qty: 5, price: 18000 }] },
+  { id: '8', number: 'RCPT-006', date: '2025-10-11', cashier: 'John M.', customer: 'Walk-in', method: 'cash', status: 'paid', total: 354000, items: [{ name: 'Brochures A4', qty: 200, price: 1500 }] },
+];
+
+function renderTable() {
+  const wrap = document.getElementById('srTableWrap');
+  wrap.innerHTML = TRANSACTIONS.map(s => {
+    const statusClass = s.status === 'paid' ? 'paid' : s.status === 'partial' ? 'partial' : 'credit';
+    const methodLabel = s.method === 'transfer' ? 'Wire' : s.method === 'cash' ? 'Cash' : s.method === 'card' ? 'Card' : s.method === 'credit' ? 'Credit' : 'Partial';
+    return `<div class="sr-txn-row" onclick="openModal('${s.id}')">
+      <span class="sr-txn-status ${statusClass}">${s.status}</span>
+      <div class="sr-txn-info">
+        <div class="sr-txn-number">${s.number}</div>
+        <div class="sr-txn-customer">${s.customer} · ${s.cashier} · ${methodLabel}</div>
+      </div>
+      <div class="sr-txn-meta">
+        <span>${s.date}</span>
+        <span>${s.items.length} item${s.items.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="sr-txn-total">USh ${s.total.toLocaleString()}</div>
+      <div class="sr-txn-actions">
+        <button class="btn btn-ghost-danger btn-sm" onclick="event.stopPropagation();voidSale('${s.id}')">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openModal(id) {
+  const sale = TRANSACTIONS.find(s => s.id === id);
+  if (!sale) return;
+  const isInvoice = sale.method === 'credit' || sale.status === 'credit' || sale.status === 'partial';
+  document.getElementById('srModalTitle').textContent = sale.number;
+  document.getElementById('srModalSubtitle').textContent = isInvoice ? 'Credit Invoice' : 'Sales Receipt';
+  document.getElementById('srModalBody').innerHTML = renderDoc(sale, isInvoice);
+  document.getElementById('srModal').style.display = 'flex';
+  document.getElementById('srModal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('srModal').style.display = 'none';
+  document.getElementById('srModal').classList.add('hidden');
+}
+
+function renderDoc(s, isInvoice) {
+  if (isInvoice) {
+    return `<div class="sr-doc">
+      <div class="sr-doc-header">
+        <div class="sr-doc-shop-name">PixoPrints</div>
+        <div class="sr-doc-meta">123 Main Street, Kampala · +256 712 345 678</div>
+        <div style="margin-top:8px;"><span class="sr-txn-status ${s.status === 'credit' ? 'credit' : 'partial'}">${s.status}</span></div>
+      </div>
+      <table class="sr-doc-table">
+        <thead><tr><th>Item</th><th>Qty</th><th class="num">Amount</th></tr></thead>
+        <tbody>${s.items.map(l => `<tr><td>${l.name}</td><td>${l.qty}</td><td class="num">USh ${(l.qty * l.price).toLocaleString()}</td></tr>`).join('')}</tbody>
+      </table>
+      <div class="sr-doc-totals">
+        <div class="sr-doc-total-row"><span>Subtotal</span><span class="num">USh ${s.total.toLocaleString()}</span></div>
+        <div class="sr-doc-total-row grand"><span>TOTAL</span><span class="num">USh ${s.total.toLocaleString()}</span></div>
+        ${s.status !== 'paid' ? `<div class="sr-doc-total-row" style="color:var(--danger);"><span>Balance Due</span><span class="num">USh ${s.total.toLocaleString()}</span></div>` : ''}
+      </div>
+    </div>`;
+  }
+  return `<div class="sr-doc">
+    <div class="sr-doc-header">
+      <div class="sr-doc-shop-name">PixoPrints — Thank you!</div>
+      <div class="sr-doc-meta">${s.number} · ${s.date} · ${s.cashier}</div>
+    </div>
+    <table class="sr-doc-table">
+      <thead><tr><th>Item</th><th>Qty</th><th class="num">Amount</th></tr></thead>
+      <tbody>${s.items.map(l => `<tr><td>${l.name}</td><td>${l.qty}</td><td class="num">USh ${(l.qty * l.price).toLocaleString()}</td></tr>`).join('')}</tbody>
+    </table>
+    <div class="sr-doc-totals">
+      <div class="sr-doc-total-row grand"><span>TOTAL</span><span class="num">USh ${s.total.toLocaleString()}</span></div>
+    </div>
+  </div>`;
+}
+
+function voidSale(id) { if (confirm('Void this sale?')) showToast('Sale voided'); }
+function triggerReset() { showToast('Filters reset'); }
+function triggerExport() { showToast('CSV exported'); }
+function navTo(label, btn) {
+  document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('srToast');
+  document.getElementById('srToastMsg').textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+renderTable();
+</script>
+</body>
+</html>

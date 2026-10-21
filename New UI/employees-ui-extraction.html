@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Team &amp; Payroll UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.emp-root { padding: 1rem; display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 768px) { .emp-root { padding: 1.5rem; } }
+.emp-subnav { padding: 6px; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.emp-subnav::-webkit-scrollbar { display: none; }
+.emp-subnav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all 150ms ease; cursor: pointer; border: none; background: transparent; }
+.emp-subnav-item.active { background: #000000; color: #fdfbf7; }
+.emp-subnav-item:not(.active) { color: #5e697a; }
+.emp-subnav-item:not(.active):hover { color: #000000; background: #fdfbf7; }
+.emp-subnav-item svg { width: 14px; height: 14px; }
+.emp-layout { display: grid; grid-template-columns: 1fr; gap: 16px; flex: 1; min-height: 0; }
+@media (min-width: 1024px) { .emp-layout { grid-template-columns: 320px 1fr; } }
+.emp-list-panel { overflow: hidden; display: flex; flex-direction: column; }
+.emp-list-header { padding: 16px; border-bottom: 1px solid #8c8c8c; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.emp-list-header .header-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.emp-list-header .header-title { font-size: 18px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; }
+.emp-list-header .header-desc { font-size: 12px; color: #5e697a; margin-top: 4px; }
+.emp-list-body { flex: 1; overflow-y: auto; }
+.emp-list-item { width: 100%; padding: 12px; border-bottom: 1px solid #8c8c8c; display: flex; align-items: center; gap: 8px; transition: background 150ms ease; cursor: pointer; border: none; background: transparent; text-align: left; }
+.emp-list-item:hover { background: rgba(253, 251, 247, 0.5); }
+.emp-list-item.selected { background: #fdfbf7; }
+.emp-list-item .emp-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(224, 51, 128, 0.1); color: #e03380; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; font-size: 16px; }
+.emp-list-item .emp-info { flex: 1; min-width: 0; }
+.emp-list-item .emp-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emp-list-item .emp-role { font-size: 11px; color: #5e697a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emp-list-item .emp-status { display: flex; align-items: center; gap: 4px; }
+.emp-list-item .emp-status .status-icon { width: 16px; height: 16px; }
+.emp-list-item .emp-status .status-icon.active { color: #298453; }
+.emp-list-item .emp-status .status-icon.inactive { color: #5e697a; }
+.emp-list-item .emp-delete { background: none; border: none; cursor: pointer; color: #d3222a; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0; }
+.emp-list-item .emp-delete:hover { background: rgba(211, 34, 42, 0.1); }
+.emp-list-item .emp-delete svg { width: 14px; height: 14px; }
+.emp-detail-panel { overflow: hidden; display: flex; flex-direction: column; }
+.emp-detail-tabs { border-bottom: 1px solid #8c8c8c; display: flex; overflow-x: auto; scrollbar-width: none; }
+.emp-detail-tabs::-webkit-scrollbar { display: none; }
+.emp-detail-tab { padding: 0 16px; height: 48px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; border-bottom: 2px solid transparent; transition: all 150ms ease; white-space: nowrap; cursor: pointer; border-top: none; border-left: none; border-right: none; background: transparent; }
+.emp-detail-tab.active { border-bottom-color: #e03380; color: #e03380; }
+.emp-detail-tab:not(.active) { color: #5e697a; }
+.emp-detail-tab:not(.active):hover { color: #000000; }
+.emp-detail-tab svg { width: 16px; height: 16px; }
+.emp-detail-body { flex: 1; overflow-y: auto; padding: 16px; }
+@media (min-width: 768px) { .emp-detail-body { padding: 24px; } }
+.emp-tab-content { display: none; }
+.emp-tab-content.active { display: block; }
+.emp-profile-header { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+@media (min-width: 768px) { .emp-profile-header { flex-direction: row; align-items: center; } }
+.emp-profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: rgba(224, 51, 128, 0.1); color: #e03380; font-weight: 700; font-size: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
+.emp-profile-info { flex: 1; min-width: 0; }
+.emp-profile-email { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.emp-profile-name { font-size: 24px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; }
+.emp-profile-joined { font-size: 12px; color: #5e697a; }
+.emp-profile-actions { display: flex; flex-direction: column; gap: 8px; }
+.emp-toggle { display: flex; align-items: center; gap: 8px; }
+.emp-toggle .toggle-label { font-size: 12px; color: #5e697a; }
+.emp-toggle .toggle-switch { width: 44px; height: 24px; border-radius: 999px; position: relative; cursor: pointer; transition: background 150ms ease; border: none; }
+.emp-toggle .toggle-switch.active { background: #298453; }
+.emp-toggle .toggle-switch:not(.active) { background: rgba(0, 0, 0, 0.2); }
+.emp-toggle .toggle-switch .toggle-knob { position: absolute; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: left 150ms ease; }
+.emp-toggle .toggle-switch.active .toggle-knob { left: 22px; }
+.emp-toggle .toggle-switch:not(.active) .toggle-knob { left: 2px; }
+.emp-salary-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+@media (min-width: 768px) { .emp-salary-stats { grid-template-columns: repeat(4, 1fr); } }
+.emp-salary-stat { padding: 12px; }
+.emp-salary-stat .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.emp-salary-stat .stat-value { font-size: 18px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; margin-top: 4px; }
+.emp-salary-stat .stat-value.tone-success { color: #298453; }
+.emp-allowance-list { display: flex; flex-direction: column; gap: 8px; }
+.emp-allowance-item { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; padding: 12px; border: 1px solid #8c8c8c; border-radius: 6px; }
+@media (min-width: 768px) { .emp-allowance-item { grid-template-columns: 2fr 1fr 1fr 2fr auto; } }
+.emp-allowance-item .field-wrapper { min-width: 0; }
+.emp-allowance-item .btn { height: 36px; }
+.emp-attendance-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+@media (min-width: 768px) { .emp-attendance-stats { grid-template-columns: repeat(5, 1fr); } }
+.emp-attendance-stat { padding: 12px; }
+.emp-attendance-stat .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.emp-attendance-stat .stat-value { font-size: 18px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; margin-top: 4px; }
+.emp-attendance-stat .stat-value.tone-success { color: #298453; }
+.emp-attendance-stat .stat-value.tone-danger { color: #d3222a; }
+.emp-calendar-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.emp-calendar-nav .month-title { font-size: 18px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; }
+.emp-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.emp-calendar-grid .day-header { text-align: center; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; padding-bottom: 4px; }
+.emp-calendar-grid .day-cell { aspect-ratio: 1; border: 1px solid #8c8c8c; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; transition: all 150ms ease; background: transparent; }
+.emp-calendar-grid .day-cell:hover { border-color: #000000; }
+.emp-calendar-grid .day-cell.in-month { opacity: 1; }
+.emp-calendar-grid .day-cell:not(.in-month) { opacity: 0.3; cursor: default; }
+.emp-calendar-grid .day-cell .day-num { font-weight: 600; }
+.emp-calendar-grid .day-cell .day-status { font-size: 10px; font-weight: 700; margin-top: 2px; }
+.emp-calendar-grid .day-cell.status-present { background: rgba(41, 132, 83, 0.2); color: #298453; border-color: rgba(41, 132, 83, 0.4); }
+.emp-calendar-grid .day-cell.status-halfday { background: rgba(246, 167, 30, 0.2); color: #f6a71e; border-color: rgba(246, 167, 30, 0.4); }
+.emp-calendar-grid .day-cell.status-leave { background: rgba(20, 165, 199, 0.2); color: #14a5c7; border-color: rgba(20, 165, 199, 0.4); }
+.emp-calendar-grid .day-cell.status-holiday { background: rgba(0, 0, 0, 0.1); color: #000000; border-color: rgba(0, 0, 0, 0.2); }
+.emp-calendar-grid .day-cell.status-absent { background: rgba(211, 34, 42, 0.2); color: #d3222a; border-color: rgba(211, 34, 42, 0.4); }
+.emp-permission-groups { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .emp-permission-groups { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1280px) { .emp-permission-groups { grid-template-columns: 1fr 1fr 1fr; } }
+.emp-permission-group { padding: 16px; }
+.emp-permission-group .group-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.emp-permission-group .group-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.emp-permission-group .group-toggle { font-size: 10px; color: #5e697a; cursor: pointer; text-decoration: underline; background: none; border: none; }
+.emp-permission-group .group-toggle:hover { color: #000000; }
+.emp-permission-group .permission-list { display: flex; flex-direction: column; gap: 6px; }
+.emp-permission-group .permission-item { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.emp-permission-group .permission-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: #000000; cursor: pointer; }
+.emp-permission-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.emp-permission-presets .presets-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.emp-permission-presets .presets-label svg { width: 12px; height: 12px; }
+.emp-permission-presets .preset-chip { height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #8c8c8c; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 150ms ease; }
+.emp-permission-presets .preset-chip:hover { background: rgba(0, 0, 0, 0.05); }
+.emp-permission-presets .preset-chip.owner { background: rgba(224, 51, 128, 0.1); color: #e03380; border-color: rgba(224, 51, 128, 0.3); }
+.emp-invite-modal { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.5); display: flex; align-items: flex-end; justify-content: center; padding: 0; animation: fade-in 160ms ease-out; }
+@media (min-width: 768px) { .emp-invite-modal { align-items: center; padding: 16px; } }
+.emp-invite-box { width: 100%; max-width: 672px; max-height: 95vh; display: flex; flex-direction: column; border-radius: 16px 16px 0 0; background: #fdfbf7; border: 1px solid #8c8c8c; overflow: hidden; }
+@media (min-width: 768px) { .emp-invite-box { border-radius: 12px; } }
+.emp-invite-header { padding: 16px; border-bottom: 1px solid #8c8c8c; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.emp-invite-header .header-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.emp-invite-header .header-title { font-size: 18px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; }
+.emp-invite-body { overflow-y: auto; flex: 1; padding: 16px; }
+.emp-invite-form { display: flex; flex-direction: column; gap: 16px; }
+.emp-invite-form .form-section { border-top: 1px solid #8c8c8c; padding-top: 12px; }
+.emp-invite-form .form-section .section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; margin-bottom: 8px; }
+.emp-invite-form .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .emp-invite-form .form-grid { grid-template-columns: 1fr 1fr; } }
+.emp-invite-result { display: flex; flex-direction: column; gap: 16px; }
+.emp-invite-result .result-icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(41, 132, 83, 0.1); margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+.emp-invite-result .result-icon svg { width: 24px; height: 24px; color: #298453; }
+.emp-invite-result .result-title { font-size: 18px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; text-align: center; }
+.emp-invite-result .result-desc { font-size: 12px; color: #5e697a; text-align: center; }
+.emp-invite-result .result-credentials { border: 2px solid rgba(224, 51, 128, 0.3); background: rgba(224, 51, 128, 0.05); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.emp-invite-result .credential-row { display: flex; align-items: flex-start; gap: 8px; }
+.emp-invite-result .credential-row .cred-icon { color: #5e697a; padding-top: 2px; }
+.emp-invite-result .credential-row .cred-icon svg { width: 14px; height: 14px; }
+.emp-invite-result .credential-row .cred-content { min-width: 0; flex: 1; }
+.emp-invite-result .credential-row .cred-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.emp-invite-result .credential-row .cred-value { font-size: 14px; word-break: break-all; margin-top: 2px; }
+.emp-invite-result .credential-row .cred-value.mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.emp-invite-result .credential-row .cred-value.highlight { font-weight: 700; color: #e03380; font-size: 16px; }
+.emp-invite-result .credential-row .cred-copy { background: none; border: none; cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0; }
+.emp-invite-result .credential-row .cred-copy:hover { background: rgba(0, 0, 0, 0.06); }
+.emp-invite-result .credential-row .cred-copy svg { width: 14px; height: 14px; }
+.emp-invite-result .result-message { border: 1px solid #8c8c8c; border-radius: 6px; padding: 12px; }
+.emp-invite-result .result-message .message-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; margin-bottom: 4px; }
+.emp-invite-result .result-message .message-text { font-size: 12px; font-family: "JetBrains Mono", ui-monospace, monospace; line-height: 1.5; }
+.emp-invite-result .result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.emp-invite-result .result-actions .btn { height: 40px; }
+</style>
+</head>
+<body>
+<div class="emp-root" id="empRoot">
+  <nav class="emp-subnav paper-card" aria-label="Team section">
+    <button class="emp-subnav-item active" onclick="navSubNav('Team',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Team</button>
+    <button class="emp-subnav-item" onclick="navSubNav('Payroll',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Payroll</button>
+    <button class="emp-subnav-item" onclick="navSubNav('Approvals',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Approvals</button>
+    <button class="emp-subnav-item" onclick="navSubNav('Password Resets',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Password Resets</button>
+    <button class="emp-subnav-item" onclick="navSubNav('Audit Log',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
+  </nav>
+  <div class="emp-layout">
+    <div class="emp-list-panel paper-card">
+      <div class="emp-list-header">
+        <div><div class="header-label">Team members</div><div class="header-title">All employees</div><div class="header-desc">Add, edit or remove any account below.</div></div>
+        <button class="btn btn-primary" style="height:36px;padding:0 12px;" onclick="openInviteModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add</button>
+      </div>
+      <div class="emp-list-body" id="empListBody"></div>
+    </div>
+    <div class="emp-detail-panel paper-card" id="empDetailPanel">
+      <div class="emp-detail-tabs" id="empDetailTabs">
+        <button class="emp-detail-tab active" onclick="switchEmpTab('profile',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</button>
+        <button class="emp-detail-tab" onclick="switchEmpTab('payroll',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Payroll</button>
+        <button class="emp-detail-tab" onclick="switchEmpTab('attendance',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Attendance</button>
+        <button class="emp-detail-tab" onclick="switchEmpTab('permissions',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Permissions</button>
+      </div>
+      <div class="emp-detail-body">
+        <div class="emp-tab-content active" id="empTab-profile"></div>
+        <div class="emp-tab-content" id="empTab-payroll"></div>
+        <div class="emp-tab-content" id="empTab-attendance"></div>
+        <div class="emp-tab-content" id="empTab-permissions"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="emp-invite-modal hidden" id="empInviteModal" style="display:none;">
+  <div class="emp-invite-box">
+    <div class="emp-invite-header">
+      <div><div class="header-label">Add employee</div><div class="header-title" id="inviteTitle">Invite new team member</div></div>
+      <button class="modal-close" onclick="closeInviteModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="emp-invite-body" id="empInviteBody"></div>
+  </div>
+</div>
+<script>
+const EMPLOYEES = [
+  { id: '1', name: 'Amina K.', email: 'amina@pixoprints.com', role: 'Cashier', permissions: 7, active: true, approvalStatus: 'approved', avatarUrl: null, phone: '+256 712 345 678', address: '123 Main St, Kampala', hireDate: '2024-01-15', emergencyContact: 'John K.', emergencyContactPhone: '+256 700 123 456', pin: '1234', notes: 'Senior cashier, 3 years experience', salary: { base: 1500000, currency: 'UGX', payCycle: 'monthly', allowances: [{ name: 'Housing', amount: 200000, type: 'fixed', payCycle: 'monthly' }, { name: 'Transport', amount: 100000, type: 'fixed', payCycle: 'monthly' }] } },
+  { id: '2', name: 'John M.', email: 'john@pixoprints.com', role: 'Manager', permissions: 25, active: true, approvalStatus: 'approved', avatarUrl: null, phone: '+256 700 234 567', address: '456 Oak Ave, Kampala', hireDate: '2023-06-01', emergencyContact: 'Sarah M.', emergencyContactPhone: '+256 700 345 678', pin: '5678', notes: 'Store manager', salary: { base: 3000000, currency: 'UGX', payCycle: 'monthly', allowances: [{ name: 'Housing', amount: 400000, type: 'fixed', payCycle: 'monthly' }] } },
+  { id: '3', name: 'Sarah O.', email: 'sarah@pixoprints.com', role: 'Designer', permissions: 4, active: true, approvalStatus: 'approved', avatarUrl: null, phone: '+256 700 456 789', address: '789 Pine Rd, Kampala', hireDate: '2024-03-10', emergencyContact: 'Mike O.', emergencyContactPhone: '+256 700 567 890', pin: '', notes: 'Graphic designer', salary: { base: 2000000, currency: 'UGX', payCycle: 'monthly', allowances: [] } },
+  { id: '4', name: 'David S.', email: 'david@pixoprints.com', role: 'Staff', permissions: 7, active: false, approvalStatus: 'pending_approval', avatarUrl: null, phone: '+256 700 678 901', address: '321 Elm St, Kampala', hireDate: '2025-09-01', emergencyContact: 'Lisa S.', emergencyContactPhone: '+256 700 789 012', pin: '', notes: 'New hire', salary: { base: 1000000, currency: 'UGX', payCycle: 'monthly', allowances: [] } },
+];
+const PERMISSION_GROUPS = [
+  { title: 'Sales', perms: [{ key: 'pos.sell', label: 'Ring up sales' }, { key: 'pos.discount', label: 'Apply discounts' }, { key: 'pos.hold', label: 'Hold & resume tickets' }, { key: 'pos.refund', label: 'Process refunds' }, { key: 'pos.credit', label: 'Accept credit / partial payments' }] },
+  { title: 'Inventory', perms: [{ key: 'inventory.view', label: 'View inventory' }, { key: 'inventory.edit', label: 'Add & edit items' }, { key: 'inventory.delete', label: 'Delete items' }, { key: 'inventory.adjust', label: 'Adjust stock levels' }] },
+  { title: 'Purchase Orders', perms: [{ key: 'po.view', label: 'View purchase orders' }, { key: 'po.manage', label: 'Create & edit POs' }, { key: 'po.receive', label: 'Receive stock' }, { key: 'po.delete', label: 'Delete POs' }] },
+  { title: 'Suppliers', perms: [{ key: 'suppliers.view', label: 'View suppliers' }, { key: 'suppliers.manage', label: 'Add & edit suppliers' }, { key: 'suppliers.delete', label: 'Delete suppliers' }] },
+  { title: 'Customers', perms: [{ key: 'customers.manage', label: 'Manage customers' }, { key: 'customers.delete', label: 'Delete customers' }, { key: 'loyalty.manage', label: 'Manage loyalty points' }] },
+  { title: 'Documents', perms: [{ key: 'quotes.view', label: 'View quotes' }, { key: 'quotes.manage', label: 'Create & convert quotes' }, { key: 'quotes.delete', label: 'Delete quotes' }] },
+  { title: 'Finance', perms: [{ key: 'expenses.view', label: 'View expenses' }, { key: 'expenses.manage', label: 'Record & edit expenses' }, { key: 'expenses.delete', label: 'Delete expenses' }, { key: 'finance.view', label: 'View cashbook & bank statement' }, { key: 'finance.manage', label: 'Daily banking, standing orders, loans' }] },
+  { title: 'Reports', perms: [{ key: 'sales.view', label: 'View sales reports' }, { key: 'sales.void', label: 'Void sales' }, { key: 'stats.view', label: 'View financial statistics' }, { key: 'reports.viewCosts', label: 'View COGS / cost & profit columns' }] },
+  { title: 'Admin', perms: [{ key: 'employees.manage', label: 'Manage employees' }, { key: 'employees.delete', label: 'Delete employee accounts' }, { key: 'employees.payroll', label: 'Manage salaries & allowances' }, { key: 'employees.attendance', label: 'Record attendance' }, { key: 'settings.manage', label: 'Access all settings' }, { key: 'audit.view', label: 'View audit log' }, { key: 'password.approve', label: 'Approve password resets' }] },
+  { title: 'Settings', perms: [{ key: 'settings.shop', label: 'Edit shop identity' }, { key: 'settings.receipt', label: 'Edit receipt template' }, { key: 'settings.invoice', label: 'Edit invoice template' }, { key: 'settings.printer', label: 'Configure printer' }, { key: 'settings.loyalty', label: 'Edit loyalty rules' }, { key: 'settings.units', label: 'Edit unit conversions' }, { key: 'settings.taxes', label: 'Edit tax rates' }, { key: 'settings.theme', label: 'Change theme & branding' }, { key: 'settings.discount', label: 'Configure discount rules' }, { key: 'settings.categories', label: 'Manage POS categories' }, { key: 'settings.export', label: 'Export shop data' }] },
+];
+let selectedEmpId = null;
+let inviteStep = 'form';
+function renderEmpList() {
+  const body = document.getElementById('empListBody');
+  body.innerHTML = EMPLOYEES.map(e => `
+    <button class="emp-list-item ${e.id === selectedEmpId ? 'selected' : ''}" onclick="selectEmp('${e.id}')">
+      <div class="emp-avatar">${e.name.charAt(0).toUpperCase()}</div>
+      <div class="emp-info">
+        <div class="emp-name">${e.name}</div>
+        <div class="emp-role">${e.role} · ${e.permissions} perms</div>
+        ${e.approvalStatus !== 'approved' ? `<div class="text-xs" style="color:#d86b09;">${e.approvalStatus === 'pending_approval' ? 'Awaiting approval' : 'Pending first login'}</div>` : ''}
+      </div>
+      <div class="emp-status">
+        ${e.active ? '<svg class="status-icon active" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' : '<svg class="status-icon inactive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>'}
+      </div>
+      <button class="emp-delete" onclick="event.stopPropagation();deleteEmp('${e.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </button>`).join('');
+}
+function selectEmp(id) { selectedEmpId = id; renderEmpList(); renderEmpDetail(); }
+function renderEmpDetail() {
+  const emp = EMPLOYEES.find(e => e.id === selectedEmpId) || EMPLOYEES[0];
+  if (!emp) return;
+  // Profile tab
+  document.getElementById('empTab-profile').innerHTML = `
+    <div class="emp-profile-header">
+      <div class="emp-profile-avatar">${emp.name.charAt(0).toUpperCase()}</div>
+      <div class="emp-profile-info">
+        <div class="emp-profile-email">${emp.email}</div>
+        <div class="emp-profile-name">${emp.name}</div>
+        <div class="emp-profile-joined">Joined ${emp.hireDate}</div>
+      </div>
+      <div class="emp-profile-actions">
+        <button class="btn btn-outline" style="height:36px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Photo</button>
+        <div class="emp-toggle">
+          <span class="toggle-label">Active</span>
+          <button class="toggle-switch ${emp.active ? 'active' : ''}" onclick="this.classList.toggle('active')"><span class="toggle-knob"></span></button>
+        </div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="field-wrapper"><label class="label">Display name</label><input class="input" value="${emp.name}"></div>
+      <div class="field-wrapper"><label class="label">Role / Job title</label><input class="input" value="${emp.role}"></div>
+      <div class="field-wrapper"><label class="label">Phone</label><input class="input" value="${emp.phone}"></div>
+      <div class="field-wrapper"><label class="label">Email</label><input class="input" value="${emp.email}" disabled style="opacity:0.6;"></div>
+      <div class="field-wrapper"><label class="label">Address</label><input class="input" value="${emp.address}"></div>
+      <div class="field-wrapper"><label class="label">Hire date</label><input class="input" type="date" value="${emp.hireDate}"></div>
+      <div class="field-wrapper"><label class="label">Emergency contact name</label><input class="input" value="${emp.emergencyContact}"></div>
+      <div class="field-wrapper"><label class="label">Emergency contact phone</label><input class="input" value="${emp.emergencyContactPhone}"></div>
+      <div class="field-wrapper"><label class="label">Quick-switch PIN</label><input class="input num" value="${emp.pin}" placeholder="e.g. 1234"></div>
+    </div>
+    <div class="field-wrapper mt-4"><label class="label">Notes</label><textarea class="input" style="min-height:80px;">${emp.notes}</textarea></div>
+    <div class="flex flex-col-reverse md:flex-row md:justify-between mt-4 pt-4" style="border-top:1px solid #8c8c8c;">
+      <button class="btn btn-outline text-danger" style="border-color:rgba(211, 34, 42, 0.4);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Delete employee</button>
+      <button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save profile</button>
+    </div>`;
+  // Payroll tab
+  const s = emp.salary;
+  const totalAllowances = s.allowances.reduce((sum, a) => sum + (a.type === 'fixed' ? a.amount : (s.base * a.amount) / 100), 0);
+  const gross = s.base + totalAllowances;
+  document.getElementById('empTab-payroll').innerHTML = `
+    <div class="emp-salary-stats">
+      <div class="paper-card emp-salary-stat"><div class="stat-label">Base salary</div><div class="stat-value num">${s.currency} ${s.base.toLocaleString()}</div></div>
+      <div class="paper-card emp-salary-stat"><div class="stat-label">Allowances (mo. eq.)</div><div class="stat-value num">${s.currency} ${totalAllowances.toLocaleString()}</div></div>
+      <div class="paper-card emp-salary-stat"><div class="stat-label">Gross (monthly)</div><div class="stat-value num tone-success">${s.currency} ${gross.toLocaleString()}</div></div>
+      <div class="paper-card emp-salary-stat"><div class="stat-label">Base pay cycle</div><div class="stat-value">${s.payCycle}</div></div>
+    </div>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="field-wrapper"><label class="label">Base salary</label><input class="input num" type="number" value="${s.base}" style="text-align:right;"></div>
+      <div class="field-wrapper"><label class="label">Currency</label><select class="input"><option>UGX</option><option>USD</option><option>KES</option></select></div>
+      <div class="field-wrapper"><label class="label">Base pay cycle</label><select class="input"><option>monthly</option><option>biweekly</option><option>weekly</option></select></div>
+    </div>
+    <div class="mt-4">
+      <div class="flex items-center justify-between mb-2">
+        <div><div class="font-display font-bold">Allowances</div><div class="text-xs text-muted">Housing, transport, meals, medical, bonuses</div></div>
+        <button class="btn btn-outline" style="height:36px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add allowance</button>
+      </div>
+      <div class="emp-allowance-list">
+        ${s.allowances.map((a, i) => `
+          <div class="emp-allowance-item">
+            <div class="field-wrapper"><label class="label">Name</label><input class="input" value="${a.name}" placeholder="Housing, Transport..."></div>
+            <div class="field-wrapper"><label class="label">Type</label><select class="input"><option ${a.type === 'fixed' ? 'selected' : ''}>fixed</option><option ${a.type === 'percentage' ? 'selected' : ''}>percentage</option></select></div>
+            <div class="field-wrapper"><label class="label">Amount</label><input class="input num" type="number" value="${a.amount}" style="text-align:right;"></div>
+            <div class="field-wrapper"><label class="label">Pay cycle</label><select class="input"><option>monthly</option><option>weekly</option><option>biweekly</option><option>daily</option><option>annually</option></select></div>
+            <button class="btn btn-ghost text-danger"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="flex justify-end mt-4 pt-4" style="border-top:1px solid #8c8c8c;"><button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save payroll</button></div>`;
+  // Attendance tab
+  const days = [];
+  for (let i = 0; i < 35; i++) days.push(i);
+  const statuses = ['present', 'halfday', 'leave', 'holiday', 'absent'];
+  const statusMeta = { present: { label: 'P', color: 'status-present' }, halfday: { label: 'H', color: 'status-halfday' }, leave: { label: 'L', color: 'status-leave' }, holiday: { label: 'H', color: 'status-holiday' }, absent: { label: 'A', color: 'status-absent' } };
+  document.getElementById('empTab-attendance').innerHTML = `
+    <div class="emp-attendance-stats">
+      <div class="paper-card emp-attendance-stat"><div class="stat-label">Present</div><div class="stat-value num tone-success">22</div></div>
+      <div class="paper-card emp-attendance-stat"><div class="stat-label">Half-day</div><div class="stat-value num">3</div></div>
+      <div class="paper-card emp-attendance-stat"><div class="stat-label">Leave</div><div class="stat-value num">2</div></div>
+      <div class="paper-card emp-attendance-stat"><div class="stat-label">Absent</div><div class="stat-value num tone-danger">1</div></div>
+      <div class="paper-card emp-attendance-stat"><div class="stat-label">Hours</div><div class="stat-value num">184h</div></div>
+    </div>
+    <div class="emp-calendar-nav">
+      <button class="btn btn-ghost"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="month-title">November 2025</div>
+      <button class="btn btn-ghost"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+    <div class="emp-calendar-grid">
+      ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="day-header">${d}</div>`).join('')}
+      ${days.map(i => {
+        const dayNum = i + 1;
+        const status = statuses[i % 5];
+        const meta = statusMeta[status];
+        const inMonth = dayNum <= 30;
+        return `<button class="day-cell ${inMonth ? 'in-month' : ''} ${inMonth ? meta.color : ''}" onclick="cycleAttendance(this)" title="${status}"><span class="day-num">${dayNum}</span>${inMonth ? `<span class="day-status">${meta.label}</span>` : ''}</button>`;
+      }).join('')}
+    </div>
+    <div class="flex flex-wrap gap-2 mt-4 text-xs">
+      ${Object.entries(statusMeta).map(([k, v]) => `<span class="chip ${v.color}">${v.label} · ${k}</span>`).join('')}
+    </div>`;
+  // Permissions tab
+  document.getElementById('empTab-permissions').innerHTML = `
+    <div class="emp-permission-presets">
+      <span class="presets-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Presets:</span>
+      <button class="preset-chip" onclick="applyPreset('cashier')">Cashier</button>
+      <button class="preset-chip" onclick="applyPreset('designer')">Designer</button>
+      <button class="preset-chip" onclick="applyPreset('manager')">Manager</button>
+      <button class="preset-chip owner" onclick="applyPreset('owner')">Owner (all)</button>
+      <button class="preset-chip" onclick="applyPreset('none')">Clear</button>
+    </div>
+    <div class="emp-permission-groups">
+      ${PERMISSION_GROUPS.map(g => `
+        <div class="paper-card emp-permission-group">
+          <div class="group-header"><div class="group-title">${g.title}</div><button class="group-toggle">Toggle all</button></div>
+          <div class="permission-list">
+            ${g.perms.map(p => `<label class="permission-item"><input type="checkbox" ${emp.permissions > 0 ? 'checked' : ''}>${p.label}</label>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="flex justify-end mt-4 pt-4" style="border-top:1px solid #8c8c8c;"><button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Save permissions</button></div>`;
+}
+function switchEmpTab(tab, btn) {
+  document.querySelectorAll('.emp-detail-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.emp-tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('empTab-' + tab).classList.add('active');
+}
+function navSubNav(label, btn) {
+  document.querySelectorAll('.emp-subnav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function deleteEmp(id) { if (confirm('Delete this employee?')) { EMPLOYEES.splice(EMPLOYEES.findIndex(e => e.id === id), 1); renderEmpList(); renderEmpDetail(); } }
+function cycleAttendance(cell) {
+  const statuses = ['present', 'halfday', 'leave', 'holiday', 'absent'];
+  const statusMeta = { present: { label: 'P', color: 'status-present' }, halfday: { label: 'H', color: 'status-halfday' }, leave: { label: 'L', color: 'status-leave' }, holiday: { label: 'H', color: 'status-holiday' }, absent: { label: 'A', color: 'status-absent' } };
+  const current = cell.className.match(/status-(\w+)/);
+  const currentStatus = current ? current[1] : null;
+  const idx = currentStatus ? statuses.indexOf(currentStatus) : -1;
+  const next = statuses[(idx + 1) % statuses.length];
+  const meta = statusMeta[next];
+  cell.className = `day-cell in-month ${meta.color}`;
+  cell.innerHTML = `<span class="day-num">${cell.querySelector('.day-num').textContent}</span><span class="day-status">${meta.label}</span>`;
+}
+function applyPreset(preset) { /* demo */ }
+function openInviteModal() { inviteStep = 'form'; document.getElementById('inviteTitle').textContent = 'Invite new team member'; renderInviteForm(); document.getElementById('empInviteModal').style.display = 'flex'; document.getElementById('empInviteModal').classList.remove('hidden'); }
+function closeInviteModal() { document.getElementById('empInviteModal').style.display = 'none'; document.getElementById('empInviteModal').classList.add('hidden'); }
+function renderInviteForm() {
+  document.getElementById('empInviteBody').innerHTML = `
+    <form class="emp-invite-form" onsubmit="event.preventDefault();submitInvite()">
+      <p class="text-xs text-muted">A secure temporary password will be generated. The account starts as Inactive / Pending.</p>
+      <div class="form-section"><div class="section-label">Identity</div>
+        <div class="form-grid">
+          <div class="field-wrapper"><label class="label">Display name *</label><input class="input" placeholder="e.g. Amara Nabatanzi" required></div>
+          <div class="field-wrapper"><label class="label">Role / Job title</label><input class="input" placeholder="Cashier / Designer / Manager"></div>
+          <div class="field-wrapper"><label class="label">Email address *</label><input class="input" type="email" placeholder="employee@printshop.co" required></div>
+          <div class="field-wrapper"><label class="label">Phone</label><input class="input" placeholder="+256 700 000 000"></div>
+        </div>
+      </div>
+      <div class="form-section"><div class="section-label">Employment</div>
+        <div class="form-grid">
+          <div class="field-wrapper"><label class="label">Address</label><input class="input" placeholder="Street, city, postcode"></div>
+          <div class="field-wrapper"><label class="label">Hire date</label><input class="input" type="date"></div>
+        </div>
+      </div>
+      <div class="form-section"><div class="section-label">Emergency contact</div>
+        <div class="form-grid">
+          <div class="field-wrapper"><label class="label">Contact name</label><input class="input" placeholder="Full name"></div>
+          <div class="field-wrapper"><label class="label">Contact phone</label><input class="input" placeholder="+256 700 000 000"></div>
+        </div>
+      </div>
+      <div class="form-section"><div class="section-label">Temporary password expiry</div>
+        <div class="field-wrapper"><label class="label">Expires in</label><select class="input"><option>24 hours</option><option>48 hours</option><option selected>72 hours</option><option>1 week</option><option>2 weeks</option><option>1 month</option></select></div>
+      </div>
+      <div class="flex flex-col-reverse md:flex-row md:justify-end gap-2 pt-4 mt-4" style="border-top:1px solid #8c8c8c;">
+        <button type="button" class="btn btn-outline" onclick="closeInviteModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Create & get temp password</button>
+      </div>
+    </form>`;
+}
+function submitInvite() {
+  inviteStep = 'result';
+  document.getElementById('inviteTitle').textContent = 'Share these credentials';
+  document.getElementById('empInviteBody').innerHTML = `
+    <div class="emp-invite-result">
+      <div class="result-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <div class="result-title">Account created — pending approval</div>
+      <div class="result-desc">Share these credentials with the new employee. Once they sign in, an approval request will appear.</div>
+      <div class="result-credentials">
+        <div class="credential-row"><div class="cred-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><div class="cred-content"><div class="cred-label">Login email</div><div class="cred-value">amara@pixoprints.com</div></div><button class="cred-copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
+        <div class="credential-row"><div class="cred-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div><div class="cred-content"><div class="cred-label">Temporary password</div><div class="cred-value highlight">Tmp#2025x9k</div></div><button class="cred-copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
+        <div class="credential-row"><div class="cred-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="cred-content"><div class="cred-label">Expires</div><div class="cred-value">Oct 18, 2025 3:00 PM</div></div></div>
+        <div class="credential-row"><div class="cred-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div><div class="cred-content"><div class="cred-label">Login link</div><div class="cred-value mono">https://app.pixobooks.com/login</div></div><button class="cred-copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
+      </div>
+      <div class="result-message"><div class="message-label">Ready-to-send message</div><div class="message-text">Hello Amara,\n\nYou've been invited to join PixoBooks.\n\nLogin email: amara@pixoprints.com\nTemporary password: Tmp#2025x9k\nExpires: Oct 18, 2025\nLogin link: https://app.pixobooks.com/login\n\nPlease sign in with the temporary password above.</div></div>
+      <div class="result-actions">
+        <a class="btn btn-primary" href="mailto:amara@pixoprints.com?subject=Your PixoBooks login"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email to invitee</a>
+        <a class="btn btn-outline" href="https://wa.me/?text=Hello" target="_blank"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Send via WhatsApp</a>
+      </div>
+      <div class="flex flex-col-reverse md:flex-row md:justify-between gap-2 pt-4 mt-4" style="border-top:1px solid #8c8c8c;">
+        <button class="btn btn-outline" onclick="openInviteModal()">Invite another</button>
+        <button class="btn btn-primary" onclick="closeInviteModal()">Done</button>
+      </div>
+    </div>`;
+}
+// Initialize
+renderEmpList();
+renderEmpDetail();
+</script>
+</body>
+</html>

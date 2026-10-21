@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Payroll History UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+
+.pay-root { padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-lg); }
+.pay-header { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md); }
+@media (min-width: 768px) { .pay-header { flex-direction: row; align-items: center; justify-content: space-between; } }
+.pay-title-group h1 { font-size: 1.25rem; font-weight: 700; }
+.pay-title-group p { font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
+.pay-controls { display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap; }
+.pay-search-wrap { position: relative; }
+.pay-search-wrap svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--ink-mute); pointer-events: none; }
+.pay-search { padding-left: 2.25rem; width: 200px; }
+.pay-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-md); }
+@media (min-width: 1024px) { .pay-stats { grid-template-columns: repeat(4, 1fr); } }
+.pay-stat-card { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); padding: var(--space-lg); }
+.pay-stat-label { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); }
+.pay-stat-value { font-family: var(--font-sans); font-weight: 700; font-size: 1.25rem; margin-top: var(--space-xs); font-variant-numeric: tabular-nums; }
+.pay-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-lg); }
+@media (min-width: 768px) { .pay-grid { grid-template-columns: 1fr 2fr; } }
+.pay-side-card { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); padding: var(--space-lg); }
+.pay-side-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: var(--space-md); }
+.pay-emp-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-sm); border-radius: 6px; transition: all var(--transition-base); }
+.pay-emp-row:hover { background: rgba(0,0,0,0.03); }
+.pay-emp-name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pay-emp-count { font-size: 11px; color: var(--ink-mute); }
+.pay-table-card { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); overflow: hidden; }
+.pay-table-wrap { overflow-x: auto; max-height: 65vh; }
+.pay-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.pay-table thead tr { background: rgba(0,0,0,0.03); }
+.pay-table th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); padding: var(--space-md) var(--space-lg); }
+.pay-table th:last-child { text-align: right; }
+.pay-table td { padding: var(--space-md) var(--space-lg); border-top: 1px solid var(--line-border); }
+.pay-table td:last-child { text-align: right; }
+.pay-table tbody tr:hover { background: rgba(0,0,0,0.02); }
+.pay-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.pay-date { font-size: 12px; color: var(--ink-mute); }
+.pay-month { font-size: 12px; color: var(--ink-mute); }
+.pay-nav { display: flex; align-items: center; gap: 4px; padding: 4px; background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); overflow-x: auto; scrollbar-width: none; }
+.pay-nav::-webkit-scrollbar { display: none; }
+.pay-nav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all var(--transition-base); cursor: pointer; border: none; background: transparent; color: var(--ink-mute); }
+.pay-nav-item.active { background: var(--ink-solid); color: var(--paper-canvas); }
+.pay-nav-item:not(.active):hover { color: var(--ink-solid); background: var(--paper-canvas); }
+.pay-nav-item svg { width: 14px; height: 14px; }
+
+</style>
+</head>
+<body>
+<div class="pay-root" id="payRoot">
+  <nav class="pay-nav" aria-label="Section navigation">
+    <button class="pay-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Team</button>
+    <button class="pay-nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Payroll</button>
+    <button class="pay-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>Approvals</button>
+    <button class="pay-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Password Resets</button>
+    <button class="pay-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
+  </nav>
+
+  <div class="pay-header">
+    <div class="pay-title-group">
+      <h1>Payroll history</h1>
+      <p>Every Salary expense recorded — grouped by employee and month.</p>
+    </div>
+    <div class="pay-controls">
+      <div class="pay-search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="input pay-search" placeholder="Employee, month...">
+      </div>
+      <select class="input" style="width:auto"><option>All years</option><option>2025</option><option>2024</option><option>2023</option></select>
+      <button class="btn btn-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export CSV</button>
+    </div>
+  </div>
+
+  <div class="pay-stats">
+    <div class="pay-stat-card"><div class="pay-stat-label">Entries</div><div class="pay-stat-value">24</div></div>
+    <div class="pay-stat-card"><div class="pay-stat-label">Total paid</div><div class="pay-stat-value">UGX 18,400,000</div></div>
+    <div class="pay-stat-card"><div class="pay-stat-label">Employees</div><div class="pay-stat-value">6</div></div>
+    <div class="pay-stat-card"><div class="pay-stat-label">Year</div><div class="pay-stat-value">All</div></div>
+  </div>
+
+  <div class="pay-grid">
+    <div class="pay-side-card">
+      <h3>By employee</h3>
+      <div class="pay-emp-row"><div><div class="pay-emp-name">Grace Namuli</div><div class="pay-emp-count">6 payments</div></div><div class="pay-num" style="font-weight:700">UGX 5,400,000</div></div>
+      <div class="pay-emp-row"><div><div class="pay-emp-name"> Moses Ssemakula</div><div class="pay-emp-count">5 payments</div></div><div class="pay-num" style="font-weight:700">UGX 4,250,000</div></div>
+      <div class="pay-emp-row"><div><div class="pay-emp-name">Rose Achieng</div><div class="pay-emp-count">4 payments</div></div><div class="pay-num" style="font-weight:700">UGX 3,100,000</div></div>
+      <div class="pay-emp-row"><div><div class="pay-emp-name">Patrick Okello</div><div class="pay-emp-count">4 payments</div></div><div class="pay-num" style="font-weight:700">UGX 2,800,000</div></div>
+      <div class="pay-emp-row"><div><div class="pay-emp-name">Esther Kyobutungi</div><div class="pay-emp-count">3 payments</div></div><div class="pay-num" style="font-weight:700">UGX 1,950,000</div></div>
+      <div class="pay-emp-row"><div><div class="pay-emp-name">James Tumwine</div><div class="pay-emp-count">2 payments</div></div><div class="pay-num" style="font-weight:700">UGX 900,000</div></div>
+    </div>
+
+    <div class="pay-table-card">
+      <div class="pay-table-wrap">
+        <table class="pay-table">
+          <thead>
+            <tr><th>Date</th><th>Employee</th><th>Period</th><th>Base</th><th>Allowances</th><th>Deductions</th><th>Net pay</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="pay-date">Oct 1, 2025</td><td style="font-weight:600">Grace Namuli</td><td class="pay-month">Oct 2025</td><td class="pay-num">1,200,000</td><td class="pay-num" style="color:var(--status-success)">150,000</td><td class="pay-num" style="color:var(--status-danger)">(180,000)</td><td class="pay-num" style="font-weight:700">UGX 1,170,000</td></tr>
+            <tr><td class="pay-date">Oct 1, 2025</td><td style="font-weight:600">Moses Ssemakula</td><td class="pay-month">Oct 2025</td><td class="pay-num">950,000</td><td class="pay-num" style="color:var(--status-success)">100,000</td><td class="pay-num" style="color:var(--status-danger)">(142,500)</td><td class="pay-num" style="font-weight:700">UGX 907,500</td></tr>
+            <tr><td class="pay-date">Oct 1, 2025</td><td style="font-weight:600">Rose Achieng</td><td class="pay-month">Oct 2025</td><td class="pay-num">800,000</td><td class="pay-num" style="color:var(--status-success)">80,000</td><td class="pay-num" style="color:var(--status-danger)">(120,000)</td><td class="pay-num" style="font-weight:700">UGX 760,000</td></tr>
+            <tr><td class="pay-date">Oct 1, 2025</td><td style="font-weight:600">Patrick Okello</td><td class="pay-month">Oct 2025</td><td class="pay-num">700,000</td><td class="pay-num" style="color:var(--status-success)">70,000</td><td class="pay-num" style="color:var(--status-danger)">(105,000)</td><td class="pay-num" style="font-weight:700">UGX 665,000</td></tr>
+            <tr><td class="pay-date">Oct 1, 2025</td><td style="font-weight:600">Esther Kyobutungi</td><td class="pay-month">Oct 2025</td><td class="pay-num">600,000</td><td class="pay-num" style="color:var(--status-success)">60,000</td><td class="pay-num" style="color:var(--status-danger)">(90,000)</td><td class="pay-num" style="font-weight:700">UGX 570,000</td></tr>
+            <tr><td class="pay-date">Oct 1, 2025</td><td style="font-weight:600">James Tumwine</td><td class="pay-month">Oct 2025</td><td class="pay-num">400,000</td><td class="pay-num" style="color:var(--status-success)">40,000</td><td class="pay-num" style="color:var(--status-danger)">(60,000)</td><td class="pay-num" style="font-weight:700">UGX 380,000</td></tr>
+            <tr><td class="pay-date">Sep 1, 2025</td><td style="font-weight:600">Grace Namuli</td><td class="pay-month">Sep 2025</td><td class="pay-num">1,200,000</td><td class="pay-num" style="color:var(--status-success)">150,000</td><td class="pay-num" style="color:var(--status-danger)">(180,000)</td><td class="pay-num" style="font-weight:700">UGX 1,170,000</td></tr>
+            <tr><td class="pay-date">Sep 1, 2025</td><td style="font-weight:600">Moses Ssemakula</td><td class="pay-month">Sep 2025</td><td class="pay-num">950,000</td><td class="pay-num" style="color:var(--status-success)">100,000</td><td class="pay-num" style="color:var(--status-danger)">(142,500)</td><td class="pay-num" style="font-weight:700">UGX 907,500</td></tr>
+            <tr><td class="pay-date">Sep 1, 2025</td><td style="font-weight:600">Rose Achieng</td><td class="pay-month">Sep 2025</td><td class="pay-num">800,000</td><td class="pay-num" style="color:var(--status-success)">80,000</td><td class="pay-num" style="color:var(--status-danger)">(120,000)</td><td class="pay-num" style="font-weight:700">UGX 760,000</td></tr>
+            <tr><td class="pay-date">Sep 1, 2025</td><td style="font-weight:600">Patrick Okello</td><td class="pay-month">Sep 2025</td><td class="pay-num">700,000</td><td class="pay-num" style="color:var(--status-success)">70,000</td><td class="pay-num" style="color:var(--status-danger)">(105,000)</td><td class="pay-num" style="font-weight:700">UGX 665,000</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

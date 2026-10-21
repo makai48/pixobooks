@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Financial Statements UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+
+.fin-root { padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-lg); }
+.fin-header { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md); }
+@media (min-width: 768px) { .fin-header { flex-direction: row; align-items: center; justify-content: space-between; } }
+.fin-title-group { display: flex; align-items: center; gap: var(--space-md); }
+.fin-title-group svg { width: 20px; height: 20px; color: var(--ink-mute); }
+.fin-title-group h1 { font-size: 1.125rem; font-weight: 700; }
+.fin-title-group .fin-label { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); }
+.fin-controls { display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap; }
+.fin-controls select { height: 36px; }
+.fin-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-md); }
+@media (min-width: 1024px) { .fin-kpis { grid-template-columns: repeat(4, 1fr); } }
+.fin-kpi { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); padding: var(--space-lg); }
+.fin-kpi-label { font-family: var(--font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); }
+.fin-kpi-value { font-family: var(--font-sans); font-weight: 700; font-size: 1.125rem; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.fin-kpi-value.success { color: var(--status-success); }
+.fin-kpi-value.danger { color: var(--status-danger); }
+.fin-card { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); overflow: hidden; }
+.fin-tabs { display: flex; border-bottom: 1px solid var(--line-border); overflow-x: auto; scrollbar-width: none; }
+.fin-tabs::-webkit-scrollbar { display: none; }
+.fin-tab { padding: 10px 16px; font-size: 13px; font-weight: 600; border: none; background: transparent; cursor: pointer; color: var(--ink-mute); border-bottom: 2px solid transparent; white-space: nowrap; transition: all var(--transition-base); }
+.fin-tab.active { color: var(--reg-magenta); border-bottom-color: var(--reg-magenta); }
+.fin-tab:hover:not(.active) { color: var(--ink-solid); }
+.fin-body { padding: var(--space-lg); }
+.fin-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.fin-table thead tr { background: rgba(0,0,0,0.03); }
+.fin-table th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); padding: var(--space-sm) var(--space-md); }
+.fin-table td { padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--line-border); }
+.fin-table tbody tr:hover { background: rgba(0,0,0,0.02); }
+.fin-table .indent { padding-left: 2rem; color: var(--ink-mute); }
+.fin-table .strong { font-weight: 700; }
+.fin-table .divider { border-top: 1px solid var(--line-border); }
+.fin-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.fin-num.success { color: var(--status-success); }
+.fin-num.danger { color: var(--status-danger); }
+.fin-net-row { background: rgba(224,51,128,0.05); }
+.fin-net-row td { font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+.fin-pl-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-lg); }
+@media (min-width: 768px) { .fin-pl-grid { grid-template-columns: 2fr 1fr; } }
+.fin-balance-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-lg); }
+@media (min-width: 768px) { .fin-balance-grid { grid-template-columns: 1fr 1fr; } }
+.fin-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); margin-bottom: var(--space-sm); }
+
+</style>
+</head>
+<body>
+<div class="fin-root" id="finRoot">
+  <div class="fin-header">
+    <div class="fin-title-group">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <div>
+        <div class="fin-label">Statement period</div>
+        <h1>Financial Statements</h1>
+      </div>
+    </div>
+    <div class="fin-controls">
+      <select class="input" style="width:140px"><option>October</option><option>September</option><option>August</option><option>July</option></select>
+      <select class="input" style="width:100px"><option>2025</option><option>2024</option><option>2023</option></select>
+      <button class="btn btn-accent"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg> Daily Balancing</button>
+      <button class="btn btn-outline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 17h5v5h-5z"/><path d="M21 17V9L12 2 3 9v12h5"/><polyline points="12 22 12 17"/></svg> Standing Orders</button>
+    </div>
+  </div>
+
+  <div class="fin-kpis">
+    <div class="fin-kpi"><div class="fin-kpi-label">Revenue</div><div class="fin-kpi-value success">UGX 18,500,000</div></div>
+    <div class="fin-kpi"><div class="fin-kpi-label">COGS</div><div class="fin-kpi-value">UGX 4,200,000</div></div>
+    <div class="fin-kpi"><div class="fin-kpi-label">Gross profit</div><div class="fin-kpi-value success">UGX 14,300,000</div></div>
+    <div class="fin-kpi"><div class="fin-kpi-label">Net profit</div><div class="fin-kpi-value success">UGX 9,800,000</div></div>
+  </div>
+
+  <div class="fin-card">
+    <div class="fin-tabs">
+      <button class="fin-tab active">Cashbook</button>
+      <button class="fin-tab">Bank Statement</button>
+      <button class="fin-tab">Profit &amp; Loss</button>
+      <button class="fin-tab">Balance Sheet</button>
+    </div>
+    <div class="fin-body">
+      <!-- Cashbook -->
+      <div class="fin-pl-grid">
+        <div>
+          <div class="fin-section-title">Cashbook</div>
+          <table class="fin-table">
+            <thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+            <tbody>
+              <tr><td class="fin-num" style="font-size:11px">Oct 1</td><td>Cash sale — Walk-in</td><td class="fin-num success">UGX 350,000</td><td style="color:var(--ink-mute)">—</td><td class="fin-num strong">UGX 350,000</td></tr>
+              <tr><td class="fin-num" style="font-size:11px">Oct 2</td><td>Office supplies</td><td style="color:var(--ink-mute)">—</td><td class="fin-num danger">UGX 45,000</td><td class="fin-num strong">UGX 305,000</td></tr>
+              <tr><td class="fin-num" style="font-size:11px">Oct 3</td><td>Cash sale — John Mukasa</td><td class="fin-num success">UGX 1,200,000</td><td style="color:var(--ink-mute)">—</td><td class="fin-num strong">UGX 1,505,000</td></tr>
+              <tr><td class="fin-num" style="font-size:11px">Oct 4</td><td>Paper purchase — supplier</td><td style="color:var(--ink-mute)">—</td><td class="fin-num danger">UGX 800,000</td><td class="fin-num strong">UGX 705,000</td></tr>
+              <tr><td class="fin-num" style="font-size:11px">Oct 5</td><td>Cash sale — Walk-in</td><td class="fin-num success">UGX 275,000</td><td style="color:var(--ink-mute)">—</td><td class="fin-num strong">UGX 980,000</td></tr>
+              <tr><td class="fin-num" style="font-size:11px">Oct 6</td><td>Rent payment</td><td style="color:var(--ink-mute)">—</td><td class="fin-num danger">UGX 1,500,000</td><td class="fin-num strong" style="color:var(--status-danger)">(UGX 520,000)</td></tr>
+              <tr><td class="fin-num" style="font-size:11px">Oct 7</td><td>Cash sale — Sarah</td><td class="fin-num success">UGX 890,000</td><td style="color:var(--ink-mute)">—</td><td class="fin-num strong">UGX 370,000</td></tr>
+              <tr class="divider"><td colspan="2" style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--ink-mute)">Totals</td><td class="fin-num success">UGX 2,715,000</td><td class="fin-num danger">UGX 2,345,000</td><td class="fin-num">UGX 370,000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="fin-section-title">Summary</div>
+          <div style="display:flex;flex-direction:column;gap:var(--space-sm)">
+            <div class="fin-kpi"><div class="fin-kpi-label">Cash in</div><div class="fin-kpi-value success">UGX 2,715,000</div></div>
+            <div class="fin-kpi"><div class="fin-kpi-label">Cash out</div><div class="fin-kpi-value danger">UGX 2,345,000</div></div>
+            <div class="fin-kpi"><div class="fin-kpi-label">Cash on hand</div><div class="fin-kpi-value">UGX 370,000</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profit & Loss -->
+  <div class="fin-card">
+    <div class="fin-body">
+      <div class="fin-section-title">Income Statement — October 2025</div>
+      <div class="fin-pl-grid">
+        <div>
+          <table class="fin-table">
+            <tbody>
+              <tr class="strong"><td>Revenue</td><td class="fin-num strong">UGX 18,500,000</td></tr>
+              <tr class="indent"><td>− Cost of goods sold</td><td class="fin-num danger">(UGX 4,200,000)</td></tr>
+              <tr class="strong divider"><td>Gross profit</td><td class="fin-num strong">UGX 14,300,000</td></tr>
+              <tr class="indent"><td>− Rent</td><td class="fin-num danger">(UGX 1,500,000)</td></tr>
+              <tr class="indent"><td>− Salaries</td><td class="fin-num danger">(UGX 3,200,000)</td></tr>
+              <tr class="indent"><td>− Utilities</td><td class="fin-num danger">(UGX 350,000)</td></tr>
+              <tr class="indent"><td>− Transport</td><td class="fin-num danger">(UGX 180,000)</td></tr>
+              <tr class="indent"><td>− Marketing</td><td class="fin-num danger">(UGX 450,000)</td></tr>
+              <tr class="indent"><td>− Miscellaneous</td><td class="fin-num danger">(UGX 120,000)</td></tr>
+              <tr class="strong divider"><td>Total operating expenses</td><td class="fin-num danger">(UGX 5,800,000)</td></tr>
+              <tr class="fin-net-row"><td>Net profit</td><td class="fin-num" style="font-size:18px;color:var(--status-success)">UGX 8,500,000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="fin-section-title">KPIs</div>
+          <div style="display:flex;flex-direction:column;gap:var(--space-sm)">
+            <div class="fin-kpi"><div class="fin-kpi-label">Gross margin</div><div class="fin-kpi-value">77.3%</div></div>
+            <div class="fin-kpi"><div class="fin-kpi-label">Net margin</div><div class="fin-kpi-value success">45.9%</div></div>
+            <div class="fin-kpi"><div class="fin-kpi-label">Expense ratio</div><div class="fin-kpi-value danger">31.4%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Balance Sheet -->
+  <div class="fin-card">
+    <div class="fin-body">
+      <div class="fin-section-title">Balance Sheet — As of Oct 7, 2025</div>
+      <div class="fin-balance-grid">
+        <div>
+          <div class="fin-section-title">Assets</div>
+          <table class="fin-table">
+            <tbody>
+              <tr><td>Cash on hand</td><td class="fin-num">UGX 370,000</td></tr>
+              <tr><td>Bank balance (Stanbic)</td><td class="fin-num">UGX 2,850,000</td></tr>
+              <tr><td>Bank (Centenary)</td><td class="fin-num">UGX 1,200,000</td></tr>
+              <tr><td>Accounts receivable</td><td class="fin-num">UGX 8,450,000</td></tr>
+              <tr><td>Inventory (paper stock)</td><td class="fin-num">UGX 3,500,000</td></tr>
+              <tr><td>Equipment (printers)</td><td class="fin-num">UGX 12,000,000</td></tr>
+              <tr class="strong divider"><td>Total assets</td><td class="fin-num strong">UGX 28,370,000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="fin-section-title">Liabilities &amp; Equity</div>
+          <table class="fin-table">
+            <tbody>
+              <tr><td>Accounts payable</td><td class="fin-num">UGX 4,200,000</td></tr>
+              <tr><td>Rent payable</td><td class="fin-num">UGX 500,000</td></tr>
+              <tr><td>Tax payable (VAT)</td><td class="fin-num">UGX 1,850,000</td></tr>
+              <tr><td>Owner equity</td><td class="fin-num">UGX 15,000,000</td></tr>
+              <tr><td>Retained earnings</td><td class="fin-num">UGX 6,820,000</td></tr>
+              <tr class="strong divider"><td>Total liabilities &amp; equity</td><td class="fin-num strong">UGX 28,370,000</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

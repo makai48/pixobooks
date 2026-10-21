@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Register UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.reg-root { min-height: 100dvh; background: var(--paper-canvas); display: flex; justify-content: center; padding: 1.5rem 1rem; overflow-y: auto; }
+.reg-container { width: 100%; max-width: 28rem; margin: auto; }
+.reg-brand { display: flex; align-items: center; gap: 12px; }
+.reg-brand-logo { width: 40px; height: 40px; border-radius: 8px; background: var(--ink-solid); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+.reg-brand-logo .stripes { position: absolute; inset: 0; display: flex; opacity: 0.9; }
+.reg-brand-logo .stripes span { flex: 1; }
+.reg-brand-logo .stripes span:nth-child(1) { background: var(--reg-cyan); }
+.reg-brand-logo .stripes span:nth-child(2) { background: var(--reg-magenta); }
+.reg-brand-logo .stripes span:nth-child(3) { background: var(--reg-yellow); }
+.reg-brand-logo .stripes span:nth-child(4) { background: var(--ink-solid); }
+.reg-brand-logo svg { position: relative; z-index: 10; width: 20px; height: 20px; color: var(--paper-canvas); mix-blend-mode: difference; }
+.reg-brand-title { font-family: var(--font-sans); font-weight: 700; font-size: 1.125rem; }
+.reg-brand-sub { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); }
+.reg-mode-tabs { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; border: 1px solid var(--line-border); background: rgba(0,0,0,0.05); }
+.reg-mode-tab { height: 44px; border-radius: 8px; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 150ms ease; border: none; cursor: pointer; }
+.reg-mode-tab.active { background: var(--paper-card); box-shadow: var(--shadow-paper); color: var(--ink-solid); }
+.reg-mode-tab:not(.active) { color: var(--ink-mute); }
+.reg-mode-tab:not(.active):hover { color: var(--ink-solid); }
+.reg-mode-tab svg { width: 16px; height: 16px; }
+.reg-card { padding: 24px; margin-top: 24px; }
+.reg-card-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+.reg-card-icon svg { width: 24px; height: 24px; }
+.reg-card-title { font-family: var(--font-sans); font-weight: 700; font-size: 1.5rem; text-align: center; margin-top: 16px; }
+.reg-card-desc { color: var(--ink-mute); font-size: 14px; text-align: center; margin-top: 8px; }
+.reg-card .btn { width: 100%; height: 44px; margin-top: 24px; }
+.reg-warning { display: flex; align-items: flex-start; gap: 8px; border-radius: 6px; background: rgba(246,167,30,0.1); border: 1px solid rgba(246,167,30,0.3); padding: 12px; margin-bottom: 20px; font-size: 12px; color: var(--ink-soft); }
+.reg-warning svg { width: 16px; height: 16px; color: var(--reg-yellow); flex-shrink: 0; margin-top: 2px; }
+.reg-warning .font-semibold { color: var(--ink-solid); }
+.reg-form-title { font-family: var(--font-sans); font-weight: 700; font-size: 1.5rem; }
+.reg-form-desc { color: var(--ink-mute); font-size: 14px; margin-top: 4px; }
+.reg-form { margin-top: 24px; display: flex; flex-direction: column; gap: 16px; }
+.reg-field label { display: block; font-family: var(--font-sans); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-mute); }
+.reg-field label .req { color: var(--status-danger); }
+.reg-input-wrap { position: relative; margin-top: 4px; }
+.reg-input-wrap svg.icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--ink-mute); pointer-events: none; }
+.reg-input-wrap .input { padding-left: 36px; }
+.reg-input-wrap select.input { padding-left: 36px; cursor: pointer; }
+.reg-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.reg-terms { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--ink-soft); cursor: pointer; }
+.reg-terms input { margin-top: 2px; width: 16px; height: 16px; flex-shrink: 0; }
+.reg-terms button { background: none; border: none; color: var(--ink-solid); font-weight: 600; text-decoration: underline; cursor: pointer; font-size: inherit; }
+.reg-submit { width: 100%; height: 44px; }
+.reg-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+.reg-hint { font-size: 11px; color: var(--ink-mute); text-align: center; }
+.reg-footer-link { text-align: center; font-size: 14px; color: var(--ink-mute); margin-top: 16px; }
+.reg-footer-link a { color: var(--ink-solid); font-weight: 600; text-decoration: underline; }
+.reg-otp-input { letter-spacing: 0.5em; text-align: center; font-family: var(--font-mono); font-size: 1.125rem; }
+.reg-password-wrap .input { padding-right: 40px; }
+.reg-password-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--ink-mute); padding: 6px; }
+.reg-password-toggle:hover { color: var(--ink-solid); }
+.reg-password-toggle svg { width: 16px; height: 16px; }
+.reg-error-text { font-size: 11px; color: var(--status-danger); margin-top: 4px; }
+.reg-legal-modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,0.5); }
+.reg-legal-box { max-width: 512px; width: 100%; max-height: 80dvh; display: flex; flex-direction: column; padding: 24px; }
+.reg-legal-header { display: flex; align-items: center; justify-content: space-between; }
+.reg-legal-header h3 { font-family: var(--font-sans); font-weight: 700; font-size: 1.125rem; display: flex; align-items: center; gap: 8px; }
+.reg-legal-header h3 svg { width: 20px; height: 20px; }
+.reg-legal-close { background: none; border: none; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+.reg-legal-close svg { width: 16px; height: 16px; }
+.reg-legal-body { margin-top: 16px; font-size: 12px; white-space: pre-wrap; overflow-y: auto; flex: 1; color: var(--ink-soft); }
+.reg-legal-box .btn { width: 100%; height: 40px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="reg-root">
+  <div class="reg-container">
+    <!-- Brand header -->
+    <div class="reg-brand">
+      <div class="reg-brand-logo">
+        <div class="stripes"><span></span><span></span><span></span><span></span></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      </div>
+      <div>
+        <div class="reg-brand-title">PixoBooks</div>
+        <div class="reg-brand-sub">Shop setup</div>
+      </div>
+    </div>
+
+    <!-- Mode tabs -->
+    <div class="reg-mode-tabs" role="tablist">
+      <button class="reg-mode-tab active" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Sign in to your Workplace
+      </button>
+      <button class="reg-mode-tab" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="10" y2="6"/><line x1="14" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="15" y2="14"/><line x1="9" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="15" y2="18"/></svg>
+        Create New Workplace
+      </button>
+    </div>
+
+    <!-- Sign-in mode card -->
+    <div class="paper-card reg-card">
+      <div class="reg-card-icon" style="background:rgba(20,165,199,0.1);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--reg-cyan)"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      </div>
+      <h2 class="reg-card-title">Sign in to your Workplace</h2>
+      <p class="reg-card-desc">Already have an account on this or another workplace? Sign in with your work email and password. New shops start under Create New Workplace.</p>
+      <button class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Go to sign in
+      </button>
+    </div>
+
+    <!-- Has owner card -->
+    <div class="paper-card reg-card">
+      <div class="reg-card-icon" style="background:rgba(211,34,42,0.1);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--status-danger)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <h2 class="reg-card-title">This shop already has an owner</h2>
+      <p class="reg-card-desc">The shop owner account exists. Branches and team members join only through the owner: ask the shop owner to invite you from their dashboard, then sign in. If you requested access, wait for the owner's approval or use <strong>Set / reset password</strong>.</p>
+      <button class="btn btn-primary">Go to sign in</button>
+    </div>
+
+    <!-- Details form card -->
+    <div class="paper-card reg-card">
+      <div class="reg-warning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        <div>
+          <div class="font-semibold">First registration owns this shop</div>
+          <div class="mt-1">Any email can register first — that account becomes the shop owner. Afterwards, branches and staff join only via owner invite or approval.</div>
+        </div>
+      </div>
+
+      <h2 class="reg-form-title">Set up your shop</h2>
+      <p class="reg-form-desc">Your account, business profile and contacts — then we verify your email.</p>
+
+      <form class="reg-form" onsubmit="return false;">
+        <div class="reg-field">
+          <label for="reg-email">Your email <span class="req">*</span></label>
+          <div class="reg-input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+            <input id="reg-email" class="input" type="email" placeholder="you@yourshop.com">
+          </div>
+        </div>
+
+        <div class="reg-field">
+          <label for="reg-name">Your name</label>
+          <div class="reg-input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input id="reg-name" class="input" placeholder="Owner name">
+          </div>
+        </div>
+
+        <div class="reg-field">
+          <label for="reg-business">Business name <span class="req">*</span></label>
+          <div class="reg-input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="10" y2="6"/><line x1="14" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="15" y2="14"/><line x1="9" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="15" y2="18"/></svg>
+            <input id="reg-business" class="input" placeholder="e.g. Pixo Printshop">
+          </div>
+        </div>
+
+        <div class="reg-grid-2">
+          <div class="reg-field">
+            <label>Country</label>
+            <select class="input" style="margin-top:4px;">
+              <option value="UG">Uganda</option>
+              <option value="KE">Kenya</option>
+              <option value="TZ">Tanzania</option>
+              <option value="RW">Rwanda</option>
+            </select>
+          </div>
+          <div class="reg-field">
+            <label for="reg-biz-type">Business type</label>
+            <div class="reg-input-wrap">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              <select id="reg-biz-type" class="input">
+                <option>Printshop</option>
+                <option>Stationery Store</option>
+                <option>Design Studio</option>
+                <option>Copy Shop</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="reg-grid-2">
+          <div class="reg-field">
+            <label for="reg-tz">Time zone</label>
+            <div class="reg-input-wrap">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <select id="reg-tz" class="input">
+                <option>Africa/Kampala</option>
+                <option>Africa/Nairobi</option>
+                <option>Africa/Dar_es_Salaam</option>
+                <option>UTC</option>
+              </select>
+            </div>
+          </div>
+          <div class="reg-field">
+            <label for="reg-currency">Currency</label>
+            <div class="reg-input-wrap">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12"/><path d="M15.5 9.5c-.5-1-1.5-1.5-3.5-1.5-2.5 0-3.5 1.2-3.5 2.5 0 3.5 7 1.5 7 5 0 1.3-1 2.5-3.5 2.5-2 0-3-.5-3.5-1.5"/></svg>
+              <select id="reg-currency" class="input">
+                <option value="UGX">UGX — Ugandan Shilling</option>
+                <option value="KES">KES — Kenyan Shilling</option>
+                <option value="TZS">TZS — Tanzanian Shilling</option>
+                <option value="USD">USD — US Dollar</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="reg-grid-2">
+          <div class="reg-field">
+            <label for="reg-grouping">Digit grouping</label>
+            <select id="reg-grouping" class="input" style="margin-top:4px;">
+              <option value="western">Western (1,000,000)</option>
+              <option value="indian">Indian (10,00,000)</option>
+            </select>
+          </div>
+          <div class="reg-field">
+            <label for="reg-decimals">Decimal places</label>
+            <div class="reg-input-wrap">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+              <select id="reg-decimals" class="input">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="reg-field">
+          <label for="reg-separator">Separator format</label>
+          <select id="reg-separator" class="input" style="margin-top:4px;">
+            <option value="us">US (1,000.00)</option>
+            <option value="eu">EU (1.000,00)</option>
+            <option value="none">None (1000.00)</option>
+          </select>
+        </div>
+
+        <div class="reg-field">
+          <label>Mobile <span class="req">*</span></label>
+          <div class="reg-input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            <input class="input" type="tel" placeholder="+256 700 000 000">
+          </div>
+        </div>
+
+        <div class="reg-field">
+          <label>Office (optional)</label>
+          <div class="reg-input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            <input class="input" type="tel" placeholder="+256 414 000 000">
+          </div>
+        </div>
+
+        <div class="reg-field">
+          <label>WhatsApp (optional)</label>
+          <div class="reg-input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            <input class="input" type="tel" placeholder="+256 700 000 000">
+          </div>
+        </div>
+
+        <label class="reg-terms">
+          <input type="checkbox" id="reg-accept">
+          <span>I have read and accept the <button type="button">Terms &amp; Conditions</button> and the <button type="button">Privacy Policy</button>.</span>
+        </label>
+
+        <button type="submit" class="btn btn-primary reg-submit" disabled>
+          Save &amp; send verification code
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+        <p class="reg-hint">Tick the box above to save and proceed.</p>
+      </form>
+    </div>
+
+    <!-- OTP verification card -->
+    <div class="paper-card reg-card">
+      <h2 class="reg-form-title">Verify &amp; set a password</h2>
+      <p class="reg-form-desc">Check <strong>you@yourshop.com</strong> for the email — enter the <strong>6-digit code</strong> below (not the button link).</p>
+
+      <form class="reg-form" onsubmit="return false;">
+        <div class="reg-field">
+          <label for="reg-otp">Verification code</label>
+          <div class="reg-input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            <input id="reg-otp" class="input reg-otp-input" type="text" inputmode="numeric" placeholder="000000" maxlength="6">
+          </div>
+        </div>
+
+        <div class="reg-field">
+          <label for="reg-password">Set a password (6+ characters)</label>
+          <div class="reg-input-wrap reg-password-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input id="reg-password" class="input" type="password" placeholder="••••••••" autocomplete="new-password">
+            <button type="button" class="reg-password-toggle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="reg-field">
+          <label for="reg-confirm">Confirm password</label>
+          <div class="reg-input-wrap reg-password-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input id="reg-confirm" class="input" type="password" placeholder="••••••••" autocomplete="new-password">
+            <button type="button" class="reg-password-toggle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary reg-submit">Create my shop</button>
+        <button type="button" class="btn btn-ghost reg-submit">Back to details</button>
+      </form>
+    </div>
+
+    <p class="reg-footer-link">Already have an account? <a href="/login">Sign in</a></p>
+  </div>
+</div>
+</body>
+</html>

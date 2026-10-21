@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Expenses UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.exp-root { padding: 1rem; display: flex; flex-direction: column; gap: 16px; max-width: 1280px; margin: 0 auto; }
+@media (min-width: 768px) { .exp-root { padding: 1.5rem; } }
+.exp-tab-switcher { padding: 6px; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.exp-tab-switcher::-webkit-scrollbar { display: none; }
+.exp-tab-btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all 150ms ease; cursor: pointer; border: none; background: transparent; }
+.exp-tab-btn.active { background: #000000; color: #fdfbf7; }
+.exp-tab-btn:not(.active) { color: #5e697a; }
+.exp-tab-btn:not(.active):hover { color: #000000; background: #fdfbf7; }
+.exp-tab-btn svg { width: 14px; height: 14px; }
+.exp-summary-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .exp-summary-grid { grid-template-columns: 1fr 2fr; } }
+.exp-summary-card { padding: 16px; }
+.exp-summary-card .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.exp-summary-card .stat-value { font-size: 30px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; margin-top: 4px; }
+.exp-summary-card .stat-value.tone-danger { color: #d3222a; }
+.exp-summary-card .stat-value.tone-warning { color: #d86b09; }
+.exp-summary-card .stat-desc { font-size: 12px; color: #5e697a; margin-top: 4px; }
+.exp-breakdown-card { padding: 16px; }
+.exp-breakdown-card .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.exp-breakdown-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.exp-breakdown-item { display: flex; flex-direction: column; gap: 4px; }
+.exp-breakdown-item .breakdown-row { display: flex; justify-content: space-between; font-size: 14px; }
+.exp-breakdown-item .breakdown-cat { font-weight: 500; }
+.exp-breakdown-item .breakdown-amt { color: #5e697a; }
+.exp-breakdown-item .breakdown-bar { height: 6px; border-radius: 3px; background: rgba(0, 0, 0, 0.05); overflow: hidden; }
+.exp-breakdown-item .breakdown-bar-fill { height: 100%; }
+.exp-breakdown-item .breakdown-bar-fill.tone-danger { background: #d3222a; }
+.exp-breakdown-item .breakdown-bar-fill.tone-warning { background: #d86b09; }
+.exp-filter-bar { padding: 16px; display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .exp-filter-bar { grid-template-columns: 2fr 1fr 1fr 1fr; } }
+.exp-filter-bar .filter-search { position: relative; }
+.exp-filter-bar .filter-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #5e697a; pointer-events: none; }
+.exp-filter-bar .filter-search .input { padding-left: 32px; }
+.exp-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.exp-table-panel { overflow: hidden; }
+.exp-table-panel .table-body { overflow: auto; max-height: 60vh; }
+.exp-table-panel table { width: 100%; font-size: 14px; border-collapse: collapse; }
+.exp-table-panel thead { position: sticky; top: 0; }
+.exp-table-panel thead tr { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; background: rgba(253, 251, 247, 0.6); }
+.exp-table-panel thead th { padding: 12px 16px; font-weight: 600; }
+.exp-table-panel tbody tr { border-top: 1px solid #8c8c8c; }
+.exp-table-panel tbody tr:hover { background: rgba(253, 251, 247, 0.4); }
+.exp-table-panel tbody td { padding: 12px 16px; }
+.exp-table-panel tbody td.num { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.exp-table-panel .cat-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid; }
+.exp-table-panel .cat-chip.expense { background: rgba(246, 167, 30, 0.1); color: #f6a71e; border-color: rgba(246, 167, 30, 0.3); }
+.exp-table-panel .cat-chip.drawing { background: rgba(211, 34, 42, 0.1); color: #d3222a; border-color: rgba(211, 34, 42, 0.3); }
+.exp-table-panel .action-btns { display: flex; gap: 4px; }
+.exp-table-panel .action-btn { background: none; border: none; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+.exp-table-panel .action-btn:hover { background: rgba(0, 0, 0, 0.06); }
+.exp-table-panel .action-btn svg { width: 16px; height: 16px; }
+.exp-table-panel .action-btn.danger { color: #d3222a; }
+.exp-modal { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; padding: 16px; animation: fade-in 160ms ease-out; }
+.exp-modal-box { width: 100%; max-width: 640px; max-height: 90vh; display: flex; flex-direction: column; border-radius: 12px; background: #fdfbf7; border: 1px solid #8c8c8c; overflow: hidden; }
+.exp-modal-header { padding: 16px; border-bottom: 1px solid #8c8c8c; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.exp-modal-header .header-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5e697a; }
+.exp-modal-header .header-title { font-size: 18px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; }
+.exp-modal-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.exp-modal-footer { padding: 16px; border-top: 1px solid #8c8c8c; display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
+.exp-cat-list { border: 1px solid #8c8c8c; border-radius: 6px; }
+.exp-cat-list .cat-item { padding: 10px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #8c8c8c; }
+.exp-cat-list .cat-item:last-child { border-bottom: none; }
+.exp-cat-list .cat-item .cat-name { flex: 1; font-size: 14px; font-weight: 500; }
+.exp-cat-list .cat-item .cat-builtin { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; background: rgba(20, 165, 199, 0.1); color: #14a5c7; border: 1px solid rgba(20, 165, 199, 0.3); }
+.exp-cat-list .cat-item .cat-actions { display: flex; gap: 4px; }
+.exp-cat-list .cat-item .cat-action-btn { background: none; border: none; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+.exp-cat-list .cat-item .cat-action-btn:hover { background: rgba(0, 0, 0, 0.06); }
+.exp-cat-list .cat-item .cat-action-btn svg { width: 14px; height: 14px; }
+.exp-cat-list .cat-item .cat-action-btn.danger { color: #d3222a; }
+.exp-cat-list .cat-item .cat-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.exp-cat-list .cat-rename-input { flex: 1; height: 32px; border: 1px solid #8c8c8c; border-radius: 6px; padding: 0 8px; font-size: 14px; background: #ffffff; color: #000000; }
+</style>
+</head>
+<body>
+<div class="exp-root" id="expRoot">
+  <div class="exp-tab-switcher paper-card" role="tablist">
+    <button class="exp-tab-btn active" onclick="switchExpTab('expenses',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>Expenses</button>
+    <button class="exp-tab-btn" onclick="switchExpTab('drawings',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Drawings</button>
+  </div>
+  <div class="exp-summary-grid">
+    <div class="paper-card exp-summary-card" id="expSummaryTotal">
+      <div class="stat-label" id="expSummaryLabel">Total in range</div>
+      <div class="stat-value num tone-warning" id="expSummaryValue">USh 2,840,000</div>
+      <div class="stat-desc" id="expSummaryDesc">10 records</div>
+    </div>
+    <div class="paper-card exp-breakdown-card">
+      <div class="stat-label" id="expBreakdownLabel">Category breakdown</div>
+      <div class="exp-breakdown-list" id="expBreakdownList"></div>
+    </div>
+  </div>
+  <div class="paper-card exp-filter-bar">
+    <div class="filter-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="input" id="expSearch" placeholder="Search description or vendor" oninput="filterExpenses()">
+    </div>
+    <div><label class="label">From</label><input type="date" class="input" value="2025-10-01" onchange="filterExpenses()"></div>
+    <div><label class="label">To</label><input type="date" class="input" value="2025-10-15" onchange="filterExpenses()"></div>
+    <div id="expCategoryFilter"><label class="label">Category</label><select class="input" onchange="filterExpenses()"><option>All</option><option>Materials</option><option>Rent</option><option>Electricity</option><option>Salary</option><option>Fuel</option><option>Marketing</option><option>Office Supplies</option><option>Maintenance</option><option>General</option></select></div>
+  </div>
+  <div class="exp-toolbar">
+    <button class="btn btn-outline" onclick="openCatMgr()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Categories</button>
+    <button class="btn btn-outline" onclick="exportExpCsv()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export</button>
+    <button class="btn btn-primary" onclick="openExpModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span id="expNewBtnLabel">New expense</span></button>
+  </div>
+  <div class="paper-card exp-table-panel" id="expTableExpenses">
+    <div class="table-body"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Vendor</th><th>Method</th><th>Recorded by</th><th style="text-align:right;">Amount</th><th></th></tr></thead><tbody id="expTableBodyExpenses"></tbody></table></div>
+  </div>
+  <div class="paper-card exp-table-panel hidden" id="expTableDrawings">
+    <div class="table-body"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Method</th><th>Recorded by</th><th style="text-align:right;">Amount</th><th></th></tr></thead><tbody id="expTableBodyDrawings"></tbody></table></div>
+  </div>
+</div>
+<div class="exp-modal hidden" id="expModal" style="display:none;">
+  <div class="exp-modal-box">
+    <div class="exp-modal-header"><div><div class="header-label">Expense</div><div class="header-title" id="expModalTitle">New expense</div></div><button class="modal-close" onclick="closeExpModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="exp-modal-body">
+      <div class="field-wrapper"><label class="label">Date</label><input type="date" class="input" value="2025-10-15"></div>
+      <div class="field-wrapper"><label class="label">Category</label><select class="input"><option>Materials</option><option>Rent</option><option>Electricity</option><option>Salary</option><option>Fuel</option><option>Marketing</option><option>Office Supplies</option><option>Maintenance</option><option>General</option><option>Drawings</option></select></div>
+      <div class="field-wrapper"><label class="label">Description</label><input class="input" placeholder="Expense description"></div>
+      <div class="field-wrapper"><label class="label">Vendor</label><input class="input" placeholder="Vendor name"></div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="field-wrapper"><label class="label">Amount</label><input class="input num" type="number" placeholder="0.00" style="text-align:right;"></div>
+        <div class="field-wrapper"><label class="label">Payment method</label><select class="input"><option>cash</option><option>card</option><option>transfer</option></select></div>
+      </div>
+      <div class="field-wrapper"><label class="label">Notes</label><textarea class="input" style="min-height:60px;" placeholder="Optional notes"></textarea></div>
+    </div>
+    <div class="exp-modal-footer"><button class="btn btn-outline" onclick="closeExpModal()">Cancel</button><button class="btn btn-primary">Save expense</button></div>
+  </div>
+</div>
+<div class="exp-modal hidden" id="expCatMgrModal" style="display:none;">
+  <div class="exp-modal-box" style="max-width:448px;">
+    <div class="exp-modal-header"><div><div class="header-label">Expense ledger</div><div class="header-title">Manage categories</div></div><button class="modal-close" onclick="closeCatMgr()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="exp-modal-body">
+      <div class="flex gap-2"><input class="input flex-1" placeholder="New category name"><button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add</button></div>
+      <div class="exp-cat-list" id="expCatList"></div>
+    </div>
+    <div class="exp-modal-footer"><button class="btn btn-outline" onclick="closeCatMgr()">Cancel</button><button class="btn btn-primary">Save category list</button></div>
+  </div>
+</div>
+<script>
+const EXPENSES = [
+  { id: '1', date: '2025-10-15', category: 'Materials', description: 'A4 paper (10 reams)', vendor: 'Paper Corp', amount: 450000, method: 'cash', by: 'Amina K.' },
+  { id: '2', date: '2025-10-14', category: 'Rent', description: 'Monthly shop rent', vendor: 'Landlord', amount: 800000, method: 'transfer', by: 'John M.' },
+  { id: '3', date: '2025-10-13', category: 'Electricity', description: 'Power bill', vendor: 'UMEME', amount: 180000, method: 'transfer', by: 'John M.' },
+  { id: '4', date: '2025-10-12', category: 'Salary', description: 'Staff salaries', vendor: '', amount: 1500000, method: 'transfer', by: 'John M.' },
+  { id: '5', date: '2025-10-11', category: 'Fuel', description: 'Generator fuel', vendor: 'Fuel Station', amount: 120000, method: 'cash', by: 'Sarah O.' },
+  { id: '6', date: '2025-10-10', category: 'Marketing', description: 'Facebook ads', vendor: 'Meta', amount: 100000, method: 'card', by: 'John M.' },
+  { id: '7', date: '2025-10-09', category: 'Drawings', description: 'Owner draw', vendor: '', amount: 200000, method: 'cash', by: 'John M.' },
+  { id: '8', date: '2025-10-08', category: 'Office Supplies', description: 'Pens, folders', vendor: 'Stationery Shop', amount: 50000, method: 'cash', by: 'Amina K.' },
+  { id: '9', date: '2025-10-07', category: 'Maintenance', description: 'Printer repair', vendor: 'Tech Fix', amount: 150000, method: 'cash', by: 'Sarah O.' },
+  { id: '10', date: '2025-10-06', category: 'General', description: 'Cleaning supplies', vendor: '', amount: 30000, method: 'cash', by: 'Amina K.' },
+];
+const EXP_CATS = ['Materials','Rent','Electricity','Salary','Fuel','Marketing','Drawings','Office Supplies','Maintenance','General'];
+const PROTECTED_CATS = ['General','Drawings','Salary','Staff Allowance'];
+let currentExpTab = 'expenses';
+function renderExpTables() {
+  const exps = EXPENSES.filter(e => e.category !== 'Drawings');
+  const draws = EXPENSES.filter(e => e.category === 'Drawings');
+  document.getElementById('expTableBodyExpenses').innerHTML = exps.map(e => `<tr style="border-top:1px solid #8c8c8c;"><td style="padding:12px 16px;font-size:12px;">Oct ${e.date.slice(8)}</td><td style="padding:12px 16px;"><span class="cat-chip expense">${e.category}</span></td><td style="padding:12px 16px;font-weight:500;">${e.description}</td><td style="padding:12px 16px;color:#5e697a;">${e.vendor || '—'}</td><td style="padding:12px 16px;font-size:12px;color:#5e697a;">${e.method}</td><td style="padding:12px 16px;font-size:12px;color:#5e697a;">${e.by}</td><td class="num" style="padding:12px 16px;text-align:right;font-weight:600;">USh ${e.amount.toLocaleString()}</td><td style="padding:12px 16px;"><div class="action-btns"><button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="action-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></td></tr>`).join('');
+  document.getElementById('expTableBodyDrawings').innerHTML = draws.map(e => `<tr style="border-top:1px solid #8c8c8c;"><td style="padding:12px 16px;font-size:12px;">Oct ${e.date.slice(8)}</td><td style="padding:12px 16px;"><span class="cat-chip drawing">${e.category}</span></td><td style="padding:12px 16px;font-weight:500;">${e.description}</td><td style="padding:12px 16px;font-size:12px;color:#5e697a;">${e.method}</td><td style="padding:12px 16px;font-size:12px;color:#5e697a;">${e.by}</td><td class="num" style="padding:12px 16px;text-align:right;font-weight:600;">USh ${e.amount.toLocaleString()}</td><td style="padding:12px 16px;"><div class="action-btns"><button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="action-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></td></tr>`).join('');
+  // Breakdown
+  const catTotals = {};
+  EXPENSES.forEach(e => { catTotals[e.category] = (catTotals[e.category] || 0) + e.amount; });
+  const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+  const max = sorted[0]?.[1] || 1;
+  document.getElementById('expBreakdownList').innerHTML = sorted.map(([cat, amt]) => `<div class="exp-breakdown-item"><div class="breakdown-row"><span class="breakdown-cat">${cat}</span><span class="breakdown-amt num">USh ${amt.toLocaleString()}</span></div><div class="breakdown-bar"><div class="breakdown-bar-fill ${cat === 'Drawings' ? 'tone-danger' : 'tone-warning'}" style="width:${(amt / max) * 100}%;"></div></div></div>`).join('');
+  // Summary
+  const total = EXPENSES.reduce((s, e) => s + e.amount, 0);
+  document.getElementById('expSummaryValue').textContent = 'USh ' + total.toLocaleString();
+  document.getElementById('expSummaryDesc').textContent = EXPENSES.length + ' records';
+}
+function switchExpTab(tab, btn) {
+  currentExpTab = tab;
+  document.querySelectorAll('.exp-tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('expTableExpenses').classList.toggle('hidden', tab !== 'expenses');
+  document.getElementById('expTableDrawings').classList.toggle('hidden', tab !== 'drawings');
+  document.getElementById('expCategoryFilter').style.display = tab === 'expenses' ? '' : 'none';
+  document.getElementById('expSummaryLabel').textContent = tab === 'drawings' ? 'Owner drawings' : 'Total in range';
+  document.getElementById('expSummaryValue').className = 'stat-value num ' + (tab === 'drawings' ? 'tone-danger' : 'tone-warning');
+  document.getElementById('expSummaryDesc').textContent = tab === 'drawings' ? '2 records · fed to Daily Balancing' : '10 records';
+  document.getElementById('expNewBtnLabel').textContent = tab === 'drawings' ? 'New drawing' : 'New expense';
+  document.getElementById('expBreakdownLabel').textContent = tab === 'drawings' ? 'Recent drawings' : 'Category breakdown';
+}
+function filterExpenses() {}
+function exportExpCsv() {}
+function openExpModal() { document.getElementById('expModal').style.display = 'flex'; document.getElementById('expModal').classList.remove('hidden'); }
+function closeExpModal() { document.getElementById('expModal').style.display = 'none'; document.getElementById('expModal').classList.add('hidden'); }
+function openCatMgr() {
+  document.getElementById('expCatList').innerHTML = EXP_CATS.map(c => `<div class="cat-item"><span class="cat-name">${c}</span>${PROTECTED_CATS.includes(c) ? '<span class="cat-builtin">Built-in</span>' : ''}<div class="cat-actions">${PROTECTED_CATS.includes(c) ? '' : '<button class="cat-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="cat-action-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'}</div></div>`).join('');
+  document.getElementById('expCatMgrModal').style.display = 'flex'; document.getElementById('expCatMgrModal').classList.remove('hidden');
+}
+function closeCatMgr() { document.getElementById('expCatMgrModal').style.display = 'none'; document.getElementById('expCatMgrModal').classList.add('hidden'); }
+renderExpTables();
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Audit Log UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+
+.audit-root { padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-lg); }
+.audit-nav { display: flex; align-items: center; gap: 4px; padding: 4px; background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); overflow-x: auto; scrollbar-width: none; }
+.audit-nav::-webkit-scrollbar { display: none; }
+.audit-nav-item { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all var(--transition-base); cursor: pointer; border: none; background: transparent; color: var(--ink-mute); }
+.audit-nav-item.active { background: var(--ink-solid); color: var(--paper-canvas); }
+.audit-nav-item:not(.active):hover { color: var(--ink-solid); background: var(--paper-canvas); }
+.audit-nav-item svg { width: 14px; height: 14px; }
+.audit-header { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); padding: var(--space-md); display: flex; flex-direction: column; gap: var(--space-md); }
+@media (min-width: 768px) { .audit-header { flex-direction: row; align-items: center; justify-content: space-between; } }
+.audit-title-group h1 { font-size: 1.125rem; font-weight: 700; }
+.audit-title-group p { font-size: 10px; color: var(--ink-mute); }
+.audit-search-wrap { position: relative; width: 100%; }
+@media (min-width: 768px) { .audit-search-wrap { width: 288px; } }
+.audit-search-wrap svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--ink-mute); pointer-events: none; }
+.audit-search { padding-left: 2.25rem; }
+.audit-table-card { background: var(--paper-card); border: 1px solid var(--line-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-paper); overflow: hidden; }
+.audit-table-wrap { overflow-x: auto; max-height: 75vh; }
+.audit-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+.audit-table thead tr { background: rgba(0,0,0,0.03); }
+.audit-table th { text-align: left; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); padding: 4px 8px 4px 12px; }
+.audit-table td { padding: 2px 8px; border-top: 1px solid var(--line-border); vertical-align: middle; }
+.audit-table tbody tr:hover { background: rgba(0,0,0,0.02); }
+.audit-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.audit-timestamp { font-size: 10px; color: var(--ink-mute); white-space: nowrap; }
+.audit-actor { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.audit-role { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); white-space: nowrap; }
+.audit-action-chip { display: inline-flex; align-items: center; background: rgba(0,0,0,0.05); font-size: 9px; padding: 0 6px; border-radius: 3px; white-space: nowrap; font-family: var(--font-mono); }
+.audit-entity { font-size: 10px; color: var(--ink-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.audit-entity-id { font-family: var(--font-mono); font-size: 8px; opacity: 0.7; margin-left: 4px; }
+.audit-details { font-size: 9px; color: var(--ink-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; font-family: var(--font-mono); }
+
+</style>
+</head>
+<body>
+<div class="audit-root" id="auditRoot">
+  <nav class="audit-nav" aria-label="Section navigation">
+    <button class="audit-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Team</button>
+    <button class="audit-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Payroll</button>
+    <button class="audit-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>Approvals</button>
+    <button class="audit-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Password Resets</button>
+    <button class="audit-nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
+  </nav>
+
+  <div class="audit-header">
+    <div class="audit-title-group">
+      <h1>Owner audit log</h1>
+      <p>Chronological trail of privileged actions across your shop.</p>
+    </div>
+    <div class="audit-search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="input audit-search" placeholder="Filter by actor, action, entity...">
+    </div>
+  </div>
+
+  <div class="audit-table-card">
+    <div class="audit-table-wrap">
+      <table class="audit-table">
+        <thead>
+          <tr><th>When</th><th>Actor</th><th>Role</th><th>Action</th><th>Entity</th><th>Details</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="audit-timestamp audit-num">Oct 15, 2025 14:22</td><td class="audit-actor">Grace Namuli</td><td class="audit-role">Manager</td><td><span class="audit-action-chip">SAVE</span></td><td class="audit-entity">Invoice INV-001<span class="audit-entity-id">#a1b2c3</span></td><td class="audit-details">{"amount":3500000,"client":"UPC"}</td></tr>
+          <tr><td class="audit-timestamp audit-num">Oct 15, 2025 13:45</td><td class="audit-actor">Grace Namuli</td><td class="audit-role">Manager</td><td><span class="audit-action-chip">CREATE</span></td><td class="audit-entity">Customer Amina K<span class="audit-entity-id">#d4e5f6</span></td><td class="audit-details">{"name":"Amina Kwagala","source":"walk-in"}</td></tr>
+          <tr><td class="audit-timestamp audit-num">Oct 15, 2025 11:30</td><td class="audit-actor">Owner</td><td class="audit-role">Owner</td><td><span class="audit-action-chip">APPROVE</span></td><td class="audit-entity">Account Irene N<span class="audit-entity-id">#g7h8i9</span></td><td class="audit-details">{"role":"Cashier","activated":true}</td></tr>
+          <tr><td class="audit-timestamp audit-num">Oct 14, 2025 16:00</td><td class="audit-actor">Moses Ssemakula</td><td class="audit-role">Staff</td><td><span class="audit-action-chip">UPDATE</span></td><td class="audit-entity">Sale #S-2025-089<span class="audit-entity-id">#j1k2l3</span></td><td class="audit-details">{"total":1250000,"payment":"cash"}</td></tr>
+          <tr><td class="audit-timestamp audit-num">Oct 14, 2025 10:15</td><td class="audit-actor">Owner</td><td class="audit-role">Owner</td><td><span class="audit-action-chip">DELETE</span></td><td class="audit-entity">Expense #E-456<span class="audit-entity-id">#m4n5o6</span></td><td class="audit-details">{"amount":75000,"reason":"duplicate"}</td></tr>
+          <tr><td class="audit-timestamp audit-num">Oct 13, 2025 17:30</td><td class="audit-actor">Grace Namuli</td><td class="audit-role">Manager</td><td><span class="audit-action-chip">RECORD</span></td><td class="audit-entity">Payment #P-789<span class="audit-entity-id">#p7q8r9</span></td><td class="audit-details">{"invoice":"INV-001","amount":2000000}</td></tr>
+          <tr><td class="audit-timestamp audit-num">Oct 13, 2025 14:00</td><td class="audit-actor">Owner</td><td class="audit-role">Owner</td><td><span class="audit-action-chip">RESET</span></td><td class="audit-entity">Password Paul S<span class="audit-entity-id">#s1t2u3</span></td><td class="audit-details":{"expires":"24h","notify":true}</td></tr>
+          <tr><td class="audit-timestamp audit-num">Oct 12, 2025 09:45</td><td class="audit-actor">Rose Achieng</td><td class="audit-role">Staff</td><td><span class="audit-action-chip">CREATE</span></td><td class="audit-entity">Sale #S-2025-090<span class="audit-entity-id">#v4w5x6</span></td><td class="audit-details">{"total":890000,"items":3}</td></tr>
+          <tr><td class="audit-timestamp audit-num">Oct 12, 2025 08:30</td><td class="audit-actor">Owner</td><td class="audit-role">Owner</td><td><span class="audit-action-chip">UPDATE</span></td><td class="audit-entity">Settings Shop<span class="audit-entity-id">#y7z8a9</span></td><td class="audit-details">{"currency":"UGX","tax":"18%"}</td></tr>
+          <tr><td class="audit-timestamp audit-num">Oct 11, 2025 15:20</td><td class="audit-actor">Grace Namuli</td><td class="audit-role">Manager</td><td><span class="audit-action-chip">CANCEL</span></td><td class="audit-entity">Invoice INV-002<span class="audit-entity-id">#b1c2d3</span></td><td class="audit-details">{"reason":"client request","refund":false}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

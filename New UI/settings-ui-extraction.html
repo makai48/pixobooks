@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Settings Page UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.22); border-radius: 8px; min-height: 32px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.38); }
+/* ============================================================
+   Component Classes — extracted from src/index.css
+   ============================================================ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
+  border-radius: 6px; padding: 0 var(--space-lg); height: 36px; font-size: 14px; font-weight: 600;
+  transition: all var(--transition-base); cursor: pointer; border: none; white-space: nowrap;
+}
+textarea.input { height: auto; min-height: 80px; padding: var(--space-sm) var(--space-md); resize: vertical; }
+select.input { cursor: pointer; }
+.label {
+  font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ink-mute); display: block; margin-bottom: var(--space-xs);
+}
+/* ============================================================
+   Layout — extracted from Settings.tsx
+   ============================================================ */
+.settings-root {
+  padding: var(--space-lg);
+  max-width: 1024px;
+  margin: 0 auto;
+}
+@media (min-width: 768px) {.settings-root { padding: var(--space-xl); }}
+@media (min-width: 1024px) {.settings-root { padding: 2rem; }}
+/* Sticky header */
+.settings-header {
+  position: sticky; top: 0; z-index: 20;
+  margin: calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg)) 0;
+  padding: var(--space-xl) var(--space-lg) var(--space-sm);
+  background: rgba(248, 245, 238, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line-border);
+}
+@media (min-width: 768px) {.settings-header { margin: calc(-1 * var(--space-xl)) calc(-1 * var(--space-xl)) 0; padding: 2rem var(--space-xl) var(--space-sm); }}
+@media (min-width: 1024px) {.settings-header { margin: -2rem -2rem 0; padding: 2.5rem 2rem var(--space-sm); }}
+.settings-header-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm);
+}
+.settings-title { font-size: 18px; font-weight: 700; line-height: 1.2; }
+@media (min-width: 768px) {.settings-title { font-size: 24px; }}
+.settings-subtitle { font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
+@media (max-width: 639px) {.settings-subtitle { display: none; }}
+.settings-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.unsaved-badge {
+  font-size: 11px; font-weight: 600; color: var(--status-warning);
+  white-space: nowrap;
+}
+/* Mobile section chips */
+.mobile-chips {
+  display: flex; align-items: center; gap: 4px; overflow-x: auto;
+  scrollbar-width: none; -ms-overflow-style: none; margin-top: 8px;
+  padding-bottom: 4px;
+}
+.mobile-chips::-webkit-scrollbar { display: none; }
+.mobile-chip {
+  height: 32px; padding: 0 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  white-space: nowrap; flex-shrink: 0; transition: all var(--transition-base); cursor: pointer;
+  border: none; background: transparent;
+}
+.mobile-chip.active { background: var(--ink-solid); color: var(--paper-canvas); }
+.mobile-chip:not(.active) { color: var(--ink-mute); }
+.mobile-chip:not(.active):hover { color: var(--ink-solid); background: rgba(0, 0, 0, 0.05); }
+@media (min-width: 768px) {.mobile-chips { display: none; }}
+/* Main content area */
+.settings-body {
+  display: flex; gap: 24px; align-items: flex-start; margin-top: 16px;
+}
+/* Left rail navigation */
+.settings-rail {
+  display: none;
+  width: 176px; flex-shrink: 0;
+  position: sticky; top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 8px;
+}
+.settings-rail::-webkit-scrollbar { display: none; }
+@media (min-width: 1024px) {.settings-rail { display: block; width: 224px; }}
+.rail-btn {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 0 12px; height: 40px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; text-align: left;
+  transition: all var(--transition-base); cursor: pointer; border: none; background: transparent;
+}
+.rail-btn.active { background: var(--ink-solid); color: var(--paper-canvas); }
+.rail-btn:not(.active) { color: var(--ink-mute); }
+.rail-btn:not(.active):hover { color: var(--ink-solid); background: rgba(0, 0, 0, 0.05); }
+.rail-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+/* Content column */
+.settings-content {
+  flex: 1; min-width: 0; max-width: 768px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+/* Section card */
+.section-card {
+  padding: 16px;
+  scroll-margin-top: 80px;
+}
+@media (min-width: 768px) {.section-card { padding: 20px; }}
+.section-header {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding-bottom: 16px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--line-border);
+}
+.section-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: var(--ink-solid); color: var(--paper-canvas);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.section-icon svg { width: 20px; height: 20px; }
+.section-title { font-size: 18px; font-weight: 700; line-height: 1.2; }
+.section-blurb { font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
+/* Form grids */
+.form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+/* Field wrapper */
+.field-wrapper { display: flex; flex-direction: column; }
+.field-error { font-size: 11px; color: var(--status-danger); margin-top: 4px; }
+/* Toggle button group */
+.toggle-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (min-width: 1280px) {.toggle-group.toggle-group-4 { grid-template-columns: repeat(4, 1fr); }}
+.toggle-btn.selected { border-color: var(--ink-solid); background: var(--ink-solid); color: var(--paper-canvas); }
+.toggle-btn svg { width: 16px; height: 16px; }
+.toggle-btn .toggle-label { font-size: 14px; font-weight: 600; margin-top: 4px; }
+/* Checkbox row */
+.checkbox-row {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  font-size: 14px; user-select: none;
+}
+.checkbox-row input[type="checkbox"] {
+  width: 16px; height: 16px; accent-color: var(--ink-solid); cursor: pointer;
+}
+/* Color picker row */
+.color-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.color-row input[type="color"] {
+  width: 48px; height: 40px; border-radius: 6px; border: 1px solid var(--line-border);
+  cursor: pointer; padding: 2px; background: transparent;
+}
+.color-row .input { flex: 1; }
+/* Category chips */
+.category-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.category-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0 10px; height: 32px; border-radius: 6px;
+  background: rgba(0, 0, 0, 0.05); border: 1px solid var(--line-border);
+  font-size: 14px;
+}
+.category-chip button {
+  background: none; border: none; cursor: pointer; color: var(--ink-mute);
+  display: flex; align-items: center; padding: 0;
+}
+.category-chip button:hover { color: var(--status-danger); }
+.category-chip svg { width: 14px; height: 14px; }
+/* Live example box */
+.live-example {
+  margin-top: 12px; padding: 12px; border-radius: 6px;
+  background: rgba(0, 0, 0, 0.05); border: 1px solid var(--line-border);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+.live-example .label { margin-bottom: 0; }
+.live-example .value { font-size: 20px; font-weight: 700; font-family: var(--font-sans); }
+/* Theme preview */
+.theme-preview {
+  padding: 16px; border-radius: 6px;
+  background: var(--paper-canvas); border: 1px solid var(--line-border);
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.theme-preview-btn {
+  padding: 8px 12px; border-radius: 6px; font-weight: 700; color: white;
+  font-size: 14px; border: none; cursor: default;
+}
+/* Palette preset cards */
+.palette-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.palette-card.selected { border-color: transparent; box-shadow: 0 0 0 2px var(--reg-magenta); }
+.palette-dots { display: flex; gap: 4px; }
+.palette-dot { width: 24px; height: 24px; border-radius: var(--radius-full); }
+.palette-name { font-size: 14px; font-weight: 600; margin-top: 8px; }
+.palette-mode { font-size: 11px; color: var(--ink-mute); }
+/* Branch list */
+.branch-list { display: flex; flex-direction: column; gap: 8px; }
+.branch-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px; border-radius: 6px; border: 1px solid var(--line-border);
+}
+.branch-item svg { width: 16px; height: 16px; color: var(--ink-mute); flex-shrink: 0; }
+.branch-name { font-weight: 600; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.branch-hq { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); }
+.branch-delete {
+  background: none; border: none; cursor: pointer; color: var(--status-danger);
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; flex-shrink: 0;
+}
+.branch-delete:hover { background: rgba(211, 34, 42, 0.1); }
+.branch-delete svg { width: 16px; height: 16px; }
+/* Billing section */
+.billing-card { padding: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.billing-info { flex: 1; min-width: 200px; }
+.billing-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); }
+.billing-plan { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.billing-plan-name { font-size: 18px; font-weight: 700; font-family: var(--font-sans); }
+.billing-status { font-size: 12px; color: var(--ink-mute); margin-top: 4px; }
+.plan-badge {
+  font-size: 10px; text-transform: uppercase; font-weight: 600;
+  padding: 2px 8px; border-radius: var(--radius-full);
+}
+.plan-badge.active { color: var(--status-success); }
+.plan-badge.inactive { color: var(--status-danger); }
+.limits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (min-width: 768px) {.limits-grid { grid-template-columns: 1fr 1fr 1fr; }}
+.limit-card { padding: 12px; }
+.limit-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); }
+.limit-value { font-size: 18px; font-weight: 700; font-family: var(--font-sans); margin-top: 2px; }
+/* Export grid */
+.export-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+@media (min-width: 1280px) {.export-grid { grid-template-columns: 1fr 1fr; }}
+.export-card { padding: 12px; display: flex; align-items: flex-start; gap: 12px; }
+.export-info { flex: 1; min-width: 0; }
+.export-label { font-weight: 600; font-size: 14px; }
+.export-desc { font-size: 11px; color: var(--ink-mute); margin-top: 2px; }
+.export-btn { flex-shrink: 0; height: 32px; padding: 0 8px; font-size: 12px; }
+/* ============================================================
+   Modal — Unit Conversion
+   ============================================================ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0;
+  animation: fade-in 160ms ease-out;
+}
+.modal-title-area { }
+.modal-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); }
+.modal-close svg { width: 16px; height: 16px; }
+/* Conversion form */
+.conv-form {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  align-items: end; padding: 12px; border-radius: 6px;
+  background: var(--paper-canvas); border: 1px solid var(--line-border);
+}
+@media (min-width: 768px) {.conv-form { grid-template-columns: repeat(6, 1fr); }}
+.conv-form .field-wrapper { min-width: 0; }
+.conv-form .btn { grid-column: span 1; height: 40px; }
+@media (min-width: 768px) {.conv-form .btn { grid-column: span 1; }}
+/* Conversion table */
+.conv-table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid var(--line-border); }
+.conv-table { width: 100%; font-size: 14px; border-collapse: collapse; }
+.conv-table thead { background: var(--paper-canvas); }
+.conv-table th {
+  text-align: left; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--ink-mute);
+  padding: 8px; font-weight: 600;
+}
+.conv-table td { padding: 8px; border-top: 1px solid var(--line-border); }
+.conv-table .num { font-family: var(--font-mono); }
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes fade-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+.animate-pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+/* ============================================================
+   Skeleton loading
+   ============================================================ */
+.skeleton {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.08);
+}
+/* ============================================================
+   No-access state
+   ============================================================ */
+.no-access {
+  padding: 32px; text-align: center; max-width: 448px; margin: 0 auto;
+}
+.no-access svg { width: 40px; height: 40px; margin: 0 auto; color: var(--ink-mute); }
+.no-access h2 { font-size: 20px; font-weight: 700; margin-top: 12px; font-family: var(--font-sans); }
+.no-access p { font-size: 14px; color: var(--ink-mute); margin-top: 8px; }
+/* ============================================================
+   Utility
+   ============================================================ */
+.hidden { display: none !important; }
+.w-12 { width: 48px; }
+.w-24 { width: 96px; }
+.h-24 { height: 96px; }
+@media (min-width: 768px) {.md\:grid-cols-2 { grid-template-columns: 1fr 1fr; }
+.md\:grid-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.md\:flex-row { flex-direction: row; }
+.md\:items-center { align-items: center; }}
+@media (min-width: 1280px) {.xl\:grid-cols-2 { grid-template-columns: 1fr 1fr; }
+.xl\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }}
+.bg-ink\/5 { background: rgba(0, 0, 0, 0.05); }
+.bg-paper { background: var(--paper-canvas); }
+.bg-ink { background: var(--ink-solid); }
+.text-paper { color: var(--paper-canvas); }
+.text-ink { color: var(--ink-solid); }
+.text-ink-mute { color: var(--ink-mute); }
+.text-magenta-reg { color: var(--reg-magenta); }
+.bg-magenta-reg\/20 { background: rgba(224, 51, 128, 0.2); }
+.border-line { border-color: var(--line-border); }
+.border-ink { border-color: var(--ink-solid); }
+.hover\:bg-ink\/5:hover { background: rgba(0, 0, 0, 0.05); }
+.hover\:text-ink:hover { color: var(--ink-solid); }
+.hover\:text-danger:hover { color: var(--status-danger); }
+.hover\:border-ink:hover { border-color: var(--ink-solid); }
+.ring-2 { box-shadow: 0 0 0 2px var(--reg-magenta); }
+.border-transparent { border-color: transparent; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SETTINGS PAGE — Full UI/UX Extraction
+     ============================================================ -->
+<div class="settings-root" id="settingsRoot">
+
+  <!-- Sticky Header -->
+  <div class="settings-header" id="settingsHeader">
+    <div class="settings-header-row">
+      <div style="min-width:0">
+        <h1 class="settings-title font-display">Settings</h1>
+        <p class="settings-subtitle">Shop identity, money rules, documents, devices and data — everything saves together.</p>
+      </div>
+      <div class="settings-actions">
+        <span class="unsaved-badge" id="unsavedBadge" style="display:none">Unsaved</span>
+        <button class="btn btn-outline" style="height:36px;padding:0 10px;font-size:12px;" onclick="resetForm()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+          Reset
+        </button>
+        <button class="btn btn-primary" style="height:36px;padding:0 12px;font-size:12px;" onclick="saveForm()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          <span id="saveBtnText">Saved</span>
+        </button>
+      </div>
+    </div>
+    <!-- Mobile section chips -->
+    <div class="mobile-chips" id="mobileChips"></div>
+  </div>
+
+  <!-- Body: Rail + Content -->
+  <div class="settings-body">
+
+    <!-- Left Rail Navigation -->
+    <nav class="settings-rail paper-card" id="settingsRail" aria-label="Settings sections"></nav>
+
+    <!-- Content Column -->
+    <div class="settings-content" id="settingsContent">
+
+      <!-- ============================================================
+           SECTION 1: Business Profile
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-business">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Business profile</h2>
+            <p class="section-blurb">Identity, location and contact details shown across the app.</p>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field-wrapper">
+            <label class="label">Shop name</label>
+            <input class="input" value="PixoPrints Shop" placeholder="Your shop name">
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Business type</label>
+            <select class="input">
+              <option value="">— Select —</option>
+              <option>Printshop</option>
+              <option>Retail Shop</option>
+              <option>Wholesale</option>
+              <option>Grocery / Supermarket</option>
+              <option>Restaurant / Cafe</option>
+              <option>Salon / Barbershop</option>
+              <option>Pharmacy</option>
+              <option>Hardware</option>
+              <option>Electronics</option>
+              <option>Fashion / Boutique</option>
+              <option>Stationery / Bookshop</option>
+              <option>Agrovet / Farm Supply</option>
+              <option>Motor Spares / Garage</option>
+              <option>Services</option>
+              <option>Manufacturing</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Country</label>
+            <div class="input" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <span style="font-size:18px;">🇺🇬</span>
+              <span style="flex:1;font-size:14px;font-weight:500;">Uganda</span>
+              <span class="num text-xs text-ink-mute">+256</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-ink-mute"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Time zone</label>
+            <select class="input">
+              <option>Africa/Kampala</option>
+              <option>Africa/Nairobi</option>
+              <option>Africa/Dar_es_Salaam</option>
+              <option>Africa/Kigali</option>
+              <option>UTC</option>
+              <option>Africa/Lagos</option>
+              <option>Africa/Cairo</option>
+              <option>Africa/Johannesburg</option>
+              <option>Asia/Dubai</option>
+              <option>Asia/Kolkata</option>
+              <option>Europe/London</option>
+              <option>Europe/Berlin</option>
+              <option>America/New_York</option>
+            </select>
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Address</label>
+            <input class="input" value="123 Main Street, Kampala">
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Email</label>
+            <input class="input" type="email" value="info@pixoprints.com">
+          </div>
+        </div>
+        <div class="form-grid-3 mt-3">
+          <div class="field-wrapper">
+            <label class="label">Mobile</label>
+            <div class="flex gap-2">
+              <div class="input" style="display:flex;align-items:center;gap:6px;flex-shrink:0;width:80px;cursor:pointer;">
+                <span style="font-size:14px;">🇺🇬</span>
+                <span class="num text-sm font-semibold">+256</span>
+              </div>
+              <input class="input flex-1" type="tel" value="712 345 678">
+            </div>
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Office</label>
+            <div class="flex gap-2">
+              <div class="input" style="display:flex;align-items:center;gap:6px;flex-shrink:0;width:80px;cursor:pointer;">
+                <span style="font-size:14px;">🇺🇬</span>
+                <span class="num text-sm font-semibold">+256</span>
+              </div>
+              <input class="input flex-1" type="tel" value="414 555 0123">
+            </div>
+          </div>
+          <div class="field-wrapper">
+            <label class="label">WhatsApp</label>
+            <div class="flex gap-2">
+              <div class="input" style="display:flex;align-items:center;gap:6px;flex-shrink:0;width:80px;cursor:pointer;">
+                <span style="font-size:14px;">🇺🇬</span>
+                <span class="num text-sm font-semibold">+256</span>
+              </div>
+              <input class="input flex-1" type="tel" value="712 345 678">
+            </div>
+          </div>
+        </div>
+        <!-- Logo upload -->
+        <div class="mt-5">
+          <div class="label mb-2">Shop logo (circular)</div>
+          <div class="flex flex-col md:flex-row gap-3 items-start">
+            <div class="w-24 h-24 rounded-full border-2 overflow-hidden flex items-center justify-center shrink-0" style="border-color:#8c8c8c;background:#f8f5ee;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-ink-mute"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <div class="flex-1 w-full" style="display:flex;flex-direction:column;gap:8px;">
+              <input class="input" placeholder="Paste URL or data:image/... base64">
+              <div class="flex flex-wrap items-center gap-2">
+                <button class="btn btn-outline" style="height:36px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Upload logo
+                </button>
+                <span class="text-xs text-ink-mute">Logo displays circular across the app. Square images work best.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 2: Money & Number Format
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-money">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Money &amp; number format</h2>
+            <p class="section-blurb">Currency, tax and how every amount is formatted.</p>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field-wrapper">
+            <label class="label">Currency</label>
+            <select class="input">
+              <option value="UGX">USh — UGX · Ugandan Shilling</option>
+              <option value="USD">$ — USD · US Dollar</option>
+              <option value="EUR">€ — EUR · Euro</option>
+              <option value="GBP">£ — GBP · British Pound</option>
+              <option value="KES">KSh — KES · Kenyan Shilling</option>
+              <option value="TZS">TSh — TZS · Tanzanian Shilling</option>
+              <option value="RWF">FRw — RWF · Rwandan Franc</option>
+              <option value="NGN">₦ — NGN · Nigerian Naira</option>
+              <option value="GHS">₵ — GHS · Ghanaian Cedi</option>
+              <option value="ZAR">R — ZAR · South African Rand</option>
+              <option value="INR">₹ — INR · Indian Rupee</option>
+              <option value="CNY">¥ — CNY · Chinese Yuan</option>
+              <option value="JPY">¥ — JPY · Japanese Yen</option>
+              <option value="AUD">A$ — AUD · Australian Dollar</option>
+              <option value="CAD">C$ — CAD · Canadian Dollar</option>
+              <option value="AED">د.إ — AED · UAE Dirham</option>
+            </select>
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Tax rate (%)</label>
+            <input class="input num" type="number" step="0.1" min="0" max="100" value="18" style="text-align:right;">
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Phone (legacy till line)</label>
+            <input class="input" value="+256 712 345 678">
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Digit grouping</label>
+            <select class="input">
+              <option value="western">Western — 99,999,999,999.00</option>
+              <option value="indian">Indian — 9,99,99,99,999.00</option>
+            </select>
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Decimal places</label>
+            <select class="input">
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Separator preset</label>
+            <select class="input">
+              <option value="" disabled>Apply a preset…</option>
+              <option value="us">1,234,567.89 (US / UK)</option>
+              <option value="eu">1.234.567,89 (Germany / Italy)</option>
+              <option value="fr">1 234 567,89 (France)</option>
+              <option value="ch">1'234'567.89 (Switzerland)</option>
+            </select>
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Thousand separator</label>
+            <input class="input num" value="," maxlength="1" style="text-align:center;">
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Decimal separator</label>
+            <input class="input num" value="." maxlength="1" style="text-align:center;">
+          </div>
+        </div>
+        <div class="live-example">
+          <span class="label">Live example</span>
+          <span class="value num">USh 999,999,999.99</span>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 3: POS Categories
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-categories">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">POS categories</h2>
+            <p class="section-blurb">Product groupings for the POS catalog.</p>
+          </div>
+        </div>
+        <div class="category-chips">
+          <span class="category-chip">Business Cards <button onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span>
+          <span class="category-chip">Flyers <button onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span>
+          <span class="category-chip">Posters <button onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span>
+          <span class="category-chip">Brochures <button onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span>
+          <span class="category-chip">Stickers <button onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span>
+          <span class="category-chip">Banners <button onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span>
+          <span class="category-chip">T-Shirts <button onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span>
+          <span class="category-chip">Mugs <button onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span>
+        </div>
+        <div class="flex gap-2 mt-3">
+          <input class="input flex-1" placeholder="New category name" id="newCategoryInput">
+          <button class="btn btn-outline shrink-0" onclick="addCategory()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add
+          </button>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 4: Receipt Settings
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-receipt">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Receipt settings</h2>
+            <p class="section-blurb">Paper receipts: header, footer, logo and width.</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="field-wrapper">
+            <label class="label">Header</label>
+            <input class="input" value="PixoPrints — Thank you!">
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Footer</label>
+            <input class="input" value="Come again!">
+          </div>
+          <div class="flex flex-col md:flex-row md:items-center gap-4">
+            <label class="checkbox-row">
+              <input type="checkbox" checked>
+              Show logo on receipt
+            </label>
+            <div class="field-wrapper">
+              <label class="label">Receipt paper width</label>
+              <select class="input" style="width:160px;">
+                <option value="58">58 mm (quick)</option>
+                <option value="80" selected>80 mm (quick)</option>
+                <option value="99">99 mm (quick)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 5: Invoice Settings
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-invoice">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Invoice settings</h2>
+            <p class="section-blurb">Numbering and payment terms for invoices.</p>
+          </div>
+        </div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="field-wrapper">
+            <label class="label">Prefix</label>
+            <input class="input" value="INV-">
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Next number</label>
+            <input class="input num" type="number" min="1" step="1" value="1001" style="text-align:right;">
+          </div>
+        </div>
+        <div class="field-wrapper mt-3">
+          <label class="label">Terms</label>
+          <textarea class="input" style="min-height:80px;">Payment due within 30 days. Late payments subject to 2% monthly interest.</textarea>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 6: Printer Settings
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-printer">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Printer settings</h2>
+            <p class="section-blurb">Connection and paper for receipt printing.</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <!-- Printer connection -->
+          <div>
+            <div class="label mb-2">Printer connection</div>
+            <div class="toggle-group toggle-group-4">
+              <button class="toggle-btn selected">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                <div class="toggle-label">Network</div>
+              </button>
+              <button class="toggle-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11"/><path d="M21 4l-7 7"/><path d="M3 20l7-7"/><path d="M14 7l3 3L7 20"/></svg>
+                <div class="toggle-label">Bluetooth</div>
+              </button>
+              <button class="toggle-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/></svg>
+                <div class="toggle-label">USB</div>
+              </button>
+              <button class="toggle-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <div class="toggle-label">System</div>
+              </button>
+            </div>
+          </div>
+          <!-- Paper size -->
+          <div>
+            <div class="label mb-2">Printer paper size <span style="text-transform:none;">(receipt width is set separately above)</span></div>
+            <div class="toggle-group toggle-group-4">
+              <button class="toggle-btn">
+                <div class="toggle-label">58mm</div>
+              </button>
+              <button class="toggle-btn selected">
+                <div class="toggle-label">80mm</div>
+              </button>
+              <button class="toggle-btn">
+                <div class="toggle-label">99x210mm</div>
+              </button>
+              <button class="toggle-btn">
+                <div class="toggle-label">A4</div>
+              </button>
+              <button class="toggle-btn">
+                <div class="toggle-label">A5</div>
+              </button>
+              <button class="toggle-btn">
+                <div class="toggle-label">Letter</div>
+              </button>
+            </div>
+          </div>
+          <!-- Device name -->
+          <div class="field-wrapper">
+            <label class="label">Printer name / device label</label>
+            <input class="input" value="Epson TM-T20III" placeholder="e.g. Epson TM-T20III">
+          </div>
+          <!-- Network IP -->
+          <div class="field-wrapper">
+            <label class="label">Printer IP address</label>
+            <input class="input num" value="192.168.1.50" placeholder="192.168.1.50">
+          </div>
+          <!-- Checkboxes -->
+          <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
+            <label class="checkbox-row">
+              <input type="checkbox" checked>
+              Auto-print receipts on sale
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox">
+              Open cash drawer on cash sales
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 7: Loyalty Program
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-loyalty">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Loyalty program</h2>
+            <p class="section-blurb">Earn-and-burn rules for customer points.</p>
+          </div>
+        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" checked>
+          Enable loyalty points
+        </label>
+        <div class="form-grid mt-3">
+          <div class="field-wrapper">
+            <label class="label">Points earned per USh 1 spent</label>
+            <input class="input num" type="number" step="0.1" min="0" value="1" style="text-align:right;">
+          </div>
+          <div class="field-wrapper">
+            <label class="label">Cash value per point (USh)</label>
+            <input class="input num" type="number" step="0.0001" min="0" value="0.01" style="text-align:right;">
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 8: App Theme
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-theme">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">App theme</h2>
+            <p class="section-blurb">Look and feel on every device.</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <!-- Base mode -->
+          <div>
+            <div class="label mb-2">Base mode</div>
+            <div class="toggle-group">
+              <button class="toggle-btn selected">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                <div class="toggle-label">Light</div>
+              </button>
+              <button class="toggle-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <div class="toggle-label">Dark</div>
+              </button>
+            </div>
+          </div>
+          <!-- Palette preset -->
+          <div>
+            <div class="label mb-2">Palette preset</div>
+            <div class="palette-grid">
+              <button class="palette-card selected">
+                <div class="palette-dots">
+                  <span class="palette-dot" style="background:#e0399a;"></span>
+                  <span class="palette-dot" style="background:#1b2a4e;"></span>
+                </div>
+                <div class="palette-name">Cream &amp; Ink</div>
+                <div class="palette-mode">light</div>
+              </button>
+              <button class="palette-card">
+                <div class="palette-dots">
+                  <span class="palette-dot" style="background:#0891b2;"></span>
+                  <span class="palette-dot" style="background:#0b3b52;"></span>
+                </div>
+                <div class="palette-name">Ocean</div>
+                <div class="palette-mode">light</div>
+              </button>
+              <button class="palette-card">
+                <div class="palette-dots">
+                  <span class="palette-dot" style="background:#f97316;"></span>
+                  <span class="palette-dot" style="background:#7c2d12;"></span>
+                </div>
+                <div class="palette-name">Sunset</div>
+                <div class="palette-mode">light</div>
+              </button>
+              <button class="palette-card">
+                <div class="palette-dots">
+                  <span class="palette-dot" style="background:#059669;"></span>
+                  <span class="palette-dot" style="background:#064e3b;"></span>
+                </div>
+                <div class="palette-name">Forest Night</div>
+                <div class="palette-mode">dark</div>
+              </button>
+              <button class="palette-card">
+                <div class="w-10 h-10 rounded-full border overflow-hidden" style="border-color:#8c8c8c;background:#f8f5ee;"></div>
+                <div class="palette-name">Match logo</div>
+                <div class="palette-mode">Pick colors below</div>
+              </button>
+              <button class="palette-card">
+                <div class="palette-dots">
+                  <span class="palette-dot" style="background:#e0399a;"></span>
+                  <span class="palette-dot" style="background:#1b2a4e;"></span>
+                </div>
+                <div class="palette-name">Fully custom</div>
+                <div class="palette-mode">Any two hex colors</div>
+              </button>
+            </div>
+          </div>
+          <!-- Custom colors -->
+          <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
+            <div class="field-wrapper">
+              <label class="label">Primary (hex)</label>
+              <div class="color-row">
+                <input type="color" value="#e0399a">
+                <input class="input num" value="#e0399a">
+              </div>
+            </div>
+            <div class="field-wrapper">
+              <label class="label">Accent (hex)</label>
+              <div class="color-row">
+                <input type="color" value="#1b2a4e">
+                <input class="input num" value="#1b2a4e">
+              </div>
+            </div>
+            <div class="field-wrapper">
+              <label class="label">Background (hex)</label>
+              <div class="color-row">
+                <input type="color" value="#f7f2e8">
+                <input class="input num" value="#f7f2e8">
+              </div>
+            </div>
+          </div>
+          <!-- Live preview -->
+          <div class="theme-preview">
+            <div class="theme-preview-btn" style="background:#e0399a;">Live preview — Primary</div>
+            <div class="theme-preview-btn" style="background:#1b2a4e;">Accent</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 9: Discount Rules
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-discount">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Discount rules</h2>
+            <p class="section-blurb">Who may discount, and the caps.</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <div class="label mb-2">Discount input style</div>
+            <div class="toggle-group">
+              <button class="toggle-btn selected">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+                <div class="toggle-label">Percentage (%)</div>
+              </button>
+              <button class="toggle-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+                <div class="toggle-label">Amount (USh)</div>
+              </button>
+            </div>
+          </div>
+          <div class="flex flex-col md:flex-row md:items-center gap-4">
+            <label class="checkbox-row">
+              <input type="checkbox" checked>
+              Allow per-line discounts
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" checked>
+              Allow whole-order discounts
+            </label>
+          </div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+            <div class="field-wrapper">
+              <label class="label">Max % allowed</label>
+              <input class="input num" type="number" min="0" max="100" value="20" style="text-align:right;">
+            </div>
+            <div class="field-wrapper">
+              <label class="label">Max amount allowed (USh)</label>
+              <input class="input num" type="number" min="0" step="0.01" value="50000" style="text-align:right;">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 10: Unit Conversions
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-units">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Unit conversions</h2>
+            <p class="section-blurb">Global conversions for BOM and stock math.</p>
+          </div>
+        </div>
+        <p class="text-xs text-ink-mute">
+          Manage a global table of unit conversions that apply to BOM calculations,
+          stock adjustments and quantity conversions across the shop.
+        </p>
+        <button class="btn btn-primary mt-3" onclick="openUnitModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
+          Open unit conversion table
+        </button>
+      </section>
+
+      <!-- ============================================================
+           SECTION 11: Branches
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-branches">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Branches</h2>
+            <p class="section-blurb">Locations in the TopBar switcher.</p>
+          </div>
+        </div>
+        <p class="text-xs text-ink-mute mb-3">
+          Branches appear in the TopBar switcher; new sales, held tickets, expenses and
+          purchase orders are tagged with the active branch. Assign staff to a branch
+          from the owner dashboard.
+        </p>
+        <div class="branch-list">
+          <div class="branch-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            <span class="branch-name">Head Office</span>
+            <span class="branch-hq">HQ</span>
+          </div>
+          <div class="branch-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            <span class="branch-name">Downtown Branch</span>
+            <button class="branch-delete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="flex gap-2 mt-3">
+          <input class="input flex-1" placeholder="New branch name" id="newBranchInput">
+          <button class="btn btn-outline shrink-0" onclick="addBranch()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add
+          </button>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 12: Billing & Plan
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-billing">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Billing &amp; plan</h2>
+            <p class="section-blurb">Plan, trial, invoices and backups.</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="billing-card paper-card">
+            <div class="billing-info">
+              <div class="billing-label">Current plan</div>
+              <div class="billing-plan">
+                <span class="billing-plan-name">Starter</span>
+                <span class="plan-badge active">Active</span>
+              </div>
+              <div class="billing-status">Status: active</div>
+            </div>
+            <button class="btn btn-primary" style="height:36px;">
+              Backup now
+            </button>
+          </div>
+          <div class="limits-grid">
+            <div class="limit-card paper-card">
+              <div class="limit-label">Branches</div>
+              <div class="limit-value num">1</div>
+            </div>
+            <div class="limit-card paper-card">
+              <div class="limit-label">Users</div>
+              <div class="limit-value num">2</div>
+            </div>
+            <div class="limit-card paper-card">
+              <div class="limit-label">Items</div>
+              <div class="limit-value num">200</div>
+            </div>
+            <div class="limit-card paper-card">
+              <div class="limit-label">Client billing</div>
+              <div class="limit-value">—</div>
+            </div>
+            <div class="limit-card paper-card">
+              <div class="limit-label">Payroll</div>
+              <div class="limit-value">—</div>
+            </div>
+            <div class="limit-card paper-card">
+              <div class="limit-label">API</div>
+              <div class="limit-value">—</div>
+            </div>
+          </div>
+          <details class="text-xs text-ink-mute">
+            <summary class="cursor-pointer hover:underline">Plans</summary>
+            <div class="mt-2" style="display:flex;flex-direction:column;gap:4px;">
+              <div><span class="font-semibold">Starter</span>: 1 branches, 2 users, 200 items</div>
+              <div><span class="font-semibold">Growth</span>: 3 branches, 10 users, 5000 items, client billing, payroll</div>
+              <div><span class="font-semibold">Pro</span>: 99 branches, 99 users, 50000 items, client billing, payroll, API</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           SECTION 13: Export Shop Data
+           ============================================================ -->
+      <section class="section-card paper-card" id="settings-data">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          </div>
+          <div style="min-width:0">
+            <h2 class="section-title font-display">Export shop data</h2>
+            <p class="section-blurb">Portable JSON snapshots of your shop.</p>
+          </div>
+        </div>
+        <p class="text-xs text-ink-mute mb-3">
+          Download a JSON snapshot of any category. Product / avatar / logo
+          images are embedded inline as base64 where applicable.
+        </p>
+        <div class="export-grid">
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Sales</div>
+              <div class="export-desc">All completed sales with line items and payments.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Purchases</div>
+              <div class="export-desc">Purchase orders with line items and status.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Inventory</div>
+              <div class="export-desc">Full item catalog with pricing, stock and images.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">BOQs &amp; BOMs</div>
+              <div class="export-desc">Bill-of-materials with vendors and quantities.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Customers</div>
+              <div class="export-desc">Customer register with contacts and loyalty.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Suppliers</div>
+              <div class="export-desc">Supplier list with contacts, photos and items.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Expenses</div>
+              <div class="export-desc">All expense entries by date and category.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Employees</div>
+              <div class="export-desc">Team members, roles, salaries and permissions.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Statistics</div>
+              <div class="export-desc">Aggregated daily/monthly/annual performance.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Receipts &amp; invoices</div>
+              <div class="export-desc">Sale documents with payment history.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Loyalty</div>
+              <div class="export-desc">Loyalty points transactions.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Client Billing</div>
+              <div class="export-desc">Clients, work entries, billing periods, invoices, payments and services.</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="export-card paper-card">
+            <div class="export-info">
+              <div class="export-label">Audit log</div>
+              <div class="export-desc">Owner-visible audit trail (who did what, when).</div>
+            </div>
+            <button class="btn btn-outline export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /settings-content -->
+  </div><!-- /settings-body -->
+</div><!-- /settings-root -->
+
+<!-- ============================================================
+     UNIT CONVERSION MODAL
+     ============================================================ -->
+<div class="modal-overlay hidden" id="unitModal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title-area">
+        <div class="modal-label">Global unit conversions</div>
+        <h2 class="modal-title font-display">Conversion table</h2>
+      </div>
+      <button class="modal-close" onclick="closeUnitModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="text-xs text-ink-mute">
+        1 <em>From</em> = factor × <em>To</em>. Used across BOM computations,
+        stock adjustments and unit swaps everywhere in the app.
+      </p>
+      <!-- Add conversion form -->
+      <div class="conv-form">
+        <div class="field-wrapper">
+          <label class="label">From</label>
+          <input class="input" placeholder="ream" id="convFrom">
+        </div>
+        <div class="field-wrapper">
+          <label class="label">To</label>
+          <input class="input" placeholder="sheet" id="convTo">
+        </div>
+        <div class="field-wrapper">
+          <label class="label">Factor</label>
+          <input class="input num" type="number" step="0.0001" min="0" value="1" id="convFactor" style="text-align:right;">
+        </div>
+        <div class="field-wrapper">
+          <label class="label">Category</label>
+          <select class="input" id="convCategory">
+            <option>paper</option>
+            <option>weight</option>
+            <option>volume</option>
+            <option>length</option>
+            <option>area</option>
+            <option>ink</option>
+            <option>general</option>
+          </select>
+        </div>
+        <div class="field-wrapper">
+          <label class="label">Notes</label>
+          <input class="input" placeholder="Optional" id="convNotes">
+        </div>
+        <button class="btn btn-primary" onclick="addConversion()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add
+        </button>
+      </div>
+      <!-- Conversion table -->
+      <div>
+        <div class="label mb-1">paper</div>
+        <div class="conv-table-wrap">
+          <table class="conv-table">
+            <thead>
+              <tr>
+                <th>From</th>
+                <th>To</th>
+                <th style="text-align:right;">Factor</th>
+                <th>Notes</th>
+                <th style="width:40px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="num">ream</td>
+                <td class="num">sheet</td>
+                <td class="num text-right font-semibold">500</td>
+                <td class="text-xs text-ink-mute">Standard paper</td>
+                <td class="text-right">
+                  <button class="branch-delete" style="width:32px;height:32px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">kg</td>
+                <td class="num">g</td>
+                <td class="num text-right font-semibold">1000</td>
+                <td class="text-xs text-ink-mute"></td>
+                <td class="text-right">
+                  <button class="branch-delete" style="width:32px;height:32px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeUnitModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT — Interactive behaviors
+     ============================================================ -->
+<script>
+// Section definitions
+const SECTIONS = [
+  { id: 'business', label: 'Business', icon: '<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>' },
+  { id: 'money', label: 'Money', icon: '<circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/>' },
+  { id: 'categories', label: 'Categories', icon: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>' },
+  { id: 'receipt', label: 'Receipt', icon: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/>' },
+  { id: 'invoice', label: 'Invoice', icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>' },
+  { id: 'printer', label: 'Printer', icon: '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>' },
+  { id: 'loyalty', label: 'Loyalty', icon: '<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>' },
+  { id: 'discount', label: 'Discounts', icon: '<line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>' },
+  { id: 'theme', label: 'Theme', icon: '<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>' },
+  { id: 'units', label: 'Units', icon: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>' },
+  { id: 'branches', label: 'Branches', icon: '<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>' },
+  { id: 'billing', label: 'Billing', icon: '<circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/>' },
+  { id: 'data', label: 'Data', icon: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>' },
+];
+
+let activeSection = 'business';
+
+// Build rail navigation
+function buildRail() {
+  const rail = document.getElementById('settingsRail');
+  const chips = document.getElementById('mobileChips');
+  SECTIONS.forEach(s => {
+    // Rail button
+    const btn = document.createElement('button');
+    btn.className = 'rail-btn' + (s.id === activeSection ? ' active' : '');
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${s.icon}</svg><span>${s.label}</span>`;
+    btn.onclick = () => scrollToSection(s.id);
+    rail.appendChild(btn);
+    // Mobile chip
+    const chip = document.createElement('button');
+    chip.className = 'mobile-chip' + (s.id === activeSection ? ' active' : '');
+    chip.textContent = s.label;
+    chip.onclick = () => scrollToSection(s.id);
+    chips.appendChild(chip);
+  });
+}
+
+// Scroll to section
+function scrollToSection(id) {
+  activeSection = id;
+  document.querySelectorAll('.rail-btn').forEach((b, i) => {
+    b.classList.toggle('active', SECTIONS[i].id === id);
+  });
+  document.querySelectorAll('.mobile-chip').forEach((c, i) => {
+    c.classList.toggle('active', SECTIONS[i].id === id);
+  });
+  const el = document.getElementById('settings-' + id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Save / Reset
+function saveForm() {
+  document.getElementById('saveBtnText').textContent = 'Saved';
+  document.getElementById('unsavedBadge').style.display = 'none';
+}
+function resetForm() {
+  document.getElementById('saveBtnText').textContent = 'Saved';
+  document.getElementById('unsavedBadge').style.display = 'none';
+}
+
+// Category management
+function addCategory() {
+  const input = document.getElementById('newCategoryInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const container = document.querySelector('.category-chips');
+  const chip = document.createElement('span');
+  chip.className = 'category-chip';
+  chip.innerHTML = `${val} <button onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+  container.appendChild(chip);
+  input.value = '';
+}
+
+// Branch management
+function addBranch() {
+  const input = document.getElementById('newBranchInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const list = document.querySelector('.branch-list');
+  const item = document.createElement('div');
+  item.className = 'branch-item';
+  item.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+    <span class="branch-name">${val}</span>
+    <button class="branch-delete" onclick="this.parentElement.remove()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    </button>`;
+  list.appendChild(item);
+  input.value = '';
+}
+
+// Unit conversion modal
+function openUnitModal() {
+  document.getElementById('unitModal').classList.remove('hidden');
+}
+function closeUnitModal() {
+  document.getElementById('unitModal').classList.add('hidden');
+}
+function addConversion() {
+  const from = document.getElementById('convFrom').value.trim();
+  const to = document.getElementById('convTo').value.trim();
+  if (!from || !to) return;
+  // In a real app this would add to the table
+  document.getElementById('convFrom').value = '';
+  document.getElementById('convTo').value = '';
+  document.getElementById('convFactor').value = '1';
+  document.getElementById('convNotes').value = '';
+}
+
+// Toggle button groups
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const group = btn.parentElement;
+    group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+});
+
+// Palette card selection
+document.querySelectorAll('.palette-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.palette-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+  });
+});
+
+// Initialize
+buildRail();
+</script>
+</body>
+</html>

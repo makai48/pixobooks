@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixoBooks — Statistics UI/UX Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pixobooks-shared.css">
+<style>
+.stats-root { padding: 1rem; max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 0.75rem; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+@media (min-width: 768px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+.stat-card { padding: 0.625rem; }
+.stat-card .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #5e697a; }
+.stat-card .stat-value { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+.stat-card .stat-value.tone-success { color: #298453; }
+.stat-card .stat-value.tone-danger { color: #d3222a; }
+.mini-stat { padding: 0.5rem; }
+.mini-stat .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #5e697a; }
+.mini-stat .stat-value { font-size: 12px; font-weight: 700; }
+.period-selector { padding: 0.5rem 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.period-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.period-chip { height: 24px; font-size: 10px; padding: 0 8px; border-radius: 999px; border: 1px solid #8c8c8c; background: transparent; cursor: pointer; font-weight: 500; transition: all 150ms ease; }
+.period-chip.active { background: #000000; color: #f8f5ee; border-color: #000000; }
+.period-chip:not(.active):hover { border-color: #000000; }
+.month-picker { padding: 0.5rem; display: flex; flex-direction: column; gap: 6px; }
+.month-picker .picker-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #5e697a; }
+.month-picker .picker-row { display: flex; align-items: center; gap: 6px; }
+.month-picker .picker-row .input { height: 28px; font-size: 10px; }
+.month-picker .picker-row .btn { height: 28px; padding: 0 8px; font-size: 10px; }
+.custom-range { padding: 0.5rem; display: flex; flex-direction: column; gap: 6px; }
+.custom-range .picker-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #5e697a; }
+.custom-range .range-row { display: flex; align-items: center; gap: 6px; }
+.custom-range .range-row .input { height: 28px; font-size: 10px; }
+.custom-range .range-row span { font-size: 10px; color: #5e697a; }
+.cashflow-chart { padding: 0.75rem; }
+.cashflow-chart .chart-header { display: flex; align-items: center; justify-content: space-between; }
+.cashflow-chart .chart-title-area .chart-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #5e697a; }
+.cashflow-chart .chart-title-area .chart-title { font-size: 14px; font-weight: 700; }
+.cashflow-chart .chart-legend { display: flex; gap: 0.5rem; font-size: 10px; }
+.cashflow-chart .chart-legend .legend-item { display: inline-flex; align-items: center; gap: 4px; color: #5e697a; }
+.cashflow-chart .chart-legend .legend-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.cashflow-chart .chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 112px; margin-top: 12px; }
+.cashflow-chart .chart-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.cashflow-chart .chart-bar-group .bar-container { width: 100%; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+.cashflow-chart .chart-bar-group .bar-rev { background: #e03380; border-radius: 2px 2px 0 0; }
+.cashflow-chart .chart-bar-group .bar-exp { background: #d86b09; border-radius: 2px 2px 0 0; opacity: 0.8; }
+.cashflow-chart .chart-bar-group .bar-label { font-size: 8px; color: #5e697a; font-family: 'JetBrains Mono', monospace; }
+.top-products { padding: 0.75rem; }
+.top-products .section-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #5e697a; }
+.top-products .section-title { font-size: 14px; font-weight: 700; margin-bottom: 0.5rem; }
+.top-products .product-list { display: flex; flex-direction: column; gap: 6px; }
+.top-products .product-item { display: flex; flex-direction: column; gap: 2px; }
+.top-products .product-item .product-row { display: flex; justify-content: space-between; font-size: 10px; }
+.top-products .product-item .product-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+.top-products .product-item .product-meta { color: #5e697a; font-family: 'JetBrains Mono', monospace; }
+.top-products .product-item .product-bar { height: 4px; border-radius: 2px; background: rgba(0,0,0,0.05); overflow: hidden; }
+.top-products .product-item .product-bar-fill { height: 100%; background: #e03380; }
+.top-cashiers { padding: 0.75rem; }
+.top-cashiers .section-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #5e697a; }
+.top-cashiers .section-title { font-size: 14px; font-weight: 700; margin-bottom: 0.5rem; }
+.top-cashiers .cashier-list { display: flex; flex-direction: column; gap: 6px; }
+.top-cashiers .cashier-item { display: flex; align-items: center; justify-content: space-between; font-size: 10px; }
+.top-cashiers .cashier-item .cashier-info { display: flex; align-items: center; gap: 6px; }
+.top-cashiers .cashier-item .cashier-avatar { width: 20px; height: 20px; border-radius: 50%; background: rgba(20,165,199,0.1); color: #14a5c7; font-weight: 700; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+.top-cashiers .cashier-item .cashier-name { font-weight: 600; }
+.top-cashiers .cashier-item .cashier-stats { text-align: right; }
+.top-cashiers .cashier-item .cashier-stats .cashier-total { font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.top-cashiers .cashier-item .cashier-stats .cashier-count { font-size: 9px; color: #5e697a; font-family: 'JetBrains Mono', monospace; }
+.recent-table { overflow: hidden; }
+.recent-table .table-header { padding: 0.5rem; border-bottom: 1px solid #8c8c8c; display: flex; align-items: center; justify-content: space-between; }
+.recent-table .table-header .table-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #5e697a; }
+.recent-table .table-header .table-title { font-size: 14px; font-weight: 700; }
+.recent-table .table-header .table-count { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #5e697a; }
+.recent-table .table-body { overflow: auto; max-height: 256px; }
+.recent-table table { width: 100%; font-size: 10px; border-collapse: collapse; }
+.recent-table thead { position: sticky; top: 0; }
+.recent-table thead tr { text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #5e697a; background: rgba(248,245,238,0.6); }
+.recent-table thead th { padding: 6px 12px; font-weight: 600; }
+.recent-table tbody tr { border-top: 1px solid #8c8c8c; }
+.recent-table tbody tr:hover { background: rgba(248,245,238,0.4); }
+.recent-table tbody td { padding: 6px 12px; }
+.recent-table tbody td.num { font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+<div class="stats-root" id="statsRoot">
+  <div class="paper-card period-selector">
+    <div class="flex items-center gap-1" style="color:#5e697a;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span class="label-eyebrow">Reporting period</span>
+    </div>
+    <div class="period-chips">
+      <button class="period-chip active" onclick="setPeriod('day',this)">Today</button>
+      <button class="period-chip" onclick="setPeriod('week',this)">This Week</button>
+      <button class="period-chip" onclick="setPeriod('month',this)">This Month</button>
+      <button class="period-chip" onclick="setPeriod('year',this)">This Year</button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div class="paper-card month-picker">
+        <div class="picker-label">Pick specific month</div>
+        <div class="picker-row">
+          <select class="input" onchange="setMonthYear()"><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option selected>November</option><option>December</option></select>
+          <select class="input" style="width:80px;" onchange="setMonthYear()"><option>2024</option><option selected>2025</option><option>2026</option></select>
+          <button class="btn btn-primary" onclick="applyMonthYear()">Apply</button>
+        </div>
+      </div>
+      <div class="paper-card custom-range">
+        <div class="picker-label">Custom date range</div>
+        <div class="range-row">
+          <input type="date" class="input" value="2025-10-01" onchange="setCustomRange()"><span>to</span>
+          <input type="date" class="input" value="2025-10-15" onchange="setCustomRange()">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="stats-grid">
+    <div class="paper-card stat-card"><div class="flex items-center justify-between"><div class="stat-label">Revenue · Today</div><div style="width:20px;height:20px;border-radius:50%;background:rgba(224,51,128,0.1);color:#e03380;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div><div class="stat-value num">USh 2,450,000</div></div>
+    <div class="paper-card stat-card"><div class="flex items-center justify-between"><div class="stat-label">Gross profit</div><div style="width:20px;height:20px;border-radius:50%;background:rgba(20,165,199,0.1);color:#14a5c7;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div></div><div class="stat-value num">USh 1,470,000</div></div>
+    <div class="paper-card stat-card"><div class="flex items-center justify-between"><div class="stat-label">Net (− USh 320,000 exp)</div><div style="width:20px;height:20px;border-radius:50%;background:rgba(41,132,83,0.1);color:#298453;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div><div class="stat-value num tone-success">USh 1,150,000</div></div>
+    <div class="paper-card stat-card"><div class="flex items-center justify-between"><div class="stat-label">Margin</div><div style="width:20px;height:20px;border-radius:50%;background:rgba(246,167,30,0.1);color:#f6a71e;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div></div><div class="stat-value num">60.0%</div></div>
+  </div>
+  <div class="stats-grid">
+    <div class="paper-card mini-stat"><div class="stat-label">Sales count</div><div class="stat-value num">12</div></div>
+    <div class="paper-card mini-stat"><div class="stat-label">Avg ticket</div><div class="stat-value num">USh 204,167</div></div>
+    <div class="paper-card mini-stat"><div class="stat-label">Expenses</div><div class="stat-value num">USh 320,000</div></div>
+    <div class="paper-card mini-stat"><div class="stat-label">Customers</div><div class="stat-value num">47</div></div>
+  </div>
+  <div class="stats-grid">
+    <div class="paper-card mini-stat"><div class="stat-label">Client AR (billed)</div><div class="stat-value num">USh 5,800,000</div></div>
+    <div class="paper-card mini-stat"><div class="stat-label">Overdue AR</div><div class="stat-value num" style="color:#d3222a;">USh 1,200,000</div></div>
+    <div class="paper-card mini-stat"><div class="stat-label">Billed this month</div><div class="stat-value num">USh 3,500,000</div></div>
+    <div class="paper-card mini-stat"><div class="stat-label">Paid this month</div><div class="stat-value num">USh 2,800,000</div></div>
+  </div>
+  <div class="paper-card cashflow-chart">
+    <div class="chart-header">
+      <div class="chart-title-area"><div class="chart-label">Today · revenue vs expenses</div><div class="chart-title">Cashflow trend</div></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#e03380;"></span>Revenue</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#d86b09;"></span>Expenses</span>
+      </div>
+    </div>
+    <div class="chart-bars">
+      <div class="chart-bar-group"><div class="bar-container"><div class="bar-rev" style="height:70%;"></div><div class="bar-exp" style="height:20%;"></div></div><div class="bar-label">08:00</div></div>
+      <div class="chart-bar-group"><div class="bar-container"><div class="bar-rev" style="height:45%;"></div><div class="bar-exp" style="height:15%;"></div></div><div class="bar-label">10:00</div></div>
+      <div class="chart-bar-group"><div class="bar-container"><div class="bar-rev" style="height:90%;"></div><div class="bar-exp" style="height:30%;"></div></div><div class="bar-label">12:00</div></div>
+      <div class="chart-bar-group"><div class="bar-container"><div class="bar-rev" style="height:60%;"></div><div class="bar-exp" style="height:25%;"></div></div><div class="bar-label">14:00</div></div>
+      <div class="chart-bar-group"><div class="bar-container"><div class="bar-rev" style="height:80%;"></div><div class="bar-exp" style="height:35%;"></div></div><div class="bar-label">16:00</div></div>
+      <div class="chart-bar-group"><div class="bar-container"><div class="bar-rev" style="height:50%;"></div><div class="bar-exp" style="height:20%;"></div></div><div class="bar-label">18:00</div></div>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="paper-card top-products">
+      <div class="section-label">Top products · Today</div>
+      <div class="section-title">Best sellers</div>
+      <div class="product-list">
+        <div class="product-item"><div class="product-row"><span class="product-name">Business Cards</span><span class="product-meta num">500 · USh 1,250,000</span></div><div class="product-bar"><div class="product-bar-fill" style="width:100%;"></div></div></div>
+        <div class="product-item"><div class="product-row"><span class="product-name">A4 Printing</span><span class="product-meta num">320 · USh 800,000</span></div><div class="product-bar"><div class="product-bar-fill" style="width:64%;"></div></div></div>
+        <div class="product-item"><div class="product-row"><span class="product-name">Flyers A5</span><span class="product-meta num">200 · USh 400,000</span></div><div class="product-bar"><div class="product-bar-fill" style="width:32%;"></div></div></div>
+        <div class="product-item"><div class="product-row"><span class="product-name">Stickers</span><span class="product-meta num">150 · USh 300,000</span></div><div class="product-bar"><div class="product-bar-fill" style="width:24%;"></div></div></div>
+        <div class="product-item"><div class="product-row"><span class="product-name">T-Shirts</span><span class="product-meta num">80 · USh 160,000</span></div><div class="product-bar"><div class="product-bar-fill" style="width:13%;"></div></div></div>
+      </div>
+    </div>
+    <div class="paper-card top-cashiers">
+      <div class="section-label">Top cashiers · Today</div>
+      <div class="section-title">Who rings up most</div>
+      <div class="cashier-list">
+        <div class="cashier-item"><div class="cashier-info"><div class="cashier-avatar">A</div><div class="cashier-name">Amina K.</div></div><div class="cashier-stats"><div class="cashier-total num">USh 1,200,000</div><div class="cashier-count">5 sales</div></div></div>
+        <div class="cashier-item"><div class="cashier-info"><div class="cashier-avatar">J</div><div class="cashier-name">John M.</div></div><div class="cashier-stats"><div class="cashier-total num">USh 800,000</div><div class="cashier-count">4 sales</div></div></div>
+        <div class="cashier-item"><div class="cashier-info"><div class="cashier-avatar">S</div><div class="cashier-name">Sarah O.</div></div><div class="cashier-stats"><div class="cashier-total num">USh 450,000</div><div class="cashier-count">3 sales</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="paper-card recent-table">
+    <div class="table-header">
+      <div><div class="table-label">Recent activity</div><div class="table-title">Latest transactions</div></div>
+      <div class="table-count"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>12 in range</div>
+    </div>
+    <div class="table-body">
+      <table>
+        <thead><tr><th>Number</th><th>Date</th><th>Cashier</th><th>Customer</th><th style="text-align:right;">Total</th></tr></thead>
+        <tbody>
+          <tr><td class="num" style="font-size:9px;">RCPT-001</td><td style="color:#5e697a;">Oct 15</td><td>Amina K.</td><td style="color:#5e697a;">Walk-in</td><td class="num" style="text-align:right;font-weight:700;">USh 58,100</td></tr>
+          <tr><td class="num" style="font-size:9px;">RCPT-002</td><td style="color:#5e697a;">Oct 15</td><td>John M.</td><td style="color:#5e697a;">Acme Corp</td><td class="num" style="text-align:right;font-weight:700;">USh 286,150</td></tr>
+          <tr><td class="num" style="font-size:9px;">RCPT-003</td><td style="color:#5e697a;">Oct 14</td><td>Sarah O.</td><td style="color:#5e697a;">Walk-in</td><td class="num" style="text-align:right;font-weight:700;">USh 37,170</td></tr>
+          <tr><td class="num" style="font-size:9px;">RCPT-004</td><td style="color:#5e697a;">Oct 14</td><td>Amina K.</td><td style="color:#5e697a;">Jane Doe</td><td class="num" style="text-align:right;font-weight:700;">USh 295,000</td></tr>
+          <tr><td class="num" style="font-size:9px;">RCPT-005</td><td style="color:#5e697a;">Oct 13</td><td>John M.</td><td style="color:#5e697a;">TechStart</td><td class="num" style="text-align:right;font-weight:700;">USh 218,300</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="text-xs flex items-center gap-2" style="color:#5e697a;">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    47 customers on the register
+  </div>
+</div>
+<script>
+function setPeriod(p, btn) { document.querySelectorAll('.period-chip').forEach(c => c.classList.remove('active')); btn.classList.add('active'); }
+function setMonthYear() {}
+function applyMonthYear() {}
+function setCustomRange() {}
+</script>
+</body>
+</html>
