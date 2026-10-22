@@ -4,7 +4,11 @@ import path from "path";
 
 // Local dev serves at / (localhost:8080); production builds target /pixobooks/.
 export default defineConfig(({ command }) => ({
+<<<<<<< HEAD
   base: command === "serve" ? "/" : "/",
+=======
+  base: "/",
+>>>>>>> 6e4361de6ecd5c564e21c8b7220dcaec6723d47b
   plugins: [react()],
   resolve: {
     alias: {
