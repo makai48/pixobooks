@@ -1,23 +1,22 @@
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
-// Local dev serves at / (localhost:8080); production builds target /pixobooks/.
-export default defineConfig(({ command }) => ({
-<<<<<<< HEAD
-  base: command === "serve" ? "/" : "/",
-=======
+// Local dev and production use the root path.
+export default defineConfig({
   base: "/",
->>>>>>> 6e4361de6ecd5c564e21c8b7220dcaec6723d47b
+
   plugins: [react()],
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    // Prevent duplicate React copies (root cause of
-    // `Cannot read properties of null (reading 'useState')`).
+    // Prevent duplicate React copies.
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
+
   optimizeDeps: {
     include: [
       "react",
@@ -28,19 +27,26 @@ export default defineConfig(({ command }) => ({
       "@tanstack/react-query",
     ],
   },
+
   server: {
     host: "::",
     port: 8080,
   },
+
   build: {
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ["react", "react-dom", "react-router-dom", "@tanstack/react-query"],
+          vendor: [
+            "react",
+            "react-dom",
+            "react-router-dom",
+            "@tanstack/react-query",
+          ],
           pdf: ["jspdf"],
         },
       },
     },
   },
-}));
+});
