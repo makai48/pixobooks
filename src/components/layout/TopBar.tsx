@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import BranchSwitcher from "@/components/layout/BranchSwitcher";
 import BusinessSwitcher from "@/components/layout/BusinessSwitcher";
 import OfflineIndicator from "@/components/layout/OfflineIndicator";
 
@@ -13,6 +12,7 @@ const TITLES: Record<string, string> = {
   "/held": "Held Tickets",
   "/quotes": "Quotes & Estimates",
   "/inventory": "Inventory & BOM",
+  "/stock-taking": "Stock Taking",
   "/purchase-orders": "Purchase Orders",
   "/customers": "Customer Register",
   "/sales-report": "Sales Report",
@@ -80,7 +80,6 @@ export default function TopBar({ onOpenMenu, collapsed, onToggleCollapse }: Prop
       </div>
 <div className="flex items-center gap-2 md:gap-3 shrink-0">
           <BusinessSwitcher />
-          <BranchSwitcher />
           <OfflineIndicator />
         <div className="hidden lg:flex items-center gap-2 text-xs text-ink-mute">
           <RefreshCw className="w-5 h-5" />

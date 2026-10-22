@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import MobileBottomNav from "./MobileBottomNav";
+import InventoryTabs from "./InventoryTabs";
 import {
   setActiveBusiness,
   useActiveBusiness,
@@ -96,6 +97,7 @@ export default function AppLayout() {
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed(!collapsed)}
         />
+        <InventoryTabs />
         <main className="flex-1 overflow-auto pb-20 md:pb-0 scroll-lined">
           <Outlet context={{ collapsed, setCollapsed } satisfies AppOutletContext} />
         </main>

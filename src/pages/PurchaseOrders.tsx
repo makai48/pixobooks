@@ -7,11 +7,7 @@ import {
   Edit3,
   PackageCheck,
   Eye,
-  Boxes,
-  Truck,
-  Ruler,
 } from "lucide-react";
-import SubNav from "@/components/layout/SubNav";
 import { toast } from "sonner";
 import {
   usePurchaseOrders,
@@ -78,14 +74,6 @@ export default function PurchaseOrders() {
 
   return (
     <div className="p-6 space-y-4">
-      <SubNav
-        items={[
-          { to: "/inventory", label: "Inventory & BOM", icon: Boxes },
-          { to: "/purchase-orders", label: "Purchase Orders", icon: ShoppingBag },
-          { to: "/suppliers", label: "Suppliers", icon: Truck },
-          { to: "/settings", label: "Unit Conversions", icon: Ruler },
-        ]}
-      />
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Draft POs" value={String(summary.draft)} />
         <Stat label="Awaiting delivery" value={String(summary.open)} tone="cyan" />

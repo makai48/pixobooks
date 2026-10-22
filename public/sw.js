@@ -1,13 +1,13 @@
 /* PixoBooks PWA service worker — offline-capable app shell.
- * Scope-agnostic: works under / (dev) and /pixobooks/ (prod) via
- * registration scope. Same-origin GET assets are cache-first so lazy
- * route chunks survive a hard refresh while offline. API/backend calls
- * are never cached. Navigations fall back to cached index.html. */
-const CACHE_NAME = "pixobooks-shell-v4";
+ * Scope-agnostic: works under any base path via the registration scope.
+ * Same-origin GET assets are cache-first so lazy route chunks survive a
+ * hard refresh while offline. API/backend calls are never cached.
+ * Navigations fall back to cached index.html. */
+const CACHE_NAME = "pixobooks-shell-v5";
 
 // Never cache when served from localhost/dev — stale transformed modules
-// break module identity (duplicate React). This also lets a v4 worker
-// evict poisoned v2/v3 caches on the next online load.
+// break module identity (duplicate React). This also lets a fresh worker
+// evict poisoned older caches on the next online load.
 function isLocalhost(hostname) {
   return (
     hostname === "localhost" ||

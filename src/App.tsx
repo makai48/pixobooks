@@ -25,7 +25,6 @@ const ChangePassword = lazy(() => import("@/pages/ChangePassword"));
 const PendingApproval = lazy(() => import("@/pages/PendingApproval"));
 const PayrollHistoryPage = lazy(() => import("@/pages/PayrollHistory"));
 const FinancialStatementsPage = lazy(() => import("@/pages/FinancialStatements"));
-const UnitConversions = lazy(() => import("@/pages/UnitConversions"));
 const StockTaking = lazy(() => import("@/pages/StockTaking"));
 const ClientBilling = lazy(() => import("@/pages/ClientBilling"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -83,7 +82,6 @@ export default function App() {
           <Route path="quotes" element={<Suspense fallback={<PageFallback />}><Quotes /></Suspense>} />
           <Route path="inventory" element={<Suspense fallback={<PageFallback />}><Inventory /></Suspense>} />
           <Route path="stock-taking" element={<Suspense fallback={<PageFallback />}><StockTaking /></Suspense>} />
-          <Route path="unit-conversions" element={<Suspense fallback={<PageFallback />}><UnitConversions /></Suspense>} />
           <Route path="purchase-orders" element={<Suspense fallback={<PageFallback />}><PurchaseOrders /></Suspense>} />
           <Route path="suppliers" element={<Suspense fallback={<PageFallback />}><Suppliers /></Suspense>} />
           <Route path="customers" element={<Suspense fallback={<PageFallback />}><Customers /></Suspense>} />

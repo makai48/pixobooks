@@ -25,7 +25,7 @@ import {
   Palette,
   Percent,
   Coins,
-  Ruler,
+
   Download,
   GitBranch,
   ShieldCheck,
@@ -60,7 +60,6 @@ import { EXPORT_CATEGORIES, downloadExport, type ExportCategory } from "@/lib/ex
 import { canAddBranch, getPlanLimits } from "@/lib/billing";
 import { upgradeToast } from "@/components/billing/UpgradePrompt";
 import BillingSection from "@/components/billing/BillingSection";
-import UomManagerModal from "@/components/features/uom/UomManagerModal";
 import PrinterDevicePicker from "@/components/features/settings/PrinterDevicePicker";
 import CountrySelect from "@/components/common/CountrySelect";
 import PhoneInput from "@/components/common/PhoneInput";
@@ -91,7 +90,7 @@ const SECTIONS = [
   { id: "discounts", label: "Discounts" },
   { id: "branches", label: "Branches" },
   { id: "theme", label: "Theme" },
-  { id: "units", label: "Units" },
+
   { id: "billing", label: "Billing" },
   { id: "export", label: "Backup & Export" },
 ] as const;
@@ -140,7 +139,7 @@ export default function SettingsPage() {
   const baseline = useRef<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
-  const [unitModalOpen, setUnitModalOpen] = useState(false);
+
   const [exporting, setExporting] = useState<ExportCategory | null>(null);
   const [newCategory, setNewCategory] = useState("");
   const [activeSection, setActiveSection] = useState<string>("business");
@@ -198,7 +197,7 @@ export default function SettingsPage() {
   const canInvoice = can("settings.invoice") || can("settings.manage");
   const canPrinter = can("settings.printer") || can("settings.manage");
   const canLoyalty = can("settings.loyalty") || can("settings.manage");
-  const canUnits = can("settings.units") || can("settings.manage");
+
   const canTaxes = can("settings.taxes") || can("settings.manage");
   const canTheme = can("settings.theme") || can("settings.manage");
   const canDiscount = can("settings.discount") || can("settings.manage");
@@ -206,7 +205,7 @@ export default function SettingsPage() {
   const canExport = can("settings.export") || can("settings.manage");
   const anyAccess =
     canShop || canReceipt || canInvoice || canPrinter || canLoyalty ||
-    canUnits || canTaxes || canTheme || canDiscount || canCategories || canExport;
+    canTaxes || canTheme || canDiscount || canCategories || canExport;
 
   const sectionPerm: Record<string, boolean> = {
     business: canShop,
@@ -217,7 +216,6 @@ export default function SettingsPage() {
     discounts: canDiscount || canLoyalty,
     branches: canShop,
     theme: canTheme,
-    units: canUnits,
     billing: canShop,
     export: canExport,
   };
@@ -2048,42 +2046,10 @@ export default function SettingsPage() {
             </Section>
           )}
 
-          {canUnits && (
-            <Section
-              id="units"
-              title="9. Units & Conversions"
-              desc="Maintain the unit master and the global conversion relationships"
-            >
-              <div className="teal-banner-box" style={{ marginTop: 0 }}>
-                <div className="teal-header">
-                  <div className="teal-badge-icon">
-                    <Ruler className="icon" />
-                  </div>
-                  <div>
-                    <div className="teal-title">Units &amp; Conversion Table</div>
-                    <div className="teal-sub">
-                      One master list and one relationship table drive BOM calculations, stock
-                      adjustments and quantity conversions everywhere in the shop.
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  style={{ alignSelf: "flex-start" }}
-                  onClick={() => setUnitModalOpen(true)}
-                >
-                  <Ruler className="icon" />
-                  Open units &amp; conversions
-                </button>
-              </div>
-            </Section>
-          )}
-
           {canShop && (
             <Section
               id="billing"
-              title="10. Billing & Plan"
+              title="9. Billing & Plan"
               desc="Plan limits, subscription status, and cloud backup"
             >
               <BillingSection />
@@ -2093,7 +2059,7 @@ export default function SettingsPage() {
           {canExport && (
             <Section
               id="export"
-              title="11. Data Exports & System Backup"
+              title="10. Data Exports & System Backup"
               desc="Export structured JSON tables or generate real-time offline encrypted backups"
             >
               <div className="grid-3">
@@ -2155,7 +2121,7 @@ export default function SettingsPage() {
         <span>{notice || "Settings saved successfully"}</span>
       </div>
 
-      {unitModalOpen && <UomManagerModal onClose={() => setUnitModalOpen(false)} />}
+
     </div>
   );
 }

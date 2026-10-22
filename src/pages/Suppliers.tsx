@@ -10,11 +10,7 @@ import {
   Trash2,
   Package,
   User as UserIcon,
-  Boxes,
-  ShoppingBag,
-  Ruler,
 } from "lucide-react";
-import SubNav from "@/components/layout/SubNav";
 import { toast } from "sonner";
 import { useSuppliers, useDeleteSupplier } from "@/hooks/useSuppliers";
 import { useShopSettings } from "@/hooks/useShopSettings";
@@ -51,14 +47,6 @@ export default function Suppliers() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <SubNav
-        items={[
-          { to: "/inventory", label: "Inventory & BOM", icon: Boxes },
-          { to: "/purchase-orders", label: "Purchase Orders", icon: ShoppingBag },
-          { to: "/suppliers", label: "Suppliers", icon: Truck },
-          { to: "/settings", label: "Unit Conversions", icon: Ruler },
-        ]}
-      />
       <div className="paper-card p-4 flex flex-col md:flex-row md:items-center gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />

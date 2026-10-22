@@ -8,15 +8,9 @@ import {
   Layers,
   Wrench,
   AlertTriangle,
-  Boxes,
-  ShoppingBag,
-  Truck,
-  Ruler,
-  ClipboardList,
   Package,
   Upload,
 } from "lucide-react";
-import SubNav from "@/components/layout/SubNav";
 // Item image column removed from list views by design — images remain in ItemModal edit view.
 import { toast } from "sonner";
 import { useItems, useDeleteItem, useSeedSampleData, usePurgeDemoData } from "@/hooks/useItems";
@@ -116,15 +110,6 @@ export default function Inventory() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <SubNav
-        items={[
-          { to: "/inventory", label: "Inventory & BOM", icon: Boxes },
-          { to: "/purchase-orders", label: "Purchase Orders", icon: ShoppingBag },
-          { to: "/suppliers", label: "Suppliers", icon: Truck },
-          { to: "/stock-taking", label: "Stock Taking", icon: ClipboardList },
-          { to: "/unit-conversions", label: "Unit Conversions", icon: Ruler },
-        ]}
-      />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Products (BOM)" value={String(stats.products)} icon={Layers} />
         <Stat label="Ready items" value={String(stats.ready)} />

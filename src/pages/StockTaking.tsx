@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import {
-  Boxes, ShoppingBag, Truck, Ruler, ClipboardList, Download, Plus,
+  ClipboardList, Download, Plus,
   X, ChevronLeft, ChevronRight, AlertTriangle, TrendingUp,
   Package, ArrowUpRight, ArrowDownRight, Wallet, Edit3,
 } from "lucide-react";
 import { toast } from "sonner";
-import SubNav from "@/components/layout/SubNav";
 import { useItems } from "@/hooks/useItems";
 import { useSales } from "@/hooks/useSales";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
@@ -328,16 +327,6 @@ export default function StockTaking() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <SubNav
-        items={[
-          { to: "/inventory", label: "Inventory & BOM", icon: Boxes },
-          { to: "/purchase-orders", label: "Purchase Orders", icon: ShoppingBag },
-          { to: "/suppliers", label: "Suppliers", icon: Truck },
-          { to: "/stock-taking", label: "Stock Taking", icon: ClipboardList },
-          { to: "/unit-conversions", label: "Unit Conversions", icon: Ruler },
-        ]}
-      />
-
       {/* Period control */}
       <div className="paper-card p-3 md:p-4 flex flex-col md:flex-row md:items-center gap-3">
         <div className="flex items-center gap-2 text-ink-mute">

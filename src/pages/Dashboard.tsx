@@ -7,6 +7,7 @@ import {
   CreditCard,
   Banknote,
   ArrowLeftRight,
+  ArrowLeft,
   X,
   PauseCircle,
   ScanLine,
@@ -740,6 +741,15 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCartMobile(false)}
+              aria-label="Back to products"
+              title="Back to products — your ticket is kept"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 shrink-0 rounded-full border border-magenta-reg bg-magenta-reg text-white shadow-sm transition active:scale-95 hover:brightness-105"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
             <CustomerCombobox
               customers={customers}
               value={customerId}
