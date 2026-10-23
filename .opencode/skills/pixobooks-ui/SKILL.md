@@ -50,7 +50,7 @@ Use for UI work in this repo when the task references a PixoBooks design, `code.
 - Expose all `EXPORT_CATEGORIES`, not just the design's sample three.
 
 ## UOM manager specifics
-- `src/components/features/uom/UomManagerModal.tsx` is the Settings unit/conversion workspace. It uses `.uom` styles from `uom-manager.css`, portaled to `document.body`.
+- `src/components/features/uom/UomManagerModal.tsx` is the unit/conversion workspace. It is opened from the `Units` tab in `src/components/layout/InventoryTabs.tsx` (not Settings), uses `.uom` styles from `uom-manager.css`, and is portaled to `document.body`.
 - Desktop keeps both panes side-by-side; mobile stacks them inside a fixed bottom sheet. Search/filter toolbars stay at the top of each pane while only the split area scrolls.
 - Unit deletion is dependency-aware: use `findUomDependencies`/`useDeleteUom`, require an existing or inline-created replacement, and make historical PO/sale usage deactivate-only.
 - Conversion deletion is guarded by `useDeleteUnitConversion`; do not allow removing an endpoint that inventory items use.

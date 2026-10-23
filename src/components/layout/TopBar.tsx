@@ -15,6 +15,7 @@ const TITLES: Record<string, string> = {
   "/stock-taking": "Stock Taking",
   "/purchase-orders": "Purchase Orders",
   "/customers": "Customer Register",
+  "/client-billing": "Client Billing",
   "/sales-report": "Sales Report",
   "/expenses": "Expenses",
   "/financial-statements": "Financial Statements",
@@ -23,6 +24,7 @@ const TITLES: Record<string, string> = {
   "/payroll-history": "Payroll History",
   "/audit-log": "Owner Audit Log",
   "/password-resets": "Password Requests",
+  "/account-approvals": "Account Approvals",
   "/settings": "Shop Settings",
   "/suppliers": "Suppliers",
 };
@@ -86,14 +88,14 @@ export default function TopBar({ onOpenMenu, collapsed, onToggleCollapse }: Prop
           {formatDateTime(now)}
         </div>
         <button
-          className="btn btn-primary h-9 px-3 md:px-4"
+          className="btn btn-primary btn-sm md:h-9 md:px-4"
           onClick={async () => {
             await logout();
             toast.success("Signed out");
             nav("/login");
           }}
         >
-          <LogOut className="w-6 h-6" />
+          <LogOut className="w-4 h-4 md:w-6 md:h-6" />
           <span className="hidden sm:inline">Sign out</span>
         </button>
       </div>

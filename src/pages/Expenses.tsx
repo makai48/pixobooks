@@ -21,13 +21,16 @@ import { useShopSettings, useUpdateShopSettings } from "@/hooks/useShopSettings"
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import ExpenseModal from "@/components/features/expenses/ExpenseModal";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import GlassSelect from "@/components/ui/GlassSelect";
+import StatCard from "@/components/ui/StatCard";
 import type { Expense } from "@/types";
 import {
   DRAWINGS_CATEGORY,
   EXPENSE_CATEGORIES,
   PROTECTED_EXPENSE_CATEGORIES,
 } from "@/types";
-import { cn, download, formatCurrency, formatDate, todayISO } from "@/lib/utils";
+import { cn, download, formatCurrency, formatDate, formatMoney, todayISO } from "@/lib/utils";
 
 type Tab = "expenses" | "drawings";
 
@@ -107,238 +110,230 @@ export default function Expenses() {
     setModalOpen(true);
   };
 
+  const currency = settings?.currency || "USD";
+
   return (
-    <div className="p-6 space-y-4">
-      <div className="paper-card p-1.5 flex items-center gap-1 overflow-x-auto scrollbar-none">
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
+      <div className="paper-card p-1.5 max-md:p-1 flex items-center gap-1 max-md:gap-0.5 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setTab("expenses")}
           className={cn(
-            "inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-xs font-semibold uppercase tracking-widest transition",
+            "inline-flex items-center gap-1.5 h-9 max-md:h-7 px-3 max-md:px-2 rounded-md text-xs max-md:text-[10px] font-semibold uppercase tracking-widest max-md:tracking-wide transition",
             tab === "expenses" ? "bg-ink text-paper" : "text-ink-mute hover:text-ink hover:bg-paper"
           )}
         >
-          <Receipt className="w-3.5 h-3.5" /> Expenses
+          <Receipt className="w-3.5 h-3.5 max-md:w-3 max-md:h-3" /> Expenses
         </button>
         <button
           onClick={() => setTab("drawings")}
           className={cn(
-            "inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-xs font-semibold uppercase tracking-widest transition",
+            "inline-flex items-center gap-1.5 h-9 max-md:h-7 px-3 max-md:px-2 rounded-md text-xs max-md:text-[10px] font-semibold uppercase tracking-widest max-md:tracking-wide transition",
             tab === "drawings" ? "bg-ink text-paper" : "text-ink-mute hover:text-ink hover:bg-paper"
           )}
         >
-          <ArrowDownRight className="w-3.5 h-3.5" /> Drawings
+          <ArrowDownRight className="w-3.5 h-3.5 max-md:w-3 max-md:h-3" /> Drawings
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="paper-card p-4">
-          <div className="text-[11px] uppercase tracking-widest text-ink-mute">
-            {tab === "drawings" ? "Owner drawings" : "Total in range"}
-          </div>
-          <div className={cn(
-            "font-display text-3xl font-bold num mt-1",
-            tab === "drawings" ? "text-danger" : "text-warning"
-          )}>
-            {formatCurrency(total, settings?.currency)}
-          </div>
-          <div className="text-xs text-ink-mute mt-1">
-            {filtered.length} record{filtered.length !== 1 ? "s" : ""}
-            {tab === "drawings" && " · fed to Daily Balancing"}
-          </div>
-        </div>
-        <div className="paper-card p-4 md:col-span-2">
-          <div className="text-[11px] uppercase tracking-widest text-ink-mute">
-            {tab === "drawings" ? "Recent drawings" : "Category breakdown"}
-          </div>
-          {byCat.length === 0 ? (
-            <div className="text-sm text-ink-mute mt-2">
-              {tab === "drawings" ? "No owner drawings in range yet." : "No expenses in range."}
-            </div>
-          ) : (
-            <div className="mt-3 space-y-2">
-              {byCat.map(([cat, amt]) => (
-                <div key={cat} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span>{cat}</span>
-                    <span className="num text-ink-mute">
-                      {formatCurrency(amt, settings?.currency)}
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded bg-ink/5 overflow-hidden">
-                    <div
-                      className={cn("h-full", tab === "drawings" ? "bg-danger" : "bg-yellow-reg")}
-                      style={{ width: `${(amt / (byCat[0][1] || 1)) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      <div className="grid grid-cols-3 gap-1.5 md:gap-3">
+        <StatCard
+          label={tab === "drawings" ? "Owner drawings" : "Total in range"}
+          value={formatMoney(total, currency)}
+          fullValue={formatCurrency(total, currency)}
+          tone={tab === "drawings" ? "danger" : "warning"}
+        />
+        <StatCard label="Records" value={String(filtered.length)} />
+        <StatCard label="Categories" value={String(byCat.length)} />
       </div>
 
-      <div className="paper-card p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
-        <div className="md:col-span-2 relative self-end">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
+      <div className="paper-card p-2.5 md:p-4">
+        <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">
+          {tab === "drawings" ? "Recent drawings" : "Category breakdown"}
+        </div>
+        {byCat.length === 0 ? (
+          <div className="text-[10px] md:text-sm text-ink-mute mt-1 md:mt-2">
+            {tab === "drawings" ? "No owner drawings in range yet." : "No expenses in range."}
+          </div>
+        ) : (
+          <div className="mt-1.5 md:mt-3 space-y-1 md:space-y-2">
+            {byCat.slice(0, 6).map(([cat, amt]) => (
+              <div key={cat} className="space-y-0.5 md:space-y-1">
+                <div className="flex justify-between text-[10px] md:text-sm leading-tight">
+                  <span className="truncate pr-2">{cat}</span>
+                  <span className="num text-ink-mute shrink-0">
+                    {formatMoney(amt, currency)}
+                  </span>
+                </div>
+                <div className="h-1 md:h-1.5 rounded bg-ink/5 overflow-hidden">
+                  <div
+                    className={cn("h-full", tab === "drawings" ? "bg-danger" : "bg-yellow-reg")}
+                    style={{ width: `${(amt / (byCat[0][1] || 1)) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="paper-card p-2.5 md:p-4 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:grid-cols-5 items-center md:items-end gap-x-1.5 gap-y-1.5 md:gap-3">
+        <div className="relative col-span-4 md:col-span-2">
+          <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={tab === "drawings" ? "Search notes or reference" : "Search description or vendor"}
-            className="input pl-9"
+            className="input input-sm pl-7 md:pl-9"
           />
         </div>
-        <div>
-          <label htmlFor="ex-from" className="label">From</label>
-          <input
+        <div className="max-md:contents">
+          <label htmlFor="ex-from" className="label max-md:text-[9px] max-md:whitespace-nowrap">From</label>
+          <GlassDatePicker
             id="ex-from"
-            type="date"
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="input mt-1"
+            onChange={setFrom}
+            ariaLabel="From date"
+            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
           />
         </div>
-        <div>
-          <label htmlFor="ex-to" className="label">To</label>
-          <input
+        <div className="max-md:contents">
+          <label htmlFor="ex-to" className="label max-md:text-[9px] max-md:whitespace-nowrap">To</label>
+          <GlassDatePicker
             id="ex-to"
-            type="date"
             value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="input mt-1"
+            onChange={setTo}
+            ariaLabel="To date"
+            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
           />
         </div>
         {tab === "expenses" && (
-          <div>
-            <label htmlFor="ex-category" className="label">Category</label>
-            <select
+          <div className="max-md:contents">
+            <label htmlFor="ex-category" className="label max-md:text-[9px] max-md:whitespace-nowrap">Category</label>
+            <GlassSelect
               id="ex-category"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="input mt-1"
-            >
-              <option value="All">All categories</option>
-              {effectiveCategories
-                .filter((c) => c !== DRAWINGS_CATEGORY)
-                .map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-            </select>
+              onChange={setCategory}
+              ariaLabel="Expense category"
+              options={[
+                { value: "All", label: "All categories" },
+                ...effectiveCategories
+                  .filter((c) => c !== DRAWINGS_CATEGORY)
+                  .map((c) => ({ value: c, label: c })),
+              ]}
+              className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+            />
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-2 flex-wrap">
-        {can("expenses.manage") && tab === "expenses" && (
-          <button
-            onClick={() => setCategoryMgrOpen(true)}
-            className="btn btn-outline"
-            title="Add, rename or delete expense categories"
-          >
-            <Settings2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Categories</span>
+      <div className="flex items-center justify-between flex-wrap gap-1.5 md:gap-2">
+        <div className="text-[10px] md:text-xs text-ink-mute">
+          {filtered.length} {tab === "drawings" ? "drawing" : "expense"}
+          {filtered.length === 1 ? "" : "s"} · {from} → {to}
+        </div>
+        <div className="flex items-center gap-1 md:gap-2 flex-wrap max-md:flex-1 max-md:justify-end">
+          {can("expenses.manage") && tab === "expenses" && (
+            <button
+              onClick={() => setCategoryMgrOpen(true)}
+              className="btn btn-outline btn-sm"
+              title="Add, rename or delete expense categories"
+            >
+              <Settings2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Categories</span>
+            </button>
+          )}
+          <button onClick={exportCsv} className="btn btn-outline btn-sm">
+            <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Export</span>
           </button>
-        )}
-        <button onClick={exportCsv} className="btn btn-outline">
-          <Download className="w-4 h-4" /> Export
-        </button>
-        {can("expenses.manage") && (
-          <button
-            onClick={() => openNew(tab === "drawings")}
-            className="btn btn-primary"
-          >
-            <Plus className="w-4 h-4" />
-            {tab === "drawings" ? "New drawing" : "New expense"}
-          </button>
-        )}
+          {can("expenses.manage") && (
+            <button
+              onClick={() => openNew(tab === "drawings")}
+              className="btn btn-primary btn-sm"
+            >
+              <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              {tab === "drawings" ? "New drawing" : "New expense"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="paper-card overflow-hidden">
-        <div className="overflow-auto max-h-[60vh]">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[11px] uppercase tracking-widest text-ink-mute bg-paper/60 sticky top-0">
-                <th className="p-3 pl-5">Date</th>
-                <th className="p-3">Category</th>
-                <th className="p-3">Description</th>
-                {tab === "expenses" && <th className="p-3">Vendor</th>}
-                <th className="p-3">Method</th>
-                <th className="p-3">Recorded by</th>
-                <th className="p-3 text-right">Amount</th>
-                {can("expenses.manage") && <th className="p-3 pr-5"></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="p-10 text-center text-ink-mute">
-                    Loading...
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-10 text-center">
-                    <Wallet className="w-8 h-8 text-ink-mute mx-auto" />
-                    <div className="mt-2 text-ink-mute text-sm">
-                      No {tab === "drawings" ? "drawings" : "expenses"} in this range.
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((e) => (
-                  <tr key={e.id} className="border-t hover:bg-paper/40">
-                    <td className="p-3 pl-5 text-xs">{formatDate(e.expenseDate)}</td>
-                    <td className="p-3">
-                      <span className={cn(
-                        "chip border",
-                        tab === "drawings"
-                          ? "bg-danger/10 text-danger border-danger/30"
-                          : "bg-yellow-reg/10 text-yellow-reg border-yellow-reg/30"
-                      )}>
-                        {e.category}
-                      </span>
-                    </td>
-                    <td className="p-3 font-medium">{e.description}</td>
-                    {tab === "expenses" && <td className="p-3 text-ink-mute">{e.vendor || "—"}</td>}
-                    <td className="p-3 text-xs text-ink-mute">{e.paymentMethod}</td>
-                    <td className="p-3 text-xs text-ink-mute">{e.createdByName}</td>
-                    <td className="p-3 text-right num font-semibold">
-                      {formatCurrency(e.amount, settings?.currency)}
-                    </td>
-                    {can("expenses.manage") && (
-                      <td className="p-3 pr-5 text-right">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => {
-                              setEdit(e);
-                              setPreselectDrawing(e.category === DRAWINGS_CATEGORY);
-                              setModalOpen(true);
-                            }}
-                            className="btn btn-ghost h-8 w-8 p-0"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              confirm(`Delete "${e.description}"?`) &&
-                              del.mutate(e.id, {
-                                onSuccess: () => toast.success("Deleted"),
-                              })
-                            }
-                            className="btn btn-ghost h-8 w-8 p-0 text-danger"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {isLoading ? (
+          <div className="p-6 md:p-10 text-center text-ink-mute text-sm">Loading...</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-8 md:p-10 text-center">
+            <Wallet className="w-7 h-7 md:w-8 md:h-8 text-ink-mute mx-auto" />
+            <div className="mt-1.5 md:mt-2 text-ink-mute text-[11px] md:text-sm">
+              No {tab === "drawings" ? "drawings" : "expenses"} in this range.
+            </div>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {filtered.map((e) => (
+              <div
+                key={e.id}
+                className="flex items-center h-[27px] max-md:h-[21px] hover:bg-paper/50 transition text-[11px] leading-tight"
+              >
+                <span className="hidden md:inline w-20 shrink-0 text-[10px] text-ink-mute pl-4">
+                  {formatDate(e.expenseDate)}
+                </span>
+                <span
+                  className={cn(
+                    "chip border shrink-0 max-md:text-[8px] max-md:px-1 max-md:py-px max-md:max-w-[56px] max-md:truncate md:ml-2 md:text-[10px]",
+                    tab === "drawings"
+                      ? "bg-danger/10 text-danger border-danger/30"
+                      : "bg-yellow-reg/10 text-yellow-reg border-yellow-reg/30"
+                  )}
+                >
+                  {e.category}
+                </span>
+                <span className="flex-1 min-w-0 truncate font-medium text-[11px] md:text-sm px-1.5 md:px-3" title={e.description}>
+                  {e.description}
+                </span>
+                <span className="hidden lg:inline w-28 truncate text-[10px] text-ink-mute shrink-0">
+                  {e.vendor || "—"}
+                </span>
+                <span className="hidden md:inline w-16 text-[10px] text-ink-mute shrink-0">
+                  {e.paymentMethod}
+                </span>
+                <span className="hidden xl:inline w-24 truncate text-[10px] text-ink-mute shrink-0">
+                  {e.createdByName}
+                </span>
+                <span className="num font-bold text-[10px] md:text-xs text-right w-16 md:w-24 shrink-0">
+                  {formatMoney(e.amount, currency)}
+                </span>
+                {can("expenses.manage") && (
+                  <span className="flex items-center gap-0.5 md:gap-1 pr-1 md:pr-3 shrink-0">
+                    <button
+                      onClick={() => {
+                        setEdit(e);
+                        setPreselectDrawing(e.category === DRAWINGS_CATEGORY);
+                        setModalOpen(true);
+                      }}
+                      className="h-full w-5 md:h-8 md:w-8 p-0 inline-flex items-center justify-center rounded text-ink-mute hover:bg-paper"
+                      title="Edit"
+                    >
+                      <Edit3 className="w-3 h-3 md:w-4 md:h-4" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        confirm(`Delete "${e.description}"?`) &&
+                        del.mutate(e.id, {
+                          onSuccess: () => toast.success("Deleted"),
+                        })
+                      }
+                      className="h-full w-5 md:h-8 md:w-8 p-0 inline-flex items-center justify-center rounded text-danger hover:bg-danger/10"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                    </button>
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {modalOpen && (
@@ -477,21 +472,21 @@ function ExpenseCategoryManagerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden">
-        <div className="p-4 border-b flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-2 sm:p-4 animate-fade-in">
+      <div className="paper-card w-full max-w-md max-h-[95dvh] flex flex-col overflow-hidden">
+        <div className="p-3 sm:p-4 border-b flex items-center justify-between shrink-0">
           <div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+            <div className="text-[10px] sm:text-[11px] uppercase tracking-widest text-ink-mute">
               Expense ledger
             </div>
-            <h2 className="font-display text-lg font-bold">Manage categories</h2>
+            <h2 className="font-display text-base sm:text-lg font-bold">Manage categories</h2>
           </div>
-          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0">
+          <button onClick={onClose} className="btn btn-ghost h-8 w-8 p-0">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-4 space-y-3 overflow-auto scroll-lined">
-          <div className="flex gap-2">
+        <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 overflow-auto scroll-lined">
+          <div className="flex gap-1.5 sm:gap-2">
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -510,7 +505,7 @@ function ExpenseCategoryManagerModal({
               pool.map((p) => {
                 const locked = isProtected(p);
                 return (
-                  <div key={p} className="p-2.5 flex items-center gap-2">
+                  <div key={p} className="p-2 flex items-center gap-2">
                     {renameFrom === p ? (
                       <>
                         <input
@@ -584,14 +579,14 @@ function ExpenseCategoryManagerModal({
               })
             )}
           </div>
-          <p className="text-[11px] text-ink-mute">
+          <p className="text-[10px] sm:text-[11px] text-ink-mute">
             Renaming a category updates every existing expense using that name.
             Deleting reassigns them to "General". Built-in categories
             (General, Drawings, Salary, Staff Allowance) have hard-wired app
             logic and are protected from removal.
           </p>
         </div>
-        <div className="p-4 border-t flex justify-end gap-2 shrink-0">
+        <div className="p-3 sm:p-4 border-t flex justify-end gap-1.5 sm:gap-2 shrink-0">
           <button onClick={onClose} className="btn btn-outline">
             Cancel
           </button>

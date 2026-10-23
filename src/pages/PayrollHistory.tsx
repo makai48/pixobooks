@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { usePayrollHistory } from "@/hooks/usePayrollHistory";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useAuth } from "@/hooks/useAuth";
-import { cn, download, formatCurrency, formatDate } from "@/lib/utils";
+import GlassSelect from "@/components/ui/GlassSelect";
+import StatCard from "@/components/ui/StatCard";
+import { download, formatCurrency, formatDate, formatMoney } from "@/lib/utils";
 
 export default function PayrollHistoryPage() {
   const { can, isAppOwner } = useAuth();
@@ -63,11 +65,11 @@ export default function PayrollHistoryPage() {
 
   if (!canView) {
     return (
-      <div className="p-8 max-w-lg mx-auto text-center">
-        <div className="paper-card p-8">
-          <Wallet className="w-8 h-8 mx-auto text-ink-mute" />
-          <h2 className="font-display text-xl font-bold mt-3">Restricted</h2>
-          <p className="text-sm text-ink-mute mt-1">
+      <div className="p-4 md:p-8 max-w-lg mx-auto text-center">
+        <div className="paper-card p-6 md:p-8">
+          <Wallet className="w-7 h-7 md:w-8 md:h-8 mx-auto text-ink-mute" />
+          <h2 className="font-display text-lg md:text-xl font-bold mt-2 md:mt-3">Restricted</h2>
+          <p className="text-[11px] md:text-sm text-ink-mute mt-1">
             Only owners and payroll-authorized users can view this log.
           </p>
         </div>
@@ -75,10 +77,11 @@ export default function PayrollHistoryPage() {
     );
   }
 
+  const currency = settings?.currency || "USD";
   const grandTotal = filtered.reduce((s, e) => s + e.amount, 0);
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
       <SubNav
         items={[
           { to: "/employees", label: "Team", icon: UserCog },
@@ -88,70 +91,71 @@ export default function PayrollHistoryPage() {
           { to: "/audit-log", label: "Audit Log", icon: Shield },
         ]}
       />
-      <div className="paper-card p-4 flex flex-col md:flex-row md:items-center gap-3">
+
+      <div className="paper-card p-2.5 md:p-4 flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3">
         <div className="flex-1 min-w-0">
-          <h1 className="font-display text-xl font-bold">Payroll history</h1>
-          <p className="text-xs text-ink-mute">
+          <h1 className="font-display text-base md:text-xl font-bold leading-tight">Payroll history</h1>
+          <p className="text-[10px] md:text-xs text-ink-mute">
             Every Salary expense recorded — grouped by employee and month.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="relative max-md:flex-1 max-md:min-w-[130px]">
+            <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Employee, month..."
-              className="input pl-9 h-10 w-52"
+              className="input input-sm pl-7 md:pl-9 md:w-52"
             />
           </div>
-          <select
+          <GlassSelect
             value={year}
-            onChange={(e) => setYear(e.target.value)}
-            className="input h-10 w-auto"
-          >
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y === "all" ? "All years" : y}
-              </option>
-            ))}
-          </select>
-          <button onClick={exportCsv} className="btn btn-primary h-10">
-            <Download className="w-4 h-4" /> Export CSV
+            onChange={setYear}
+            ariaLabel="Payroll year"
+            options={years.map((y) => ({
+              value: y,
+              label: y === "all" ? "All years" : y,
+            }))}
+            className="input input-sm select-glass"
+          />
+          <button onClick={exportCsv} className="btn btn-primary btn-sm shrink-0">
+            <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Export CSV</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Entries" value={String(filtered.length)} />
-        <Stat
+      <div className="grid grid-cols-3 gap-1.5 md:gap-3">
+        <StatCard label="Entries" value={String(filtered.length)} />
+        <StatCard
           label="Total paid"
-          value={formatCurrency(grandTotal, settings?.currency)}
+          value={formatMoney(grandTotal, currency)}
+          fullValue={formatCurrency(grandTotal, currency)}
         />
-        <Stat label="Employees" value={String(byEmployee.length)} />
-        <Stat label="Year" value={year} />
+        <StatCard label="Employees" value={String(byEmployee.length)} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-1 paper-card p-4">
-          <h3 className="font-display text-lg font-bold mb-2">By employee</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
+        <div className="md:col-span-1 paper-card p-2.5 md:p-4">
+          <h3 className="font-display text-sm md:text-lg font-bold mb-1 md:mb-2">By employee</h3>
           {byEmployee.length === 0 ? (
-            <div className="text-sm text-ink-mute">No payroll yet.</div>
+            <div className="text-[11px] md:text-sm text-ink-mute">No payroll yet.</div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-0.5 md:space-y-1">
               {byEmployee.map((e) => (
                 <div
                   key={e.name}
-                  className="flex items-center justify-between p-2 rounded hover:bg-paper/50"
+                  className="flex items-center justify-between h-[26px] md:h-10 px-1.5 md:px-2 rounded hover:bg-paper/50"
                 >
                   <div className="min-w-0">
-                    <div className="font-semibold truncate">{e.name}</div>
-                    <div className="text-[11px] text-ink-mute">
+                    <div className="font-semibold text-[10px] md:text-sm truncate leading-tight">{e.name}</div>
+                    <div className="text-[8px] md:text-[11px] text-ink-mute leading-tight">
                       {e.count} payment{e.count === 1 ? "" : "s"}
                     </div>
                   </div>
-                  <div className="num font-bold">
-                    {formatCurrency(e.total, settings?.currency)}
+                  <div className="num font-bold text-[10px] md:text-sm shrink-0">
+                    {formatMoney(e.total, currency)}
                   </div>
                 </div>
               ))}
@@ -160,37 +164,43 @@ export default function PayrollHistoryPage() {
         </div>
 
         <div className="md:col-span-2 paper-card overflow-hidden">
-          <div className="overflow-auto max-h-[65vh] scroll-lined">
-            <table className="w-full text-sm">
+          <div className="overflow-auto max-h-[50vh] md:max-h-[65vh] scroll-lined">
+            <table className="w-full text-[11px] md:text-sm">
               <thead>
-                <tr className="text-left text-[11px] uppercase tracking-widest text-ink-mute bg-paper/60 sticky top-0">
-                  <th className="p-3 pl-5">Date</th>
-                  <th className="p-3">Employee</th>
-                  <th className="p-3">Month</th>
-                  <th className="p-3 text-right pr-5">Amount</th>
+                <tr className="text-left text-[8px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute bg-paper/60 sticky top-0">
+                  <th className="p-1.5 pl-3 md:p-3 md:pl-5">Date</th>
+                  <th className="p-1.5 md:p-3">Employee</th>
+                  <th className="p-1.5 md:p-3 hidden md:table-cell">Month</th>
+                  <th className="p-1.5 pr-3 md:p-3 md:pr-5 text-right">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-ink-mute">
+                    <td colSpan={4} className="p-6 md:p-8 text-center text-ink-mute">
                       Loading...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-10 text-center text-ink-mute">
+                    <td colSpan={4} className="p-8 md:p-10 text-center text-ink-mute">
                       No salary entries recorded.
                     </td>
                   </tr>
                 ) : (
                   filtered.map((e) => (
                     <tr key={e.id} className="border-t hover:bg-paper/40">
-                      <td className="p-3 pl-5 text-xs">{formatDate(e.expenseDate)}</td>
-                      <td className="p-3 font-semibold">{e.employeeName}</td>
-                      <td className="p-3 text-xs text-ink-mute">{e.monthKey}</td>
-                      <td className="p-3 pr-5 text-right num font-semibold">
-                        {formatCurrency(e.amount, settings?.currency)}
+                      <td className="px-1.5 md:px-3 pl-3 md:pl-5 h-[21px] md:h-[30px] text-[10px] md:text-xs whitespace-nowrap">
+                        {formatDate(e.expenseDate)}
+                      </td>
+                      <td className="px-1.5 md:px-3 h-[21px] md:h-[30px] font-semibold text-[10px] md:text-sm truncate max-w-[130px] md:max-w-none">
+                        {e.employeeName}
+                      </td>
+                      <td className="px-1.5 md:px-3 h-[21px] md:h-[30px] text-[10px] md:text-xs text-ink-mute hidden md:table-cell">
+                        {e.monthKey}
+                      </td>
+                      <td className="px-1.5 pr-3 md:px-3 md:pr-5 h-[21px] md:h-[30px] text-right num font-semibold text-[10px] md:text-sm whitespace-nowrap">
+                        {formatMoney(e.amount, currency)}
                       </td>
                     </tr>
                   ))
@@ -200,15 +210,6 @@ export default function PayrollHistoryPage() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="paper-card p-4">
-      <div className="text-[11px] uppercase tracking-widest text-ink-mute">{label}</div>
-      <div className={cn("font-display text-2xl font-bold num mt-1")}>{value}</div>
     </div>
   );
 }

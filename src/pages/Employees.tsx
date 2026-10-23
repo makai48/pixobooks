@@ -27,7 +27,6 @@ import {
   UserCheck,
   Clock3,
   Home,
-  Calendar as CalIcon,
   Contact2,
 } from "lucide-react";
 import {
@@ -64,6 +63,8 @@ import {
 import { cn, formatCurrency, formatDate, getMonthMatrix } from "@/lib/utils";
 import { processImageFile } from "@/lib/imageUpload";
 import PhoneInput from "@/components/common/PhoneInput";
+import GlassSelect from "@/components/ui/GlassSelect";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import SubNav from "@/components/layout/SubNav";
 import SharedField from "@/components/common/Field";
 import { canAddUser, getPlanLimits } from "@/lib/billing";
@@ -116,7 +117,7 @@ export default function Employees() {
   };
 
   return (
-    <div className="p-4 md:p-6 flex flex-col gap-4 h-full">
+    <div className="p-2.5 md:p-6 flex flex-col gap-2 md:gap-4 h-full">
       <SubNav
         items={[
           { to: "/employees", label: "Team", icon: UserCog },
@@ -126,13 +127,13 @@ export default function Employees() {
           { to: "/audit-log", label: "Audit Log", icon: Shield },
         ]}
       />
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-2 md:gap-4 flex-1 min-h-0">
       <div className="paper-card overflow-hidden flex flex-col">
-        <div className="p-4 border-b flex items-start justify-between gap-2">
+        <div className="p-2.5 md:p-4 border-b flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">Team members</div>
-            <h2 className="font-display text-lg font-bold">All employees</h2>
-            <p className="text-xs text-ink-mute mt-1">Add, edit or remove any account below.</p>
+            <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">Team members</div>
+            <h2 className="font-display text-sm md:text-lg font-bold">All employees</h2>
+            <p className="text-[10px] md:text-xs text-ink-mute mt-0.5 md:mt-1">Add, edit or remove any account below.</p>
           </div>
           {canManage && (
             <button
@@ -143,32 +144,32 @@ export default function Employees() {
                 }
                 setInviteOpen(true);
               }}
-              className="btn btn-primary h-9 px-3 shrink-0"
+              className="btn btn-primary btn-sm shrink-0"
             >
-              <UserPlus className="w-4 h-4" />
+              <UserPlus className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Add</span>
             </button>
           )}
         </div>
         <div className="flex-1 overflow-auto max-h-[40vh] lg:max-h-none scroll-lined">
           {isLoading ? (
-            <div className="p-6 text-ink-mute text-sm">Loading...</div>
+            <div className="p-4 md:p-6 text-ink-mute text-xs md:text-sm">Loading...</div>
           ) : employees.length === 0 ? (
-            <div className="p-6 text-ink-mute text-sm text-center">No employees yet.</div>
+            <div className="p-4 md:p-6 text-ink-mute text-xs md:text-sm text-center">No employees yet.</div>
           ) : (
             employees.map((e) => (
               <div
                 key={e.id}
                 className={cn(
-                  "w-full p-3 border-b flex items-center gap-2 transition",
+                  "w-full p-1.5 md:p-3 border-b flex items-center gap-1.5 md:gap-2 transition",
                   selected?.id === e.id ? "bg-paper" : "hover:bg-paper/50"
                 )}
               >
                 <button
                   onClick={() => setSelectedId(e.id)}
-                  className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                  className="flex items-center gap-2 md:gap-3 flex-1 min-w-0 text-left"
                 >
-                  <div className="w-10 h-10 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold flex items-center justify-center shrink-0 overflow-hidden">
+                  <div className="w-7 h-7 md:w-10 md:h-10 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold text-[10px] md:text-base flex items-center justify-center shrink-0 overflow-hidden">
                     {e.avatarUrl ? (
                       <img src={e.avatarUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
@@ -176,30 +177,30 @@ export default function Employees() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate flex items-center gap-1.5">
+                    <div className="font-semibold truncate flex items-center gap-1.5 text-[11px] md:text-sm leading-tight">
                       <span className="truncate">{e.name}</span>
                       {e.id === profile?.id && (
-                        <span className="text-[10px] uppercase tracking-widest text-magenta-reg">you</span>
+                        <span className="text-[8px] md:text-[10px] uppercase tracking-widest text-magenta-reg">you</span>
                       )}
                     </div>
-                    <div className="text-[11px] text-ink-mute truncate flex items-center gap-1">
+                    <div className="text-[9px] md:text-[11px] text-ink-mute truncate flex items-center gap-1 leading-tight">
                       <span>{e.role} · {e.permissions.length} perms</span>
                     </div>
                     <ApprovalPill status={e.approvalStatus} mustChange={e.mustChangePassword} />
                   </div>
                   {e.active ? (
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-success shrink-0" />
                   ) : (
-                    <Circle className="w-4 h-4 text-ink-mute shrink-0" />
+                    <Circle className="w-3.5 h-3.5 md:w-4 md:h-4 text-ink-mute shrink-0" />
                   )}
                 </button>
                 {canDelete && !isShopOwner(e.email, e.role) && e.id !== profile?.id && (
                   <button
                     onClick={() => handleDelete(e)}
-                    className="btn btn-ghost h-8 w-8 p-0 text-danger shrink-0"
+                    className="btn btn-ghost h-6 w-6 md:h-8 md:w-8 p-0 text-danger shrink-0"
                     title="Delete employee (permanent)"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
                   </button>
                 )}
               </div>
@@ -225,19 +226,19 @@ export default function Employees() {
                   key={k}
                   onClick={() => setTab(k)}
                   className={cn(
-                    "px-4 h-12 flex items-center gap-2 text-sm font-semibold border-b-2 transition whitespace-nowrap",
+                    "px-2.5 md:px-4 h-9 md:h-12 flex items-center gap-1 md:gap-2 text-[10px] md:text-sm font-semibold border-b-2 transition whitespace-nowrap",
                     tab === k
                       ? "border-magenta-reg text-magenta-reg"
                       : "border-transparent text-ink-mute hover:text-ink"
                   )}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3 h-3 md:w-4 md:h-4" />
                   {label}
                 </button>
               ))}
           </div>
 
-          <div className="flex-1 overflow-auto p-4 md:p-6 scroll-lined">
+          <div className="flex-1 overflow-auto p-2.5 md:p-6 scroll-lined">
             {tab === "profile" && (
               <ProfileTab
                 employee={selected}
@@ -251,7 +252,7 @@ export default function Employees() {
           </div>
         </div>
       ) : (
-        <div className="paper-card p-10 text-center text-ink-mute">
+        <div className="paper-card p-6 md:p-10 text-center text-ink-mute">
           Select an employee or add a new one.
         </div>
       )}
@@ -429,15 +430,12 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
                   </div>
                 </Field>
                 <Field label="Hire date">
-                  <div className="mt-1 relative">
-                    <CalIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                    <input
-                      type="date"
-                      value={form.hireDate}
-                      onChange={(e) => setForm({ ...form, hireDate: e.target.value })}
-                      className="input pl-9"
-                    />
-                  </div>
+                  <GlassDatePicker
+                    value={form.hireDate}
+                    onChange={(v) => setForm({ ...form, hireDate: v })}
+                    ariaLabel="Hire date"
+                    className="input select-glass mt-1"
+                  />
                 </Field>
               </div>
 
@@ -466,17 +464,16 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
 
               <SectionLabel>Temporary password expiry</SectionLabel>
               <Field label="Expires in">
-                <select
-                  value={form.hours}
-                  onChange={(e) => setForm({ ...form, hours: Number(e.target.value) })}
-                  className="input mt-1"
-                >
-                  {TEMP_PASSWORD_HOUR_PRESETS.map((h) => (
-                    <option key={h} value={h}>
-                      {formatHours(h)}
-                    </option>
-                  ))}
-                </select>
+                <GlassSelect
+                  value={String(form.hours)}
+                  onChange={(v) => setForm({ ...form, hours: Number(v) })}
+                  ariaLabel="Temporary password expiry"
+                  options={TEMP_PASSWORD_HOUR_PRESETS.map((h) => ({
+                    value: String(h),
+                    label: formatHours(h),
+                  }))}
+                  className="input select-glass mt-1"
+                />
                 <div className="text-[10px] text-ink-mute mt-1">
                   After this window the temp password stops working and a fresh
                   invite is required.
@@ -772,7 +769,12 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
           <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input mt-1" />
         </Field>
         <Field label="Hire date">
-          <input type="date" value={form.hireDate} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} className="input mt-1" />
+          <GlassDatePicker
+            value={form.hireDate}
+            onChange={(v) => setForm({ ...form, hireDate: v })}
+            ariaLabel="Hire date"
+            className="input select-glass mt-1"
+          />
         </Field>
         <Field label="Emergency contact name">
           <input value={form.emergencyContact} onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })} className="input mt-1" placeholder="Full name" />
@@ -853,7 +855,7 @@ function PayrollTab({ employee }: { employee: Employee }) {
         responsive font size so very large currency values (e.g. "10,000,000
         UGX") remain fully visible inside every card at every viewport.
       */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-3">
         <SalaryStat label="Base salary" value={formatCurrency(salary.base, salary.currency)} />
         <SalaryStat label="Allowances (mo. eq.)" value={formatCurrency(totalAllowancesMonthly, salary.currency)} />
         <SalaryStat label="Gross (monthly)" value={formatCurrency(grossMonthly, salary.currency)} tone="success" />
@@ -865,16 +867,26 @@ function PayrollTab({ employee }: { employee: Employee }) {
           <input type="number" step="0.01" min={0} value={salary.base} onChange={(e) => setSalary({ ...salary, base: Number(e.target.value) })} className="input mt-1 num text-right" />
         </Field>
         <Field label="Currency">
-          <select value={salary.currency} onChange={(e) => setSalary({ ...salary, currency: e.target.value })} className="input mt-1">
-            {CURRENCIES.map((c) => (<option key={c.code} value={c.code}>{c.symbol} {c.code}</option>))}
-          </select>
+          <GlassSelect
+            value={salary.currency}
+            onChange={(v) => setSalary({ ...salary, currency: v })}
+            ariaLabel="Salary currency"
+            options={CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol} ${c.code}` }))}
+            className="input select-glass mt-1"
+          />
         </Field>
         <Field label="Base pay cycle">
-          <select value={salary.payCycle} onChange={(e) => setSalary({ ...salary, payCycle: e.target.value as EmployeeSalary["payCycle"] })} className="input mt-1">
-            <option value="monthly">Monthly</option>
-            <option value="biweekly">Bi-weekly</option>
-            <option value="weekly">Weekly</option>
-          </select>
+          <GlassSelect
+            value={salary.payCycle}
+            onChange={(v) => setSalary({ ...salary, payCycle: v as EmployeeSalary["payCycle"] })}
+            ariaLabel="Base pay cycle"
+            options={[
+              { value: "monthly", label: "Monthly" },
+              { value: "biweekly", label: "Bi-weekly" },
+              { value: "weekly", label: "Weekly" },
+            ]}
+            className="input select-glass mt-1"
+          />
         </Field>
       </div>
 
@@ -902,10 +914,17 @@ function PayrollTab({ employee }: { employee: Employee }) {
                 </div>
                 <div className="col-span-6 md:col-span-2">
                   <label htmlFor={`emp-allow-type-${i}`} className="label">Type</label>
-                  <select id={`emp-allow-type-${i}`} value={a.type} onChange={(e) => updateAllowance(i, { type: e.target.value as "fixed" | "percentage" })} className="input mt-1">
-                    <option value="fixed">Fixed</option>
-                    <option value="percentage">% of base</option>
-                  </select>
+                  <GlassSelect
+                    id={`emp-allow-type-${i}`}
+                    value={a.type}
+                    onChange={(v) => updateAllowance(i, { type: v as "fixed" | "percentage" })}
+                    ariaLabel={`Allowance ${i + 1} type`}
+                    options={[
+                      { value: "fixed", label: "Fixed" },
+                      { value: "percentage", label: "% of base" },
+                    ]}
+                    className="input select-glass mt-1"
+                  />
                 </div>
                 <div className="col-span-6 md:col-span-2">
                   <label htmlFor={`emp-allow-amount-${i}`} className="label">Amount {a.type === "percentage" ? "(%)" : `(${salary.currency})`}</label>
@@ -913,18 +932,20 @@ function PayrollTab({ employee }: { employee: Employee }) {
                 </div>
                 <div className="col-span-10 md:col-span-3">
                   <label htmlFor={`emp-allow-cycle-${i}`} className="label">Pay cycle</label>
-                  <select
+                  <GlassSelect
                     id={`emp-allow-cycle-${i}`}
                     value={a.payCycle || salary.payCycle}
-                    onChange={(e) => updateAllowance(i, { payCycle: e.target.value as Allowance["payCycle"] })}
-                    className="input mt-1"
-                  >
-                    <option value="daily">Daily (per day present)</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Bi-weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="annually">Annually</option>
-                  </select>
+                    onChange={(v) => updateAllowance(i, { payCycle: v as Allowance["payCycle"] })}
+                    ariaLabel={`Allowance ${i + 1} pay cycle`}
+                    options={[
+                      { value: "daily", label: "Daily (per day present)" },
+                      { value: "weekly", label: "Weekly" },
+                      { value: "biweekly", label: "Bi-weekly" },
+                      { value: "monthly", label: "Monthly" },
+                      { value: "annually", label: "Annually" },
+                    ]}
+                    className="input select-glass mt-1"
+                  />
                 </div>
                 <div className="col-span-2 md:col-span-1 flex justify-end">
                   <button onClick={() => removeAllowance(i)} className="btn btn-ghost h-9 w-9 p-0 text-danger">
@@ -976,7 +997,7 @@ function AttendanceTab({ employee }: { employee: Employee }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 md:gap-2">
         <Stat label="Present" value={String(stats.present)} tone="success" />
         <Stat label="Half-day" value={String(stats.halfday)} />
         <Stat label="Leave" value={String(stats.leave)} />
@@ -1079,9 +1100,9 @@ function PermissionsTab({ employee }: { employee: Employee }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {[...grouped.entries()].map(([group, list]) => (
-          <div key={group} className="paper-card p-4">
+          <div key={group} className="paper-card p-2.5 md:p-4">
             <div className="flex items-center justify-between">
-              <div className="text-[11px] uppercase tracking-widest text-ink-mute">{group}</div>
+              <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">{group}</div>
               <button
                 onClick={() => {
                   const groupKeys = list.map((p) => p.key);
@@ -1096,7 +1117,7 @@ function PermissionsTab({ employee }: { employee: Employee }) {
             </div>
             <div className="mt-2 space-y-1.5">
               {list.map((p) => (
-                <label key={p.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                <label key={p.key} className="flex items-center gap-2 text-[11px] md:text-sm cursor-pointer">
                   <input type="checkbox" checked={perms.includes(p.key)} onChange={() => toggle(p.key)} />
                   {p.label}
                 </label>
@@ -1135,16 +1156,16 @@ function SalaryStat({
   textual?: boolean;
 }) {
   return (
-    <div className="paper-card p-3 min-w-0 overflow-hidden">
-      <div className="text-[10px] uppercase tracking-widest text-ink-mute truncate">
+    <div className="paper-card p-2 md:p-3 min-w-0 overflow-hidden">
+      <div className="text-[7px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">
         {label}
       </div>
       <div
         className={cn(
-          "font-display font-bold mt-1 leading-tight break-words",
+          "font-display font-bold mt-0.5 md:mt-1 leading-tight break-words",
           !textual && "num",
           textual && "capitalize",
-          "text-base sm:text-lg md:text-xl",
+          "text-[12px] sm:text-sm md:text-lg",
           tone === "success" && "text-success",
           tone === "danger" && "text-danger"
         )}
@@ -1158,10 +1179,10 @@ function SalaryStat({
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "success" | "danger" }) {
   return (
-    <div className="paper-card p-3 min-w-0 overflow-hidden">
-      <div className="text-[10px] uppercase tracking-widest text-ink-mute truncate">{label}</div>
+    <div className="paper-card p-2 md:p-3 min-w-0 overflow-hidden">
+      <div className="text-[7px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">{label}</div>
       <div className={cn(
-        "font-display text-lg font-bold num mt-0.5 leading-tight break-words",
+        "font-display text-[12px] md:text-lg font-bold num mt-0.5 leading-tight break-words",
         tone === "success" && "text-success",
         tone === "danger" && "text-danger"
       )}>{value}</div>

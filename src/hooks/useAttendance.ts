@@ -116,17 +116,6 @@ export function useUpsertAttendance() {
   });
 }
 
-export function useDeleteAttendance() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("attendance").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["attendance"] }),
-  });
-}
-
 export function attendanceStats(records: AttendanceRecord[]) {
   const stats = {
     present: 0,

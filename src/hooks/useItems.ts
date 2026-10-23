@@ -106,20 +106,6 @@ export function useDeleteItem() {
   });
 }
 
-export function useAdjustStock() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, newStock }: { id: string; newStock: number }) => {
-      const { error } = await supabase
-        .from("items")
-        .update({ stock: Math.max(0, newStock), updated_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["items"] }),
-  });
-}
-
 export function usePurgeDemoData() {
   const qc = useQueryClient();
   const active = useActiveBusiness();

@@ -1,11 +1,7 @@
 import { useMemo, useState } from "react";
 import {
-  TrendingUp,
-  DollarSign,
-  Percent,
   Receipt,
   Users as UsersIcon,
-  Wallet,
   Calendar,
 } from "lucide-react";
 import { useSales } from "@/hooks/useSales";
@@ -14,13 +10,24 @@ import { useCustomers } from "@/hooks/useCustomers";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientReceivablesTotals } from "@/hooks/useClients";
-import { cn, formatCurrency, formatDate, startOfMonth, startOfWeek, startOfYear } from "@/lib/utils";
+import {
+  cn,
+  formatCurrency,
+  formatDate,
+  formatMoney,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+} from "@/lib/utils";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import GlassSelect from "@/components/ui/GlassSelect";
+import StatCard from "@/components/ui/StatCard";
 import type { StatsPeriod } from "@/types";
 import { STATS_PERIOD_META, MONTH_NAMES, DEFAULT_STATS_PERIOD } from "@/types";
 
 type RangeMode = "quick" | "monthYear" | "custom";
 
-/** Statistics page — buttons and body font sizes reduced ~50% throughout. */
+/** Statistics page — Traditional design: compact chrome, dense rows. */
 export default function Statistics() {
   const { canViewCosts } = useAuth();
   const { data: sales = [] } = useSales();
@@ -150,12 +157,15 @@ export default function Statistics() {
       ? `${MONTH_NAMES[pickedMonth]} ${pickedYear}`
       : STATS_PERIOD_META[period].label;
 
+  const currency = settings?.currency || "USD";
+  const money = (v: number) => formatMoney(v, currency);
+
   return (
-    <div className="p-3 md:p-4 space-y-3 text-[11px]">
-      <div className="paper-card p-2 md:p-3 space-y-2">
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
+      <div className="paper-card p-2.5 md:p-3 space-y-1.5 md:space-y-2">
         <div className="flex items-center gap-1.5 text-ink-mute">
           <Calendar className="w-3 h-3" />
-          <span className="label text-[9px]">Reporting period</span>
+          <span className="label text-[7px] md:text-[9px]">Reporting period</span>
         </div>
 
         <div className="flex flex-wrap gap-1">
@@ -166,7 +176,7 @@ export default function Statistics() {
                 setPeriod(p); setRangeMode("quick"); setCustomFrom(""); setCustomTo("");
               }}
               className={cn(
-                "chip border px-2 h-6 text-[10px] transition",
+                "chip border px-2 h-6 text-[9px] md:text-[10px] transition",
                 rangeMode === "quick" && period === p
                   ? "bg-ink text-paper border-ink"
                   : "border-line hover:border-ink"
@@ -177,30 +187,34 @@ export default function Statistics() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="paper-card p-2 space-y-1.5">
-            <div className="text-[9px] uppercase tracking-widest text-ink-mute">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 md:gap-2">
+          <div className="paper-card p-2 space-y-1">
+            <div className="text-[7px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute">
               Pick specific month
             </div>
-            <div className="flex items-center gap-1.5">
-              <select
-                value={pickedMonth}
-                onChange={(e) => { setPickedMonth(Number(e.target.value)); setRangeMode("monthYear"); setCustomFrom(""); setCustomTo(""); }}
-                className="input h-7 text-[10px] flex-1"
-              >
-                {MONTH_NAMES.map((m, i) => (<option key={m} value={i}>{m}</option>))}
-              </select>
-              <select
-                value={pickedYear}
-                onChange={(e) => { setPickedYear(Number(e.target.value)); setRangeMode("monthYear"); setCustomFrom(""); setCustomTo(""); }}
-                className="input h-7 text-[10px] w-20"
-              >
-                {years.map((y) => (<option key={y} value={y}>{y}</option>))}
-              </select>
+            <div className="flex items-center gap-1">
+              <GlassSelect
+                value={String(pickedMonth)}
+                onChange={(v) => {
+                  setPickedMonth(Number(v)); setRangeMode("monthYear"); setCustomFrom(""); setCustomTo("");
+                }}
+                ariaLabel="Month"
+                options={MONTH_NAMES.map((m, i) => ({ value: String(i), label: m }))}
+                className="input input-sm select-glass max-md:px-1.5"
+              />
+              <GlassSelect
+                value={String(pickedYear)}
+                onChange={(v) => {
+                  setPickedYear(Number(v)); setRangeMode("monthYear"); setCustomFrom(""); setCustomTo("");
+                }}
+                ariaLabel="Year"
+                options={years.map((y) => ({ value: String(y), label: String(y) }))}
+                className="input input-sm select-glass max-md:px-1.5"
+              />
               <button
                 onClick={() => setRangeMode("monthYear")}
                 className={cn(
-                  "btn h-7 px-2 text-[10px]",
+                  "btn btn-sm shrink-0",
                   rangeMode === "monthYear" ? "btn-primary" : "btn-outline"
                 )}
               >
@@ -208,90 +222,100 @@ export default function Statistics() {
               </button>
             </div>
           </div>
-          <div className="paper-card p-2 space-y-1.5">
-            <div className="text-[9px] uppercase tracking-widest text-ink-mute">
+          <div className="paper-card p-2 space-y-1">
+            <div className="text-[7px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute">
               Custom date range
             </div>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date"
+            <div className="flex items-center gap-1">
+              <span className="text-ink-mute text-[9px] md:text-[10px] shrink-0">From</span>
+              <GlassDatePicker
                 value={customFrom}
-                onChange={(e) => { setCustomFrom(e.target.value); setRangeMode("custom"); }}
-                className="input h-7 text-[10px] flex-1"
+                onChange={(v) => { setCustomFrom(v); setRangeMode("custom"); }}
+                ariaLabel="Custom from date"
+                className="input input-sm select-glass max-md:px-1.5"
               />
-              <span className="text-ink-mute text-[10px]">to</span>
-              <input
-                type="date"
+              <span className="text-ink-mute text-[9px] md:text-[10px] shrink-0">To</span>
+              <GlassDatePicker
                 value={customTo}
-                onChange={(e) => { setCustomTo(e.target.value); setRangeMode("custom"); }}
-                className="input h-7 text-[10px] flex-1"
+                onChange={(v) => { setCustomTo(v); setRangeMode("custom"); }}
+                ariaLabel="Custom to date"
+                className="input input-sm select-glass max-md:px-1.5"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <StatCard label={`Revenue · ${periodLabel}`} value={formatCurrency(stats.revenue, settings?.currency)} icon={DollarSign} tone="magenta" />
-        {canViewCosts && (
-          <StatCard label="Gross profit" value={formatCurrency(stats.gross, settings?.currency)} icon={TrendingUp} tone="cyan" />
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 md:gap-3">
+        <StatCard
+          label={`Revenue · ${periodLabel}`}
+          value={money(stats.revenue)}
+          fullValue={formatCurrency(stats.revenue, currency)}
+          tone="magenta"
+        />
+        {canViewCosts ? (
+          <StatCard
+            label="Gross profit"
+            value={money(stats.gross)}
+            fullValue={formatCurrency(stats.gross, currency)}
+            tone="cyan"
+          />
+        ) : (
+          <StatCard
+            label="Expenses"
+            value={money(stats.exp)}
+            fullValue={formatCurrency(stats.exp, currency)}
+            tone="warning"
+          />
         )}
-        <StatCard label={`Net (− ${formatCurrency(stats.exp, settings?.currency)} exp)`} value={canViewCosts ? formatCurrency(stats.net, settings?.currency) : "—"} icon={Wallet} tone={stats.net >= 0 ? "success" : "danger"} />
+        <StatCard
+          label="Net"
+          value={canViewCosts ? money(stats.net) : "—"}
+          fullValue={canViewCosts ? formatCurrency(stats.net, currency) : undefined}
+          tone={canViewCosts ? (stats.net >= 0 ? "success" : "danger") : undefined}
+        />
         {canViewCosts && (
-          <StatCard label="Margin" value={`${stats.margin.toFixed(1)}%`} icon={Percent} tone="yellow" />
+          <div className="hidden md:block">
+            <StatCard label="Margin" value={`${stats.margin.toFixed(1)}%`} />
+          </div>
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="paper-card p-2.5 md:p-4 grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-1.5 md:gap-3">
         <MiniStat label="Sales count" value={String(stats.salesCount)} />
-        <MiniStat label="Avg ticket" value={formatCurrency(stats.avgTicket, settings?.currency)} />
-        <MiniStat label="Expenses" value={formatCurrency(stats.exp, settings?.currency)} />
+        <MiniStat label="Avg ticket" value={money(stats.avgTicket)} />
+        <MiniStat label="Expenses" value={money(stats.exp)} />
         <MiniStat label="Customers" value={String(customers.length)} />
+        <MiniStat label="Client AR (billed)" value={money(ledger.totalReceivable)} />
+        <MiniStat label="Overdue AR" value={money(ledger.overdue)} />
+        <MiniStat label="Billed this month" value={money(ledger.billedThisMonth)} />
+        <MiniStat label="Paid this month" value={money(ledger.paidThisMonth)} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <MiniStat
-          label="Client AR (billed)"
-          value={formatCurrency(ledger.totalReceivable, settings?.currency)}
-        />
-        <MiniStat
-          label="Overdue AR"
-          value={formatCurrency(ledger.overdue, settings?.currency)}
-        />
-        <MiniStat
-          label="Billed this month"
-          value={formatCurrency(ledger.billedThisMonth, settings?.currency)}
-        />
-        <MiniStat
-          label="Paid this month"
-          value={formatCurrency(ledger.paidThisMonth, settings?.currency)}
-        />
-      </div>
-
-      <div className="paper-card p-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[9px] uppercase tracking-widest text-ink-mute">
+      <div className="paper-card p-2.5 md:p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[7px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">
               {periodLabel} · revenue vs expenses
             </div>
             <h2 className="font-display text-sm font-bold">Cashflow trend</h2>
           </div>
-          <div className="flex gap-2 text-[10px]">
+          <div className="flex gap-1.5 md:gap-2 text-[9px] md:text-[10px] shrink-0">
             <Legend color="bg-magenta-reg" label="Revenue" />
             <Legend color="bg-warning" label="Expenses" />
           </div>
         </div>
-        <div className="mt-3 flex items-end gap-1 h-28 min-h-[7rem]">
+        <div className="mt-2 md:mt-3 flex items-end gap-1 h-20 md:h-28 min-h-[5rem] md:min-h-[7rem]">
           {stats.buckets.length === 0 ? (
             <div className="w-full text-center text-[10px] text-ink-mute">No activity in this range.</div>
           ) : (
             stats.buckets.map((d) => (
               <div key={d.key} className="flex-1 flex flex-col items-center gap-1 min-w-0">
                 <div className="w-full flex-1 flex flex-col justify-end gap-0.5">
-                  <div className="bg-magenta-reg rounded-t-sm" style={{ height: `${(d.rev / maxBar) * 100}%` }} title={`Rev ${formatCurrency(d.rev, settings?.currency)}`} />
-                  <div className="bg-warning rounded-t-sm opacity-80" style={{ height: `${(d.exp / maxBar) * 100}%` }} title={`Exp ${formatCurrency(d.exp, settings?.currency)}`} />
+                  <div className="bg-magenta-reg rounded-t-sm" style={{ height: `${(d.rev / maxBar) * 100}%` }} title={`Rev ${formatCurrency(d.rev, currency)}`} />
+                  <div className="bg-warning rounded-t-sm opacity-80" style={{ height: `${(d.exp / maxBar) * 100}%` }} title={`Exp ${formatCurrency(d.exp, currency)}`} />
                 </div>
-                <div className="text-[8px] text-ink-mute num truncate w-full text-center">
+                <div className="text-[7px] md:text-[8px] text-ink-mute num truncate w-full text-center">
                   {d.key.length > 6 ? d.key.slice(-5) : d.key}
                 </div>
               </div>
@@ -300,24 +324,24 @@ export default function Statistics() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="paper-card p-3">
-          <div className="text-[9px] uppercase tracking-widest text-ink-mute">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+        <div className="paper-card p-2.5 md:p-3">
+          <div className="text-[7px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute">
             Top products · {periodLabel}
           </div>
-          <h3 className="font-display text-sm font-bold mb-2">Best sellers</h3>
+          <h3 className="font-display text-sm font-bold mb-1.5 md:mb-2">Best sellers</h3>
           {stats.topProducts.length === 0 ? (
             <div className="text-[10px] text-ink-mute">No sales yet.</div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-1 md:space-y-1.5">
               {stats.topProducts.map((p) => {
                 const max = stats.topProducts[0].total || 1;
                 return (
                   <div key={p.name} className="space-y-0.5">
-                    <div className="flex justify-between text-[10px]">
+                    <div className="flex justify-between text-[9px] md:text-[10px] leading-tight">
                       <span className="truncate pr-2">{p.name}</span>
-                      <span className="num text-ink-mute">
-                        {p.qty} · {formatCurrency(p.total, settings?.currency)}
+                      <span className="num text-ink-mute shrink-0">
+                        {p.qty} · {money(p.total)}
                       </span>
                     </div>
                     <div className="h-1 rounded bg-ink/5 overflow-hidden">
@@ -330,28 +354,28 @@ export default function Statistics() {
           )}
         </div>
 
-        <div className="paper-card p-3">
-          <div className="text-[9px] uppercase tracking-widest text-ink-mute">
+        <div className="paper-card p-2.5 md:p-3">
+          <div className="text-[7px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute">
             Top cashiers · {periodLabel}
           </div>
-          <h3 className="font-display text-sm font-bold mb-2">Who rings up most</h3>
+          <h3 className="font-display text-sm font-bold mb-1.5 md:mb-2">Who rings up most</h3>
           {stats.topCashiers.length === 0 ? (
             <div className="text-[10px] text-ink-mute">No sales yet.</div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-1 md:space-y-1.5">
               {stats.topCashiers.map((c) => (
-                <div key={c.name} className="flex items-center justify-between text-[10px]">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-cyan-reg/10 text-cyan-reg font-bold text-[10px] flex items-center justify-center">
+                <div key={c.name} className="flex items-center justify-between text-[9px] md:text-[10px] h-[24px] md:h-8">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-cyan-reg/10 text-cyan-reg font-bold text-[8px] md:text-[10px] flex items-center justify-center shrink-0">
                       {c.name.charAt(0).toUpperCase()}
                     </div>
-                    <div className="font-semibold">{c.name}</div>
+                    <div className="font-semibold truncate">{c.name}</div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0 pl-2">
                     <div className="num font-semibold">
-                      {formatCurrency(c.total, settings?.currency)}
+                      {money(c.total)}
                     </div>
-                    <div className="text-[9px] text-ink-mute num">
+                    <div className="text-[8px] md:text-[9px] text-ink-mute num">
                       {c.count} sales
                     </div>
                   </div>
@@ -363,42 +387,42 @@ export default function Statistics() {
       </div>
 
       <div className="paper-card overflow-hidden">
-        <div className="p-2 border-b flex items-center justify-between">
-          <div>
-            <div className="text-[9px] uppercase tracking-widest text-ink-mute">Recent activity</div>
+        <div className="p-2 md:p-2.5 border-b flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[7px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute">Recent activity</div>
             <h3 className="font-display text-sm font-bold">Latest transactions</h3>
           </div>
-          <div className="flex items-center gap-1 text-[10px] text-ink-mute">
+          <div className="flex items-center gap-1 text-[9px] md:text-[10px] text-ink-mute shrink-0">
             <Receipt className="w-3 h-3" />
             {stats.salesInRange.length} in range
           </div>
         </div>
-        <div className="overflow-auto max-h-64 scroll-lined">
-          <table className="w-full text-[10px]">
+        <div className="overflow-auto max-h-60 md:max-h-64 scroll-lined">
+          <table className="w-full text-[10px] md:text-xs">
             <thead>
-              <tr className="text-left text-[9px] uppercase tracking-widest text-ink-mute bg-paper/60 sticky top-0">
-                <th className="p-1.5 pl-3">Number</th>
-                <th className="p-1.5">Date</th>
-                <th className="p-1.5">Cashier</th>
-                <th className="p-1.5">Customer</th>
-                <th className="p-1.5 text-right pr-3">Total</th>
+              <tr className="text-left text-[8px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute bg-paper/60 sticky top-0">
+                <th className="p-1 pl-2 md:p-1.5 md:pl-3">Number</th>
+                <th className="p-1 md:p-1.5">Date</th>
+                <th className="p-1 md:p-1.5 hidden md:table-cell">Cashier</th>
+                <th className="p-1 md:p-1.5 hidden sm:table-cell">Customer</th>
+                <th className="p-1 pr-2 md:p-1.5 md:pr-3 text-right">Total</th>
               </tr>
             </thead>
             <tbody>
               {stats.salesInRange.slice(0, 20).map((s) => (
                 <tr key={s.id} className="border-t hover:bg-paper/40">
-                  <td className="p-1.5 pl-3 font-mono text-[9px]">{s.number}</td>
-                  <td className="p-1.5 text-ink-mute">{formatDate(s.createdAt)}</td>
-                  <td className="p-1.5">{s.cashierName}</td>
-                  <td className="p-1.5 text-ink-mute">{s.customerName || "Walk-in"}</td>
-                  <td className="p-1.5 pr-3 text-right num font-semibold">
-                    {formatCurrency(s.total, settings?.currency)}
+                  <td className="px-1 md:px-1.5 pl-2 md:pl-3 h-[21px] md:h-[28px] font-mono text-[9px] md:text-[11px] whitespace-nowrap">{s.number}</td>
+                  <td className="px-1 md:px-1.5 h-[21px] md:h-[28px] text-ink-mute whitespace-nowrap">{formatDate(s.createdAt)}</td>
+                  <td className="px-1 md:px-1.5 h-[21px] md:h-[28px] hidden md:table-cell truncate max-w-[110px]">{s.cashierName}</td>
+                  <td className="px-1 md:px-1.5 h-[21px] md:h-[28px] text-ink-mute hidden sm:table-cell truncate max-w-[120px]">{s.customerName || "Walk-in"}</td>
+                  <td className="px-1 pr-2 md:px-1.5 md:pr-3 h-[21px] md:h-[28px] text-right num font-semibold whitespace-nowrap">
+                    {money(s.total)}
                   </td>
                 </tr>
               ))}
               {stats.salesInRange.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-ink-mute text-[10px]">
+                  <td colSpan={5} className="p-5 md:p-6 text-center text-ink-mute text-[10px]">
                     No sales in this range.
                   </td>
                 </tr>
@@ -408,7 +432,7 @@ export default function Statistics() {
         </div>
       </div>
 
-      <div className="text-[10px] text-ink-mute flex items-center gap-1.5">
+      <div className="text-[9px] md:text-[10px] text-ink-mute flex items-center gap-1.5">
         <UsersIcon className="w-3 h-3" />
         {customers.length} customers on the register
       </div>
@@ -416,35 +440,15 @@ export default function Statistics() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, tone = "magenta" }: {
-  label: string; value: string; icon: React.ComponentType<{ className?: string }>;
-  tone?: "magenta" | "cyan" | "yellow" | "success" | "danger";
-}) {
-  const bg = {
-    magenta: "bg-magenta-reg/10 text-magenta-reg",
-    cyan: "bg-cyan-reg/10 text-cyan-reg",
-    yellow: "bg-yellow-reg/10 text-yellow-reg",
-    success: "bg-success/10 text-success",
-    danger: "bg-danger/10 text-danger",
-  }[tone];
-  return (
-    <div className="paper-card p-2.5">
-      <div className="flex items-center justify-between">
-        <div className="text-[9px] uppercase tracking-widest text-ink-mute truncate pr-1">{label}</div>
-        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${bg}`}>
-          <Icon className="w-2.5 h-2.5" />
-        </div>
-      </div>
-      <div className="font-display text-base font-bold num mt-1">{value}</div>
-    </div>
-  );
-}
-
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="paper-card p-2">
-      <div className="text-[9px] uppercase tracking-widest text-ink-mute">{label}</div>
-      <div className="num text-xs font-bold">{value}</div>
+    <div className="min-w-0">
+      <div className="text-[7px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate leading-none">
+        {label}
+      </div>
+      <div className="num text-[11px] md:text-sm font-bold mt-0.5 md:mt-1 leading-tight truncate" title={value}>
+        {value}
+      </div>
     </div>
   );
 }

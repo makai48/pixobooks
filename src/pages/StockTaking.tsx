@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   ClipboardList, Download, Plus,
-  X, ChevronLeft, ChevronRight, AlertTriangle, TrendingUp,
-  Package, ArrowUpRight, ArrowDownRight, Wallet, Edit3,
+  X, ChevronLeft, ChevronRight, Edit3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useItems } from "@/hooks/useItems";
@@ -14,7 +13,10 @@ import {
 } from "@/hooks/useStockAdjustments";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useAuth } from "@/hooks/useAuth";
-import { cn, download, formatCurrency, formatDate, todayISO } from "@/lib/utils";
+import { cn, download, formatCurrency, formatDate, formatMoney, todayISO } from "@/lib/utils";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import GlassSelect from "@/components/ui/GlassSelect";
+import StatCard from "@/components/ui/StatCard";
 import { resolveActor } from "@/lib/actor";
 import { useUoms } from "@/hooks/useUoms";
 import { validateTransactionQty } from "@/lib/uom";
@@ -326,21 +328,21 @@ export default function StockTaking() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
       {/* Period control */}
-      <div className="paper-card p-3 md:p-4 flex flex-col md:flex-row md:items-center gap-3">
-        <div className="flex items-center gap-2 text-ink-mute">
-          <ClipboardList className="w-4 h-4" />
-          <div>
-            <div className="text-[10px] uppercase tracking-widest">Stock analysis period</div>
-            <div className="font-display font-bold text-ink text-sm">{periodLabel}</div>
+      <div className="paper-card p-2.5 md:p-4 flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3">
+        <div className="flex items-center gap-1.5 text-ink-mute min-w-0">
+          <ClipboardList className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
+          <div className="min-w-0">
+            <div className="text-[7px] md:text-[10px] uppercase tracking-wide md:tracking-widest truncate">Stock analysis period</div>
+            <div className="font-display font-bold text-ink text-xs md:text-sm truncate">{periodLabel}</div>
           </div>
         </div>
-        <div className="flex items-center gap-1 border rounded-md p-0.5">
+        <div className="flex items-center gap-1 border rounded-md p-0.5 shrink-0">
           <button
             onClick={() => setRangeMode("month")}
             className={cn(
-              "h-8 px-3 rounded text-xs font-semibold",
+              "h-6 md:h-8 px-2 md:px-3 rounded text-[9px] md:text-xs font-semibold",
               rangeMode === "month" ? "bg-ink text-paper" : "text-ink-mute"
             )}
           >
@@ -349,7 +351,7 @@ export default function StockTaking() {
           <button
             onClick={() => setRangeMode("custom")}
             className={cn(
-              "h-8 px-3 rounded text-xs font-semibold",
+              "h-6 md:h-8 px-2 md:px-3 rounded text-[9px] md:text-xs font-semibold",
               rangeMode === "custom" ? "bg-ink text-paper" : "text-ink-mute"
             )}
           >
@@ -357,174 +359,173 @@ export default function StockTaking() {
           </button>
         </div>
         {rangeMode === "month" ? (
-          <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center gap-1 md:gap-2 md:flex-1">
             <button
               onClick={() => {
                 const d = new Date(year, month - 1, 1);
                 setYear(d.getFullYear());
                 setMonth(d.getMonth());
               }}
-              className="btn btn-outline h-9 w-9 p-0"
+              className="btn btn-outline btn-sm w-7 md:w-9 p-0 shrink-0"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </button>
-            <select
-              value={month}
-              onChange={(e) => setMonth(Number(e.target.value))}
-              className="input h-9 flex-1 md:max-w-[160px]"
-            >
-              {MONTH_NAMES.map((m, i) => (
-                <option key={m} value={i}>{m}</option>
-              ))}
-            </select>
-            <select
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className="input h-9 w-24"
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+            <GlassSelect
+              value={String(month)}
+              onChange={(v) => setMonth(Number(v))}
+              ariaLabel="Month"
+              options={MONTH_NAMES.map((m, i) => ({ value: String(i), label: m }))}
+              className="input input-sm select-glass max-md:px-1.5"
+            />
+            <GlassSelect
+              value={String(year)}
+              onChange={(v) => setYear(Number(v))}
+              ariaLabel="Year"
+              options={years.map((y) => ({ value: String(y), label: String(y) }))}
+              className="input input-sm select-glass max-md:px-1.5"
+            />
             <button
               onClick={() => {
                 const d = new Date(year, month + 1, 1);
                 setYear(d.getFullYear());
                 setMonth(d.getMonth());
               }}
-              className="btn btn-outline h-9 w-9 p-0"
+              className="btn btn-outline btn-sm w-7 md:w-9 p-0 shrink-0"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 flex-1">
-            <input
-              type="date"
+          <div className="flex items-center gap-1 md:gap-2 md:flex-1">
+            <span className="text-ink-mute text-[9px] md:text-xs shrink-0">From</span>
+            <GlassDatePicker
               value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              className="input h-9 flex-1"
+              onChange={setCustomFrom}
+              ariaLabel="From date"
+              className="input input-sm select-glass max-md:px-1.5"
             />
-            <span className="text-ink-mute text-xs">to</span>
-            <input
-              type="date"
+            <span className="text-ink-mute text-[9px] md:text-xs shrink-0">To</span>
+            <GlassDatePicker
               value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
-              className="input h-9 flex-1"
+              onChange={setCustomTo}
+              ariaLabel="To date"
+              className="input input-sm select-glass max-md:px-1.5"
             />
           </div>
         )}
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => exportCsv("summary")} className="btn btn-outline h-9">
-            <Download className="w-4 h-4" /> Summary CSV
+        <div className="flex gap-1 md:gap-2 flex-wrap">
+          <button onClick={() => exportCsv("summary")} className="btn btn-outline btn-sm">
+            <Download className="w-3.5 h-3.5 md:w-4 md:h-4" /> Summary CSV
           </button>
-          <button onClick={() => exportCsv("adjustments")} className="btn btn-outline h-9">
-            <Download className="w-4 h-4" /> Adjustments CSV
+          <button onClick={() => exportCsv("adjustments")} className="btn btn-outline btn-sm">
+            <Download className="w-3.5 h-3.5 md:w-4 md:h-4" /> Adjustments CSV
           </button>
         </div>
       </div>
 
       {/* Summary tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-        <SummaryTile
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5 md:gap-2">
+        <StatCard
           label="Opening"
-          value={formatCurrency(totals.openingValue, currency)}
-          icon={Package}
+          value={formatMoney(totals.openingValue, currency)}
+          fullValue={formatCurrency(totals.openingValue, currency)}
         />
-        <SummaryTile
+        <StatCard
           label="Purchases"
-          value={formatCurrency(totals.purchases, currency)}
-          icon={ArrowUpRight}
+          value={formatMoney(totals.purchases, currency)}
+          fullValue={formatCurrency(totals.purchases, currency)}
           tone="success"
         />
-        <SummaryTile
+        <StatCard
           label="Sold"
-          value={formatCurrency(totals.sold, currency)}
-          icon={ArrowDownRight}
+          value={formatMoney(totals.sold, currency)}
+          fullValue={formatCurrency(totals.sold, currency)}
           tone="danger"
         />
-        <SummaryTile
+        <StatCard
           label="Adjustments"
-          value={formatCurrency(totals.adjustments, currency)}
-          icon={Edit3}
+          value={formatMoney(totals.adjustments, currency)}
+          fullValue={formatCurrency(totals.adjustments, currency)}
           tone={totals.adjustments >= 0 ? "success" : "danger"}
         />
-        <SummaryTile
+        <StatCard
           label="Closing"
-          value={formatCurrency(totals.closingValue, currency)}
-          icon={Wallet}
+          value={formatMoney(totals.closingValue, currency)}
+          fullValue={formatCurrency(totals.closingValue, currency)}
         />
-        <SummaryTile
+        <StatCard
           label="Variance"
-          value={formatCurrency(totals.variance, currency)}
-          icon={Math.abs(totals.variance) < 0.01 ? TrendingUp : AlertTriangle}
+          value={formatMoney(totals.variance, currency)}
+          fullValue={formatCurrency(totals.variance, currency)}
           tone={Math.abs(totals.variance) < 0.01 ? "success" : "danger"}
         />
       </div>
 
       {/* Filters */}
-      <div className="paper-card p-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <label htmlFor="st-category" className="label">Category</label>
-          <select
+      <div className="paper-card p-2.5 md:p-3 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:grid-cols-3 items-center md:items-end gap-x-1.5 gap-y-1.5 md:gap-3">
+        <div className="max-md:contents">
+          <label htmlFor="st-category" className="label max-md:text-[9px] max-md:whitespace-nowrap">Category</label>
+          <GlassSelect
             id="st-category"
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="input mt-1"
-          >
-            <option value="All">All categories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+            onChange={setCategoryFilter}
+            ariaLabel="Category"
+            options={[
+              { value: "All", label: "All categories" },
+              ...categories.map((c) => ({ value: c, label: c })),
+            ]}
+            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+          />
         </div>
-        <div>
-          <label htmlFor="st-item-type" className="label">Item type</label>
-          <select
+        <div className="max-md:contents">
+          <label htmlFor="st-item-type" className="label max-md:text-[9px] max-md:whitespace-nowrap">Type</label>
+          <GlassSelect
             id="st-item-type"
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="input mt-1"
-          >
-            <option value="All">All types</option>
-            <option value="material">Material</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="ready">Ready</option>
-          </select>
+            onChange={setTypeFilter}
+            ariaLabel="Item type"
+            options={[
+              { value: "All", label: "All types" },
+              { value: "material", label: "Material" },
+              { value: "intermediate", label: "Intermediate" },
+              { value: "ready", label: "Ready" },
+            ]}
+            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+          />
         </div>
-        <div className="text-[11px] text-ink-mute self-end pb-1">
-          {filteredRows.length} of {stocked.length} stocked items \u00b7 {adjustments.length} adjustments in range
+        <div className="col-span-2 md:col-span-1 text-[9px] md:text-[11px] text-ink-mute md:self-end md:pb-1">
+          {filteredRows.length} of {stocked.length} stocked items · {adjustments.length} adjustments in range
         </div>
       </div>
 
       {/* Table */}
       <div className="paper-card overflow-hidden">
         <div className="overflow-auto max-h-[60vh]">
-          <table className="w-full text-sm">
+          <table className="w-full text-[10px] md:text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-widest text-ink-mute bg-paper/60 sticky top-0">
-                <th className="p-2 pl-3">Item</th>
-                <th className="p-2">Type</th>
-                <th className="p-2 text-right">Opening</th>
-                <th className="p-2 text-right">Purchases</th>
-                <th className="p-2 text-right">Sold</th>
-                <th className="p-2 text-right">Adjustments</th>
-                <th className="p-2 text-right">Closing</th>
-                <th className="p-2 text-right">Unit cost</th>
-                <th className="p-2 text-right">Closing value</th>
-                {canAdjust && <th className="p-2 pr-3"></th>}
+              <tr className="text-left text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute bg-paper/60 sticky top-0">
+                <th className="p-1.5 pl-2 md:p-2 md:pl-3">Item</th>
+                <th className="p-1.5 hidden md:table-cell">Type</th>
+                <th className="p-1.5 text-right hidden md:table-cell">Opening</th>
+                <th className="p-1.5 text-right hidden md:table-cell">Purchases</th>
+                <th className="p-1.5 text-right hidden md:table-cell">Sold</th>
+                <th className="p-1.5 text-right hidden md:table-cell">Adjust</th>
+                <th className="p-1.5 text-right">Closing</th>
+                <th className="p-1.5 text-right hidden lg:table-cell">Unit cost</th>
+                <th className="p-1.5 text-right">Value</th>
+                {canAdjust && <th className="p-1.5 pr-2 md:pr-3"></th>}
               </tr>
             </thead>
             <tbody>
               {itemsLoading ? (
                 <tr>
-                  <td colSpan={10} className="p-10 text-center text-ink-mute">
+                  <td colSpan={10} className="p-6 md:p-10 text-center text-ink-mute">
                     Loading...
                   </td>
                 </tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-10 text-center text-ink-mute">
+                  <td colSpan={10} className="p-6 md:p-10 text-center text-ink-mute">
                     No stocked items match the filters.
                   </td>
                 </tr>
@@ -533,47 +534,49 @@ export default function StockTaking() {
                   const net = r.adjustPositive - r.adjustNegative;
                   return (
                     <tr key={r.item.id} className="border-t hover:bg-paper/40">
-                      <td className="p-2 pl-3">
-                        <div className="font-semibold text-xs">{r.item.name}</div>
-                        <div className="text-[10px] text-ink-mute num">{r.item.sku}</div>
+                      <td className="p-1 pl-2 md:p-2 md:pl-3 h-[30px] md:h-[34px]">
+                        <div className="font-semibold text-[10px] md:text-xs leading-tight truncate max-w-[130px] md:max-w-none">{r.item.name}</div>
+                        <div className="text-[8px] md:text-[10px] text-ink-mute num leading-tight">{r.item.sku}</div>
                       </td>
-                      <td className="p-2">
+                      <td className="p-1 md:p-2 hidden md:table-cell">
                         <span className="chip text-[10px] px-2 py-0 bg-ink/5 border">
                           {r.item.itemType}
                         </span>
                       </td>
-                      <td className="p-2 text-right num text-xs">{r.opening.toLocaleString()}</td>
-                      <td className="p-2 text-right num text-xs text-success">
+                      <td className="p-1 md:p-2 text-right num text-[10px] md:text-xs whitespace-nowrap hidden md:table-cell">{r.opening.toLocaleString()}</td>
+                      <td className="p-1 md:p-2 text-right num text-[10px] md:text-xs text-success whitespace-nowrap hidden md:table-cell">
                         {r.received > 0 ? `+${r.received.toLocaleString()}` : "\u2014"}
                       </td>
-                      <td className="p-2 text-right num text-xs text-danger">
+                      <td className="p-1 md:p-2 text-right num text-[10px] md:text-xs text-danger whitespace-nowrap hidden md:table-cell">
                         {r.sold > 0 ? `-${r.sold.toLocaleString()}` : "\u2014"}
                       </td>
                       <td
                         className={cn(
-                          "p-2 text-right num text-xs",
+                          "p-1 md:p-2 text-right num text-[10px] md:text-xs whitespace-nowrap hidden md:table-cell",
                           net > 0 && "text-success",
                           net < 0 && "text-danger"
                         )}
                       >
                         {net === 0 ? "\u2014" : (net > 0 ? "+" : "") + net.toLocaleString()}
                       </td>
-                      <td className="p-2 text-right num text-xs font-semibold">
+                      <td className="p-1 md:p-2 text-right num text-[10px] md:text-xs font-semibold whitespace-nowrap">
                         {r.closing.toLocaleString()}
                       </td>
-                      <td className="p-2 text-right num text-xs">
+                      <td className="p-1 md:p-2 text-right num text-[10px] md:text-xs whitespace-nowrap hidden lg:table-cell">
                         {formatCurrency(r.item.cost, currency)}
                       </td>
-                      <td className="p-2 text-right num text-xs font-bold">
-                        {formatCurrency(r.closing * r.item.cost, currency)}
+                      <td className="p-1 md:p-2 text-right num text-[10px] md:text-xs font-bold whitespace-nowrap">
+                        {formatMoney(r.closing * r.item.cost, currency)}
                       </td>
                       {canAdjust && (
-                        <td className="p-2 pr-3 text-right">
+                        <td className="p-1 pr-2 md:p-2 md:pr-3 text-right">
                           <button
                             onClick={() => setAdjustItem(r.item)}
-                            className="btn btn-ghost h-7 px-2 text-[11px]"
+                            className="inline-flex items-center justify-center h-6 w-6 md:h-7 md:w-auto md:px-2 p-0 rounded text-[10px] md:text-[11px] text-ink-mute hover:bg-paper"
+                            title="Adjust stock"
                           >
-                            <Edit3 className="w-3 h-3" /> Adjust
+                            <Edit3 className="w-3 h-3" />
+                            <span className="hidden md:inline md:ml-1">Adjust</span>
                           </button>
                         </td>
                       )}
@@ -588,46 +591,46 @@ export default function StockTaking() {
 
       {/* Adjustments log */}
       <div className="paper-card overflow-hidden">
-        <div className="p-3 border-b flex items-center justify-between">
-          <div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+        <div className="p-2.5 md:p-3 border-b flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">
               Stock adjustments log
             </div>
-            <h3 className="font-display font-bold">Manual movements in period</h3>
+            <h3 className="font-display text-sm md:text-base font-bold">Manual movements in period</h3>
           </div>
-          <div className="text-xs text-ink-mute">{adjustments.length} entries</div>
+          <div className="text-[9px] md:text-xs text-ink-mute shrink-0">{adjustments.length} entries</div>
         </div>
         <div className="overflow-auto max-h-64 scroll-lined">
-          <table className="w-full text-sm">
+          <table className="w-full text-[10px] md:text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-widest text-ink-mute bg-paper/40 sticky top-0">
-                <th className="p-2 pl-4">Date</th>
-                <th className="p-2">Item</th>
-                <th className="p-2">Type</th>
-                <th className="p-2 text-right">Old</th>
-                <th className="p-2 text-right">Change</th>
-                <th className="p-2 text-right">New</th>
-                <th className="p-2">Reason</th>
-                <th className="p-2 pr-4">By</th>
+              <tr className="text-left text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute bg-paper/40 sticky top-0">
+                <th className="p-1.5 pl-2 md:p-2 md:pl-4">Date</th>
+                <th className="p-1.5 md:p-2">Item</th>
+                <th className="p-1.5 md:p-2 hidden md:table-cell">Type</th>
+                <th className="p-1.5 text-right hidden md:table-cell">Old</th>
+                <th className="p-1.5 text-right">Change</th>
+                <th className="p-1.5 text-right">New</th>
+                <th className="p-1.5 hidden lg:table-cell">Reason</th>
+                <th className="p-1.5 pr-2 md:pr-4 hidden lg:table-cell">By</th>
               </tr>
             </thead>
             <tbody>
               {adjustments.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-ink-mute text-xs">
+                  <td colSpan={8} className="p-5 md:p-6 text-center text-ink-mute text-[10px] md:text-xs">
                     No stock adjustments in this period.
                   </td>
                 </tr>
               ) : (
                 adjustments.map((a: StockAdjustment) => (
-                  <tr key={a.id} className="border-t hover:bg-paper/40 text-xs">
-                    <td className="p-2 pl-4">{formatDate(a.adjustmentDate)}</td>
-                    <td className="p-2 font-semibold">{a.itemName}</td>
-                    <td className="p-2 text-ink-mute">{a.adjustmentType}</td>
-                    <td className="p-2 text-right num">{a.oldStock}</td>
+                  <tr key={a.id} className="border-t hover:bg-paper/40">
+                    <td className="px-1.5 pl-2 md:px-2 md:pl-3 h-[21px] md:h-[28px] text-[9px] md:text-xs whitespace-nowrap">{formatDate(a.adjustmentDate)}</td>
+                    <td className="px-1.5 md:px-2 h-[21px] md:h-[28px] font-semibold text-[10px] md:text-xs truncate max-w-[110px] md:max-w-none">{a.itemName}</td>
+                    <td className="px-1.5 md:px-2 h-[21px] md:h-[28px] text-ink-mute hidden md:table-cell">{a.adjustmentType}</td>
+                    <td className="px-1.5 md:px-2 h-[21px] md:h-[28px] text-right num hidden md:table-cell">{a.oldStock}</td>
                     <td
                       className={cn(
-                        "p-2 text-right num font-semibold",
+                        "px-1.5 md:px-2 h-[21px] md:h-[28px] text-right num font-semibold",
                         a.qtyChange > 0 && "text-success",
                         a.qtyChange < 0 && "text-danger"
                       )}
@@ -635,9 +638,9 @@ export default function StockTaking() {
                       {a.qtyChange > 0 ? "+" : ""}
                       {a.qtyChange}
                     </td>
-                    <td className="p-2 text-right num">{a.newStock}</td>
-                    <td className="p-2 text-ink-mute">{a.reason || "\u2014"}</td>
-                    <td className="p-2 pr-4 text-ink-mute">{a.createdByName || "\u2014"}</td>
+                    <td className="px-1.5 md:px-2 h-[21px] md:h-[28px] text-right num">{a.newStock}</td>
+                    <td className="px-1.5 md:px-2 h-[21px] md:h-[28px] text-ink-mute truncate max-w-[160px] hidden lg:table-cell">{a.reason || "\u2014"}</td>
+                    <td className="px-1.5 pr-2 md:pr-4 h-[21px] md:h-[28px] text-ink-mute hidden lg:table-cell">{a.createdByName || "\u2014"}</td>
                   </tr>
                 ))
               )}
@@ -653,38 +656,6 @@ export default function StockTaking() {
           actor={actor}
         />
       )}
-    </div>
-  );
-}
-
-function SummaryTile({
-  label,
-  value,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-  tone?: "success" | "danger";
-}) {
-  return (
-    <div className="paper-card p-2.5">
-      <div className="flex items-center justify-between">
-        <div className="text-[9px] uppercase tracking-widest text-ink-mute truncate pr-1">
-          {label}
-        </div>
-        <Icon className="w-3 h-3 text-ink-mute shrink-0" />
-      </div>
-      <div
-        className={cn(
-          "font-display text-base font-bold num mt-1 break-words",
-          tone === "success" && "text-success",
-          tone === "danger" && "text-danger"
-        )}
-      >
-        {value}
-      </div>
     </div>
   );
 }
@@ -748,35 +719,37 @@ function StockAdjustModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-2 sm:p-4 animate-fade-in">
       <div className="paper-card w-full max-w-md overflow-hidden max-h-[95dvh] flex flex-col">
-        <div className="p-4 border-b flex items-center justify-between shrink-0">
+        <div className="p-3 sm:p-4 border-b flex items-center justify-between shrink-0">
           <div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+            <div className="text-[10px] sm:text-[11px] uppercase tracking-widest text-ink-mute">
               Adjust stock
             </div>
-            <h2 className="font-display text-lg font-bold">{item.name}</h2>
-            <div className="text-xs text-ink-mute">
+            <h2 className="font-display text-base sm:text-lg font-bold">{item.name}</h2>
+            <div className="text-[10px] sm:text-xs text-ink-mute">
               Current: {item.stock} {item.baseUnit}
             </div>
           </div>
-          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0">
+          <button onClick={onClose} className="btn btn-ghost h-8 w-8 p-0">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-4 space-y-3 overflow-auto scroll-lined">
+        <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 overflow-auto scroll-lined">
           <div>
             <label htmlFor="st-adjust-type" className="label">Adjustment type</label>
-            <select
+            <GlassSelect
               id="st-adjust-type"
               value={type}
-              onChange={(e) => setType(e.target.value as typeof type)}
-              className="input mt-1"
-            >
-              <option value="stocktake">Stock take (physical count)</option>
-              <option value="manual">Manual adjustment</option>
-              <option value="correction">Correction (data fix)</option>
-            </select>
+              onChange={(v) => setType(v as typeof type)}
+              ariaLabel="Adjustment type"
+              options={[
+                { value: "stocktake", label: "Stock take (physical count)" },
+                { value: "manual", label: "Manual adjustment" },
+                { value: "correction", label: "Correction (data fix)" },
+              ]}
+              className="input mt-1 select-glass"
+            />
           </div>
           <div>
             <span id="st-adjust-mode-label" className="label">Mode</span>
@@ -822,12 +795,12 @@ function StockAdjustModal({
           </div>
           <div>
             <label htmlFor="st-adjust-date" className="label">Adjustment date</label>
-            <input
+            <GlassDatePicker
               id="st-adjust-date"
-              type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="input mt-1"
+              onChange={setDate}
+              ariaLabel="Adjustment date"
+              className="input mt-1 select-glass"
             />
           </div>
           <div>
@@ -864,7 +837,7 @@ function StockAdjustModal({
             </div>
           </div>
         </div>
-        <div className="p-4 border-t flex justify-end gap-2 shrink-0">
+        <div className="p-3 sm:p-4 border-t flex justify-end gap-1.5 sm:gap-2 shrink-0">
           <button onClick={onClose} className="btn btn-outline">Cancel</button>
           <button onClick={submit} disabled={create.isPending} className="btn btn-primary">
             <Plus className="w-4 h-4" />

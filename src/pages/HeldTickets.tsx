@@ -47,8 +47,8 @@ export default function HeldTickets() {
     <div className="p-6 space-y-4">
       <SubNav
         items={[
-          { to: "/", label: "Sales POS", icon: LayoutDashboard, end: true },
-          { to: "/sales-report", label: "Sales Report", icon: Receipt },
+          { to: "/", label: "POS", icon: LayoutDashboard, end: true },
+          { to: "/sales-report", label: "Report", icon: Receipt },
           { to: "/held", label: "Held Tickets", icon: PauseCircle },
           { to: "/quotes", label: "Quotes", icon: FileText },
         ]}

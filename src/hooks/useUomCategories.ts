@@ -3,13 +3,13 @@
 // uoms.ratio is the DERIVED runtime cache recomputed from them, so the
 // engine always resolves from the category reference (§3) while the
 // definition history stays intact.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { mapUomCategory } from "@/lib/mappers";
 import { normUom } from "@/lib/uom";
 import type { UomCategory } from "@/types";
 import { useActiveBusiness } from "@/hooks/useBusinesses";
-import { currentBusinessId, withBusiness } from "@/lib/tenant";
+import { currentBusinessId } from "@/lib/tenant";
 
 export function useUomCategories() {
   const active = useActiveBusiness();
@@ -24,50 +24,6 @@ export function useUomCategories() {
       return ((data || []).map(mapUomCategory) || []) as UomCategory[];
     },
     refetchInterval: 60000,
-  });
-}
-
-export type UomCategoryInput = {
-  id?: string;
-  name: string;
-  referenceUomId?: string | null;
-  description?: string | null;
-  isActive?: boolean;
-};
-
-export function useUpsertUomCategory() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (c: UomCategoryInput) => {
-      if (!c.name.trim()) throw new Error("Category name is required");
-      const payload: Record<string, unknown> = {
-        name: c.name.trim().toLowerCase(),
-        reference_uom_id: c.referenceUomId || null,
-        description: c.description?.trim() || null,
-        is_active: c.isActive !== false,
-        updated_at: new Date().toISOString(),
-      };
-      if (c.id) {
-        const { data, error } = await supabase
-          .from("uom_categories")
-          .update(payload)
-          .eq("id", c.id)
-          .select()
-          .single();
-        if (error) throw error;
-        return mapUomCategory(data);
-      }
-      const { data, error } = await supabase
-        .from("uom_categories")
-        .insert(withBusiness(payload))
-        .select()
-        .single();
-      if (error) throw error;
-      return mapUomCategory(data);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["uom_categories"] });
-    },
   });
 }
 

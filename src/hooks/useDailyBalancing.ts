@@ -29,51 +29,6 @@ export function useDailyBalancing(date?: string) {
   });
 }
 
-/** Fetch the most recent balancing snapshot BEFORE the given date —
- *  its closing_balance becomes today's Balance b/f. */
-export function usePreviousBalancing(date?: string) {
-  const active = useActiveBusiness();
-  const businessId = active === "none" ? null : active;
-  return useQuery({
-    queryKey: ["daily_balancing_previous", businessId, date],
-    queryFn: async () => {
-      if (!date) return null as DailyBalancing | null;
-      let q = supabase
-        .from("daily_balancing")
-        .select("*")
-        .lt("balance_date", date)
-        .order("balance_date", { ascending: false })
-        .limit(1);
-      if (businessId) q = q.eq("business_id", businessId);
-      const { data, error } = await q.maybeSingle();
-      if (error) throw error;
-      return data ? mapDailyBalancing(data) : null;
-    },
-    enabled: !!date,
-  });
-}
-
-export function useDailyBalancingRange(fromDate?: string, toDate?: string) {
-  const active = useActiveBusiness();
-  const businessId = active === "none" ? null : active;
-  return useQuery({
-    queryKey: ["daily_balancing_range", businessId, fromDate, toDate],
-    queryFn: async () => {
-      let q = supabase
-        .from("daily_balancing")
-        .select("*")
-        .order("balance_date", { ascending: false });
-      if (businessId) q = q.eq("business_id", businessId);
-      if (fromDate) q = q.gte("balance_date", fromDate);
-      if (toDate) q = q.lte("balance_date", toDate);
-      const { data, error } = await q.limit(400);
-      if (error) throw error;
-      return (data || []).map(mapDailyBalancing);
-    },
-    refetchInterval: 60000,
-  });
-}
-
 export type DailyBalancingInput = {
   balanceDate: string;
   openingBalance: number;

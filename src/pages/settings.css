@@ -463,12 +463,6 @@
   gap: 14px;
 }
 
-.st .grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
 .st .opt-cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -1220,8 +1214,7 @@
 
 @media (max-width: 768px) {
   .st .grid-2,
-  .st .grid-3,
-  .st .grid-4 {
+  .st .grid-3 {
     grid-template-columns: 1fr !important;
   }
 

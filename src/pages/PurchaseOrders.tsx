@@ -18,8 +18,9 @@ import { useAuth } from "@/hooks/useAuth";
 import POModal from "@/components/features/po/POModal";
 import ReceivePOModal from "@/components/features/po/ReceivePOModal";
 import POViewDetailsModal from "@/components/features/po/POViewDetailsModal";
+import StatCard from "@/components/ui/StatCard";
 import type { POStatus, PurchaseOrder } from "@/types";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatMoney } from "@/lib/utils";
 
 const STATUS_COLORS: Record<POStatus, string> = {
   draft: "bg-ink/5 text-ink-soft",
@@ -72,89 +73,100 @@ export default function PurchaseOrders() {
     };
   }, [pos]);
 
+  const currency = settings?.currency || "USD";
+
   return (
-    <div className="p-6 space-y-4">
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Draft POs" value={String(summary.draft)} />
-        <Stat label="Awaiting delivery" value={String(summary.open)} tone="cyan" />
-        <Stat
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
+      <div className="grid grid-cols-3 gap-1.5 md:gap-3">
+        <StatCard label="Draft POs" value={String(summary.draft)} />
+        <StatCard
+          label="Awaiting delivery"
+          value={String(summary.open)}
+          tone="cyan"
+        />
+        <StatCard
           label="Value on order"
-          value={formatCurrency(summary.onOrder, settings?.currency)}
+          value={formatMoney(summary.onOrder, currency)}
+          fullValue={formatCurrency(summary.onOrder, currency)}
           tone="magenta"
         />
       </div>
 
-      <div className="paper-card p-4 flex flex-col md:flex-row md:items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
+      <div className="paper-card p-2.5 md:p-4 flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3">
+        <div className="relative md:flex-1">
+          <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search PO number or vendor"
-            className="input pl-9"
+            className="input input-sm pl-7 md:pl-9"
           />
         </div>
-        <div className="flex bg-paper border rounded-md p-0.5 overflow-auto">
-          {(["all", "draft", "ordered", "received", "cancelled"] as const).map((s) => (
+        <div className="flex items-center gap-1.5">
+          <div className="flex bg-paper border rounded-md p-0.5 overflow-x-auto scrollbar-none min-w-0 flex-1 md:flex-none">
+            {(["all", "draft", "ordered", "received", "cancelled"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatus(s)}
+                className={cn(
+                  "px-1.5 md:px-3 h-6 md:h-8 text-[9px] md:text-xs uppercase tracking-wide md:tracking-widest rounded whitespace-nowrap",
+                  status === s ? "bg-ink text-paper" : "text-ink-mute"
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          {can("po.manage") && (
             <button
-              key={s}
-              onClick={() => setStatus(s)}
-              className={cn(
-                "px-3 h-8 text-xs uppercase tracking-widest rounded whitespace-nowrap",
-                status === s ? "bg-ink text-paper" : "text-ink-mute"
-              )}
+              onClick={() => {
+                setEdit(null);
+                setOpen(true);
+              }}
+              className="btn btn-primary btn-sm shrink-0"
             >
-              {s}
+              <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">New PO</span>
             </button>
-          ))}
+          )}
         </div>
-        {can("po.manage") && (
-          <button
-            onClick={() => {
-              setEdit(null);
-              setOpen(true);
-            }}
-            className="btn btn-primary"
-          >
-            <Plus className="w-4 h-4" /> New PO
-          </button>
-        )}
       </div>
 
       {isLoading ? (
-        <div className="paper-card p-10 text-center text-ink-mute">Loading...</div>
+        <div className="paper-card p-6 md:p-10 text-center text-ink-mute text-sm">Loading...</div>
       ) : filtered.length === 0 ? (
-        <div className="paper-card p-12 text-center">
-          <ShoppingBag className="w-10 h-10 text-ink-mute mx-auto" />
-          <div className="font-display font-bold text-lg mt-3">No purchase orders</div>
-          <div className="text-ink-mute text-sm mt-1">
+        <div className="paper-card p-8 md:p-12 text-center">
+          <ShoppingBag className="w-8 h-8 md:w-10 md:h-10 text-ink-mute mx-auto" />
+          <div className="font-display font-bold text-base md:text-lg mt-2 md:mt-3">No purchase orders</div>
+          <div className="text-ink-mute text-[11px] md:text-sm mt-1">
             Create POs for materials — when received, stock is auto-incremented.
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-1.5 md:gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((po) => (
-            <div key={po.id} className="paper-card p-4">
-            
+            <div key={po.id} className="paper-card p-2.5 md:p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+                  <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">
                     {formatDate(po.createdAt)} · {po.createdByName}
                   </div>
-                  <div className="font-display text-lg font-bold">{po.number}</div>
-                  <div className="text-sm text-ink-mute truncate">{po.vendor}</div>
+                  <div className="font-display text-sm md:text-lg font-bold leading-tight">{po.number}</div>
+                  <div className="text-[10px] md:text-sm text-ink-mute truncate">{po.vendor}</div>
                 </div>
-                <span className={cn("chip", STATUS_COLORS[po.status])}>{po.status}</span>
+                <span className={cn("chip text-[8px] md:text-xs px-1.5 md:px-2 py-px md:py-0.5 shrink-0", STATUS_COLORS[po.status])}>
+                  {po.status}
+                </span>
               </div>
-              <div className="dashed-divider my-3" />
-              <div className="text-sm space-y-1 max-h-24 overflow-auto">
+              <div className="dashed-divider my-1.5 md:my-3" />
+              <div className="hidden md:block text-sm space-y-1 max-h-24 overflow-auto">
                 {po.lines.slice(0, 3).map((l, i) => (
                   <div key={i} className="flex justify-between">
                     <span className="truncate pr-2">
                       {l.qty}× {l.name}
                     </span>
                     <span className="num text-ink-mute">
-                      {formatCurrency(l.qty * l.unitCost, settings?.currency)}
+                      {formatCurrency(l.qty * l.unitCost, currency)}
                     </span>
                   </div>
                 ))}
@@ -162,21 +174,23 @@ export default function PurchaseOrders() {
                   <div className="text-xs text-ink-mute">+ {po.lines.length - 3} more</div>
                 )}
               </div>
-              <div className="dashed-divider my-3" />
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs text-ink-mute">Total</span>
-                <span className="num font-bold text-lg">
-                  {formatCurrency(po.total, settings?.currency)}
+              <div className="flex items-baseline justify-between text-[10px] md:text-xs text-ink-mute">
+                <span className="num">
+                  {po.lines.length} line{po.lines.length === 1 ? "" : "s"}
+                </span>
+                <span className="num font-bold text-sm md:text-lg text-ink">
+                  {formatMoney(po.total, currency)}
                 </span>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-2 md:mt-4 flex items-center gap-1 md:gap-2">
                 <button
                   onClick={() => setViewing(po)}
-                  className="btn btn-outline flex-1 h-9"
+                  className="btn btn-outline btn-sm flex-1"
                   title="View details of ordered vs received items"
                 >
-                  <Eye className="w-3.5 h-3.5" /> View details
+                  <Eye className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">View details</span>
                 </button>
                 {(canEditAnyPO && (po.status !== "received" || isAdmin)) && (
                   <button
@@ -184,17 +198,21 @@ export default function PurchaseOrders() {
                       setEdit(po);
                       setOpen(true);
                     }}
-                    className="btn btn-outline flex-1 h-9"
+                    className="btn btn-outline btn-sm flex-1"
+                    title="Edit PO"
                   >
-                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Edit</span>
                   </button>
                 )}
                 {can("po.manage") && ["draft", "ordered"].includes(po.status) && (
                   <button
                     onClick={() => setReceiving(po)}
-                    className="btn btn-primary flex-1 h-9"
+                    className="btn btn-primary btn-sm flex-1"
+                    title="Receive PO"
                   >
-                    <PackageCheck className="w-3.5 h-3.5" /> Receive
+                    <PackageCheck className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Receive</span>
                   </button>
                 )}
                 {canDeletePO && (
@@ -211,15 +229,16 @@ export default function PurchaseOrders() {
                           ),
                       })
                     }
-                    className="btn btn-ghost h-9 w-9 p-0 text-danger"
+                    className="btn btn-ghost btn-sm max-md:w-7 max-md:px-0 text-danger shrink-0"
                     title="Delete PO (Admin only)"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Delete</span>
                   </button>
                 )}
               </div>
               {po.status === "received" && po.receivedAt && (
-                <div className="mt-3 text-[11px] text-success flex items-center gap-1">
+                <div className="mt-1.5 md:mt-3 text-[9px] md:text-[11px] text-success flex items-center gap-1">
                   <PackageCheck className="w-3 h-3" /> Received {formatDate(po.receivedAt)}
                 </div>
               )}
@@ -235,31 +254,6 @@ export default function PurchaseOrders() {
       {viewing && (
         <POViewDetailsModal po={viewing} onClose={() => setViewing(null)} />
       )}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "cyan" | "magenta";
-}) {
-  return (
-    <div className="paper-card p-4">
-      <div className="text-[11px] uppercase tracking-widest text-ink-mute">{label}</div>
-      <div
-        className={cn(
-          "font-display text-2xl font-bold num mt-1",
-          tone === "cyan" && "text-cyan-reg",
-          tone === "magenta" && "text-magenta-reg"
-        )}
-      >
-        {value}
-      </div>
     </div>
   );
 }

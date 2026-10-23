@@ -7,7 +7,7 @@ import {
   Mail,
   Phone,
   Gift,
-  User,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -17,10 +17,11 @@ import {
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdjustLoyalty } from "@/hooks/useLoyalty";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatMoney } from "@/lib/utils";
 import type { Customer } from "@/types";
 import CustomerModal from "@/components/features/customers/CustomerModal";
 import LoyaltyDialog from "@/components/features/customers/LoyaltyDialog";
+import StatCard from "@/components/ui/StatCard";
 
 export default function Customers() {
   const { can, profile } = useAuth();
@@ -57,159 +58,171 @@ export default function Customers() {
     [customers]
   );
 
+  const currency = settings?.currency || "USD";
+  const canManage = can("customers.manage");
+  const canLoyalty = can("loyalty.manage");
+
+  const openCustomer = (c: Customer) => {
+    if (canManage) {
+      setEditCust(c);
+      setModalOpen(true);
+    } else if (canLoyalty) {
+      setLoyaltyFor(c);
+    }
+  };
+
   return (
-    <div className="p-6 space-y-4">
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Customers" value={String(totals.count)} icon={User} />
-        <Stat
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
+      <div className="grid grid-cols-3 gap-1.5 md:gap-3">
+        <StatCard label="Customers" value={String(totals.count)} />
+        <StatCard
           label="Lifetime revenue"
-          value={formatCurrency(totals.lifetime, settings?.currency)}
+          value={formatMoney(totals.lifetime, currency)}
+          fullValue={formatCurrency(totals.lifetime, currency)}
         />
-        <Stat
-          label="Loyalty points outstanding"
+        <StatCard
+          label="Loyalty outstanding"
           value={totals.points.toLocaleString()}
-          icon={Gift}
         />
       </div>
 
-      <div className="paper-card p-4 flex flex-col md:flex-row md:items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
+      <div className="paper-card p-2.5 md:p-4 flex items-center gap-1.5 md:gap-3">
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search name, email or phone"
-            className="input pl-9"
+            className="input input-sm pl-7 md:pl-9"
           />
         </div>
-        {can("customers.manage") && (
+        <div className="hidden sm:flex items-center gap-1 text-[10px] md:text-xs text-ink-mute shrink-0">
+          <Users className="w-3 h-3 md:w-3.5 md:h-3.5" />
+          {filtered.length} of {customers.length}
+        </div>
+        {canManage && (
           <button
             onClick={() => {
               setEditCust(null);
               setModalOpen(true);
             }}
-            className="btn btn-primary"
+            className="btn btn-primary btn-sm shrink-0"
           >
-            <Plus className="w-4 h-4" /> New customer
+            <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">New customer</span>
+            <span className="sm:hidden">New</span>
           </button>
         )}
       </div>
 
-      {isLoading ? (
-        <div className="paper-card p-10 text-center text-ink-mute">Loading...</div>
-      ) : (
-        <div className="paper-card overflow-hidden">
-          <div className="overflow-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-widest text-ink-mute bg-paper/60">
-                  <th className="p-3 pl-5">Name</th>
-                  <th className="p-3">Contact</th>
-                  <th className="p-3 text-right">Lifetime spend</th>
-                  <th className="p-3 text-right">Loyalty pts</th>
-                  <th className="p-3">Joined</th>
-                  <th className="p-3 pr-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c) => (
-                  <tr key={c.id} className="border-t hover:bg-paper/40">
-                    <td className="p-3 pl-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold flex items-center justify-center overflow-hidden border">
-                          {c.avatarUrl ? (
-                            <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            c.name.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <div className="font-semibold">{c.name}</div>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex flex-col gap-0.5 text-xs">
-                        {c.email && (
-                          <span className="inline-flex items-center gap-1 text-ink-soft">
-                            <Mail className="w-3 h-3" />
-                            {c.email}
-                          </span>
-                        )}
-                        {c.phone && (
-                          <span className="inline-flex items-center gap-1 text-ink-soft">
-                            <Phone className="w-3 h-3" />
-                            {c.phone}
-                          </span>
-                        )}
-                        {!c.email && !c.phone && <span className="text-ink-mute">—</span>}
-                      </div>
-                    </td>
-                    <td className="p-3 text-right num font-semibold">
-                      {formatCurrency(c.totalSpent, settings?.currency)}
-                    </td>
-                    <td className="p-3 text-right">
-                      <span
-                        className={cn(
-                          "chip num",
-                          c.loyaltyPoints > 0
-                            ? "bg-magenta-reg/10 text-magenta-reg border border-magenta-reg/30"
-                            : "bg-ink/5 text-ink-mute"
-                        )}
-                      >
-                        {c.loyaltyPoints}
-                      </span>
-                    </td>
-                    <td className="p-3 text-xs text-ink-mute">{formatDate(c.createdAt)}</td>
-                    <td className="p-3 pr-5 text-right">
-                      <div className="flex justify-end gap-1">
-                        {can("loyalty.manage") && (
-                          <button
-                            onClick={() => setLoyaltyFor(c)}
-                            className="btn btn-ghost h-8 w-8 p-0 text-magenta-reg"
-                            title="Adjust loyalty"
-                          >
-                            <Gift className="w-4 h-4" />
-                          </button>
-                        )}
-                        {can("customers.manage") && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setEditCust(c);
-                                setModalOpen(true);
-                              }}
-                              className="btn btn-ghost h-8 w-8 p-0"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                confirm(`Delete customer "${c.name}"?`) &&
-                                del.mutate(c.id, {
-                                  onSuccess: () => toast.success("Customer deleted"),
-                                })
-                              }
-                              className="btn btn-ghost h-8 w-8 p-0 text-danger"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="p-10 text-center text-ink-mute">
-                      No customers yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+      <div className="paper-card overflow-hidden">
+        {isLoading ? (
+          <div className="p-6 md:p-10 text-center text-ink-mute text-sm">Loading...</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-8 md:p-12 text-center text-ink-mute">
+            <Users className="w-8 h-8 mx-auto text-ink-mute" />
+            <div className="mt-2 text-sm">
+              {customers.length === 0 ? "No customers yet." : "No customers match this search."}
+            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="divide-y">
+            {filtered.map((c) => {
+              const initials = c.name.trim().charAt(0).toUpperCase() || "?";
+              return (
+                <div
+                  key={c.id}
+                  className="flex items-center h-[38px] max-md:h-[27px] hover:bg-paper/50 transition text-[11px] leading-tight"
+                >
+                  <button
+                    onClick={() => openCustomer(c)}
+                    className="flex-1 h-full min-w-0 flex items-center gap-1.5 md:gap-3 px-2 md:px-5 text-left"
+                    title={c.name}
+                  >
+                    <span className="w-5 h-5 md:w-8 md:h-8 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold text-[8px] md:text-xs flex items-center justify-center overflow-hidden border shrink-0">
+                      {c.avatarUrl ? (
+                        <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        initials
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 flex items-center gap-2">
+                      <span className="truncate font-semibold text-[11px] md:text-sm">{c.name}</span>
+                      <span className="hidden md:inline-flex items-center gap-1 text-[10px] text-ink-mute min-w-0">
+                        {c.email ? (
+                          <>
+                            <Mail className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">{c.email}</span>
+                          </>
+                        ) : c.phone ? (
+                          <>
+                            <Phone className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">{c.phone}</span>
+                          </>
+                        ) : null}
+                      </span>
+                    </span>
+                    <span className="num font-semibold text-[10px] md:text-sm text-right shrink-0 md:w-24">
+                      {formatMoney(c.totalSpent, currency)}
+                    </span>
+                    <span
+                      className={cn(
+                        "hidden md:inline-flex num text-[9px] md:text-[10px] px-1 md:px-1.5 py-px rounded-full border shrink-0 md:w-14 justify-center",
+                        c.loyaltyPoints > 0
+                          ? "bg-magenta-reg/10 text-magenta-reg border-magenta-reg/30"
+                          : "bg-ink/5 text-ink-mute border-line"
+                      )}
+                      title="Loyalty points"
+                    >
+                      {c.loyaltyPoints}
+                    </span>
+                    <span className="hidden lg:inline text-[10px] text-ink-mute w-20 text-right shrink-0">
+                      {formatDate(c.createdAt)}
+                    </span>
+                  </button>
+                  <div className="flex items-center gap-0.5 md:gap-1 pr-1 md:pr-4 shrink-0">
+                    {canLoyalty && (
+                      <button
+                        onClick={() => setLoyaltyFor(c)}
+                        className="h-full w-5 md:h-8 md:w-8 p-0 inline-flex items-center justify-center rounded text-magenta-reg hover:bg-magenta-reg/10"
+                        title="Adjust loyalty"
+                      >
+                        <Gift className="w-3 h-3 md:w-4 md:h-4" />
+                      </button>
+                    )}
+                    {canManage && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditCust(c);
+                            setModalOpen(true);
+                          }}
+                          className="h-full w-5 md:h-8 md:w-8 p-0 inline-flex items-center justify-center rounded text-ink-mute hover:bg-paper"
+                          title="Edit customer"
+                        >
+                          <Edit3 className="w-3 h-3 md:w-4 md:h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            confirm(`Delete customer "${c.name}"?`) &&
+                            del.mutate(c.id, {
+                              onSuccess: () => toast.success("Customer deleted"),
+                            })
+                          }
+                          className="h-full w-5 md:h-8 md:w-8 p-0 inline-flex items-center justify-center rounded text-danger hover:bg-danger/10"
+                          title="Delete customer"
+                        >
+                          <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {modalOpen && (
         <CustomerModal customer={editCust} onClose={() => setModalOpen(false)} />
@@ -237,26 +250,6 @@ export default function Customers() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon?: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div className="paper-card p-4">
-      <div className="flex items-center justify-between">
-        <div className="text-[11px] uppercase tracking-widest text-ink-mute">{label}</div>
-        {Icon && <Icon className="w-4 h-4 text-ink-mute" />}
-      </div>
-      <div className="font-display text-2xl font-bold num mt-1">{value}</div>
     </div>
   );
 }

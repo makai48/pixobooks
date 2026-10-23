@@ -33,12 +33,6 @@ export type ItemType = "material" | "product" | "ready" | "intermediate";
  */
 export type ProductCategory = "goods" | "service" | "kit";
 
-export const PRODUCT_CATEGORIES: Record<ProductCategory, { label: string; blurb: string }> = {
-  goods: { label: "Goods", blurb: "Stocked and costed items" },
-  service: { label: "Services", blurb: "No stock, no cost price" },
-  kit: { label: "Kits", blurb: "Bundles sold from BOM components" },
-};
-
 export const ITEM_TYPE_META: Record<
   ItemType,
   { label: string; short: string; color: string; sellable: boolean; usable: boolean }
@@ -914,28 +908,6 @@ export function isShopOwner(email?: string | null, role?: string | null): boolea
   return isOwnerEmail(email) || isOwnerRole(role);
 }
 
-/** Onboarding payload collected on the Register page (stored to auth metadata,
- *  then fanned out to user_profiles + shop_settings by the signup trigger). */
-export type OnboardingPayload = {
-  businessName: string;
-  countryIso2: string;
-  timezone: string;
-  businessType: string;
-  currency: string;
-  digitGrouping: "western" | "indian";
-  decimalPlaces: number;
-  thousandSeparator: string;
-  decimalSeparator: string;
-  mobileDial: string;
-  mobileNumber: string;
-  officeDial?: string | null;
-  officeNumber?: string | null;
-  whatsappDial?: string | null;
-  whatsappNumber?: string | null;
-  termsVersion: string;
-  privacyVersion: string;
-};
-
 /** Compute the total monthly-equivalent salary from an EmployeeSalary payload. */
 export function computeEmployeeSalary(salary?: {
   base?: number;
@@ -1150,64 +1122,6 @@ export type BillingPeriod = {
   createdAt: string;
 };
 
-/** Aggregate debtor account view used across dashboards & reports. */
-export type DebtorAccount = {
-  customerId: string;
-  customerName: string;
-  phone?: string | null;
-  email?: string | null;
-  creditModel: CreditModel;
-  creditLimit: number;
-  paymentTermsDays: number;
-  accountStatus: AccountStatus;
-  outstandingBalance: number;
-  overdueAmount: number;
-  availableCredit: number;
-  unbilledAmount: number;
-  finalizedOutstanding: number;
-  lastActivity?: string | null;
-};
-
-export type CreditorAccount = {
-  supplierId: string;
-  supplierName: string;
-  phone?: string | null;
-  email?: string | null;
-  outstandingBalance: number;
-  overdueAmount: number;
-  lastActivity?: string | null;
-};
-
-export const DEBT_INVOICE_STATUS_META: Record<
-  DebtInvoiceStatus,
-  { label: string; color: string }
-> = {
-  draft: {
-    label: "Draft",
-    color: "bg-ink/5 text-ink-mute border border-line",
-  },
-  finalized: {
-    label: "Finalized",
-    color: "bg-cyan-reg/10 text-cyan-reg border border-cyan-reg/30",
-  },
-  partial: {
-    label: "Partially Paid",
-    color: "bg-yellow-reg/10 text-yellow-reg border border-yellow-reg/30",
-  },
-  paid: {
-    label: "Paid",
-    color: "bg-success/10 text-success border border-success/30",
-  },
-  overdue: {
-    label: "Overdue",
-    color: "bg-danger/10 text-danger border border-danger/30",
-  },
-  voided: {
-    label: "Voided",
-    color: "bg-ink/5 text-ink-mute border border-line line-through",
-  },
-};
-
 export type StatsPeriod = "day" | "week" | "month" | "year";
 
 export const STATS_PERIOD_META: Record<StatsPeriod, { label: string; days: number }> = {
@@ -1257,9 +1171,6 @@ export type StandingOrder = {
   createdAt: string;
   updatedAt: string;
 };
-
-export const BANK_METHODS: PaymentMethod[] = ["card", "transfer"];
-export const CASH_METHODS: PaymentMethod[] = ["cash"];
 
 export const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -1490,15 +1401,6 @@ export const CLIENT_INVOICE_STATUS_META: Record<
     color: "bg-ink/5 text-ink-mute border border-line line-through",
   },
 };
-
-export const CENTENARY_SERVICES = [
-  { name: "Full-size photo", unit: "pc" },
-  { name: "Passport photo", unit: "pc" },
-  { name: "National ID copy", unit: "pc" },
-  { name: "Business card", unit: "pc" },
-  { name: "Account name card", unit: "pc" },
-  { name: "Custom service", unit: "pc" },
-];
 
 /** Compact number-to-words converter used to render invoice totals
  *  in words (e.g. "Two Hundred Fifty Thousand Uganda Shillings Only"). */

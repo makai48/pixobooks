@@ -66,7 +66,7 @@ export default function BusinessSwitcher() {
         </button>
         {open && (
           <div
-            className="absolute right-0 mt-2 w-64 paper-card p-2 z-50"
+            className="absolute right-0 mt-1 max-md:mt-0.5 w-52 max-md:w-[146px] paper-card p-1.5 max-md:p-1 z-50"
             role="listbox"
             aria-label="Businesses"
           >
@@ -77,27 +77,27 @@ export default function BusinessSwitcher() {
                 role="option"
                 aria-selected={activeId === b.id}
                 onClick={() => pick(b)}
-                className="w-full flex items-center gap-2 px-3 h-10 rounded-lg text-sm hover:bg-ink/5 min-w-0"
+                className="w-full flex items-center gap-1.5 max-md:gap-1 px-2 max-md:px-1.5 h-8 max-md:h-[22px] rounded-md text-xs max-md:text-[10px] hover:bg-ink/5 min-w-0"
               >
-                <span className="w-4 shrink-0">
-                  {activeId === b.id && <Check className="w-4 h-4" />}
+                <span className="w-3.5 max-md:w-3 shrink-0">
+                  {activeId === b.id && <Check className="w-3.5 h-3.5 max-md:w-3 max-md:h-3" />}
                 </span>
                 <span className="truncate">{b.name}</span>
               </button>
             ))}
             {businesses.length === 0 && !isLoading && (
-              <p className="px-3 py-2 text-xs text-ink-mute">No businesses yet.</p>
+              <p className="px-2 max-md:px-1.5 py-1.5 max-md:py-1 text-[11px] max-md:text-[10px] text-ink-mute">No businesses yet.</p>
             )}
-            <div className="mt-2 pt-2 border-t border-line">
+            <div className="mt-1.5 max-md:mt-1 pt-1.5 max-md:pt-1 border-t border-line">
               <button
                 type="button"
                 onClick={() => {
                   setOpen(false);
                   setCreateOpen(true);
                 }}
-                className="w-full flex items-center gap-2 px-3 h-10 rounded-lg text-sm font-semibold hover:bg-ink/5"
+                className="w-full flex items-center gap-1.5 max-md:gap-1 px-2 max-md:px-1.5 h-8 max-md:h-[22px] rounded-md text-xs max-md:text-[10px] font-semibold hover:bg-ink/5"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5 max-md:w-3 max-md:h-3" />
                 New business
               </button>
             </div>

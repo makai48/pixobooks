@@ -90,7 +90,6 @@ const SECTIONS = [
   { id: "discounts", label: "Discounts" },
   { id: "branches", label: "Branches" },
   { id: "theme", label: "Theme" },
-
   { id: "billing", label: "Billing" },
   { id: "export", label: "Backup & Export" },
 ] as const;

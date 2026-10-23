@@ -146,9 +146,76 @@
     color: hsl(var(--ink));
   }
   .input:focus { border-color: hsl(var(--ink)); box-shadow: 0 0 0 3px hsl(var(--ink) / 0.12); }
+  /* Frosted-glass dropdown surface */
+  .input.select-glass {
+    background: hsl(var(--card) / 0.55);
+    border-color: hsl(var(--ink) / 0.22);
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    backdrop-filter: blur(10px) saturate(150%);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.35),
+      0 8px 18px -16px hsl(var(--ink) / 0.7);
+  }
+  .input.select-glass:focus {
+    border-color: hsl(var(--ink));
+    box-shadow: 0 0 0 3px hsl(var(--ink) / 0.12),
+      inset 0 1px 0 hsl(0 0% 100% / 0.35);
+  }
+  /* Frosted-glass popover surface (dropdowns + date picker) */
+  .glass-pop {
+    background: hsl(var(--card) / 0.55);
+    border: 1px solid hsl(var(--ink) / 0.14);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    backdrop-filter: blur(18px) saturate(170%);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.4),
+      0 28px 60px -32px hsl(var(--ink) / 0.55);
+  }
+  [data-theme="dark"] .glass-pop {
+    background: hsl(var(--card) / 0.55);
+    border-color: hsl(0 0% 100% / 0.12);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.12),
+      0 28px 60px -28px hsl(0 0% 0% / 0.8);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-pop { background: hsl(var(--card) / 0.97); }
+  }
   .label {
     @apply text-xs font-medium uppercase tracking-wider;
     color: hsl(var(--ink-mute));
+  }
+  /* Traditional design role scale — opt-in, globally available. */
+  .td-kicker {
+    @apply text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute;
+  }
+  .td-label {
+    @apply text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-wider text-ink-mute;
+  }
+  .td-title {
+    @apply font-display text-sm md:text-lg font-bold;
+  }
+  .td-body {
+    @apply text-[10px] md:text-[13px];
+  }
+  .td-hint {
+    @apply text-[9px] md:text-[10px] text-ink-mute;
+  }
+  .td-value {
+    @apply font-display font-bold leading-tight;
+  }
+  .td-card {
+    @apply p-2.5 md:p-4;
+  }
+  /* Cash Flow Summary — 130% of the base role scale. */
+  .td-flow-kicker {
+    @apply text-[9px] md:text-[14px] uppercase tracking-wide md:tracking-widest text-ink-mute;
+  }
+  .td-flow-body {
+    @apply text-[13px] md:text-[17px];
+  }
+  .td-flow-value {
+    @apply text-[14px] md:text-[21px];
+  }
+  .td-flow-hint {
+    @apply text-[12px] md:text-[13px] text-ink-mute;
   }
   .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
   .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
@@ -321,11 +388,9 @@
     margin: 0 auto;
   }
   .sidebar-collapsed .sb-signed-in { padding: 8px !important; }
-  .sidebar-collapsed .sb-shop { padding: 6px !important; justify-content: center; }
   .sidebar-collapsed .sb-signed-in .sb-avatar { margin: 0 auto; }
   .sidebar-collapsed .sb-brand { justify-content: center; }
   .sidebar-collapsed .sb-brand-logo { margin: 0 auto; }
-  .sidebar-collapsed .sb-create-shop { display: none !important; }
   .sidebar-collapsed .sb-create {
     width: 48px;
     height: 48px;
@@ -395,6 +460,8 @@
 @media (max-width: 767px) {
   .btn { @apply h-10 px-4; }
   .input { @apply h-10; }
+  .btn.btn-sm { @apply h-7 gap-1 px-2 text-[11px]; }
+  .input.input-sm { @apply h-7 text-[13px]; }
   .pos-search { height: 48px; }
   .pos-tile-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
   .pos-thumb-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 5px; }

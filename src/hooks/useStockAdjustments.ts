@@ -118,16 +118,4 @@ export function useCreateStockAdjustment() {
   });
 }
 
-export function useDeleteStockAdjustment() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("stock_adjustments")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["stock_adjustments"] }),
-  });
-}
+

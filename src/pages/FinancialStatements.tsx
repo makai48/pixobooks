@@ -35,7 +35,10 @@ import {
   useLiveOpeningBalance,
 } from "@/hooks/useDailyBalancing";
 import { useClientReceivablesTotals } from "@/hooks/useClients";
-import { cn, formatCurrency, formatDate, formatDateTime, todayISO, localISODate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatDateTime, formatMoney, todayISO, localISODate } from "@/lib/utils";
+import GlassSelect from "@/components/ui/GlassSelect";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import StatCard from "@/components/ui/StatCard";
 import type { StandingOrder, StandingOrderKind, StandingOrderFrequency, BankDeposit, Sale, Expense } from "@/types";
 import { MONTH_NAMES, DRAWINGS_CATEGORY } from "@/types";
 
@@ -136,71 +139,88 @@ export default function FinancialStatements() {
   const net = gross - totalExp;
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      <div className="paper-card p-4 flex flex-col md:flex-row md:items-center gap-3">
-        <div className="flex items-center gap-2 text-ink-mute">
-          <Landmark className="w-4 h-4" />
-          <span className="label">Statement period</span>
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
+      <div className="paper-card p-2.5 md:p-4 flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3">
+        <div className="flex items-center gap-1.5 text-ink-mute shrink-0">
+          <Landmark className="w-3.5 h-3.5 md:w-4 md:h-4" />
+          <span className="label text-[7px] md:text-[11px] whitespace-nowrap">Statement period</span>
         </div>
-        <div className="flex items-center gap-2 flex-1">
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="input h-9 flex-1 md:max-w-[180px]">
-            {MONTH_NAMES.map((m, i) => (<option key={m} value={i}>{m}</option>))}
-          </select>
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="input h-9 w-28">
-            {years.map((y) => (<option key={y} value={y}>{y}</option>))}
-          </select>
+        <div className="flex items-center gap-1 md:gap-2 md:flex-1">
+          <GlassSelect
+            value={String(month)}
+            onChange={(v) => setMonth(Number(v))}
+            ariaLabel="Statement month"
+            options={MONTH_NAMES.map((m, i) => ({ value: String(i), label: m }))}
+            className="input input-sm select-glass max-md:px-1.5"
+          />
+          <GlassSelect
+            value={String(year)}
+            onChange={(v) => setYear(Number(v))}
+            ariaLabel="Statement year"
+            options={years.map((y) => ({ value: String(y), label: String(y) }))}
+            className="input input-sm select-glass max-md:px-1.5"
+          />
         </div>
         {canManage && (
-          <div className="flex gap-2 flex-wrap">
-            <button onClick={() => setBalancingOpen(true)} className="btn btn-accent h-9">
-              <Scale className="w-4 h-4" /> Daily Balancing &amp; Banking
+          <div className="flex gap-1 md:gap-2 flex-wrap">
+            <button onClick={() => setBalancingOpen(true)} className="btn btn-accent btn-sm">
+              <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Daily Balancing &amp; Banking</span>
+              <span className="sm:hidden">Balancing</span>
             </button>
-            <button onClick={() => { setEditOrder(null); setOrderOpen(true); }} className="btn btn-outline h-9">
-              <Repeat className="w-4 h-4" /> Standing / Loan
+            <button onClick={() => { setEditOrder(null); setOrderOpen(true); }} className="btn btn-outline btn-sm">
+              <Repeat className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Standing / Loan</span>
+              <span className="sm:hidden">Standing</span>
             </button>
           </div>
         )}
       </div>
 
       {/* Client Billing receivables summary — sourced from client_invoices */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-3">
+        <StatCard
           label="Client AR (billed)"
-          value={formatCurrency(ledger.totalReceivable, currency)}
+          value={formatMoney(ledger.totalReceivable, currency)}
+          fullValue={formatCurrency(ledger.totalReceivable, currency)}
           tone={ledger.totalReceivable > 0 ? "success" : undefined}
         />
-        <Kpi
+        <StatCard
           label="Overdue AR"
-          value={formatCurrency(ledger.overdue, currency)}
+          value={formatMoney(ledger.overdue, currency)}
+          fullValue={formatCurrency(ledger.overdue, currency)}
           tone={ledger.overdue > 0 ? "danger" : undefined}
         />
-        <Kpi
+        <StatCard
           label="Billed this month"
-          value={formatCurrency(ledger.billedThisMonth, currency)}
+          value={formatMoney(ledger.billedThisMonth, currency)}
+          fullValue={formatCurrency(ledger.billedThisMonth, currency)}
         />
-        <Kpi
+        <StatCard
           label="Paid this month"
-          value={formatCurrency(ledger.paidThisMonth, currency)}
-          tone={"success"}
+          value={formatMoney(ledger.paidThisMonth, currency)}
+          fullValue={formatCurrency(ledger.paidThisMonth, currency)}
+          tone="success"
         />
       </div>
 
       <div className="paper-card overflow-hidden">
         <div className="border-b flex overflow-x-auto scrollbar-none">
           {([
-            { k: "cashbook", label: "Cashbook", icon: Banknote },
-            { k: "bank", label: "Bank Statement", icon: Landmark },
-            { k: "pnl", label: "Profit & Loss", icon: TrendingUp },
-            { k: "orders", label: "Standing Orders & Loans", icon: Repeat },
-          ] as { k: Tab; label: string; icon: import("lucide-react").LucideIcon }[]).map(({ k, label, icon: Icon }) => (
-            <button key={k} onClick={() => setTab(k)} className={cn("px-4 h-12 flex items-center gap-2 text-sm font-semibold border-b-2 transition whitespace-nowrap", tab === k ? "border-magenta-reg text-magenta-reg" : "border-transparent text-ink-mute hover:text-ink")}>
-              <Icon className="w-4 h-4" />
-              {label}
+            { k: "cashbook", label: "Cashbook", short: "Cash", icon: Banknote },
+            { k: "bank", label: "Bank Statement", short: "Bank", icon: Landmark },
+            { k: "pnl", label: "Profit & Loss", short: "P&L", icon: TrendingUp },
+            { k: "orders", label: "Standing Orders & Loans", short: "Orders", icon: Repeat },
+          ] as { k: Tab; label: string; short: string; icon: import("lucide-react").LucideIcon }[]).map(({ k, label, short, icon: Icon }) => (
+            <button key={k} onClick={() => setTab(k)} className={cn("px-2.5 md:px-4 h-9 md:h-12 flex items-center gap-1 md:gap-2 text-[10px] md:text-sm font-semibold border-b-2 transition whitespace-nowrap", tab === k ? "border-magenta-reg text-magenta-reg" : "border-transparent text-ink-mute hover:text-ink")}>
+              <Icon className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="md:hidden">{short}</span>
+              <span className="hidden md:inline">{label}</span>
             </button>
           ))}
         </div>
 
-        <div className="p-4">
+        <div className="p-2 md:p-4">
           {tab === "cashbook" && (
             <LedgerTable rows={cashRows} debitLabel="Cash in" creditLabel="Cash out" totals={cashTotals} balance={cashBalance} currency={currency} balanceLabel="Cash on hand" />
           )}
@@ -231,8 +251,8 @@ export default function FinancialStatements() {
       )}
 
       {tab === "cashbook" && deposits.length > 0 && canManage && (
-        <div className="paper-card p-4">
-          <div className="text-[11px] uppercase tracking-widest text-ink-mute mb-2">Recent daily banking entries</div>
+        <div className="paper-card td-card">
+          <div className="td-kicker mb-1.5 md:mb-2">Recent daily banking entries</div>
           <DepositsList deposits={deposits} currency={currency} />
         </div>
       )}
@@ -248,37 +268,40 @@ function LedgerTable({ rows, debitLabel, creditLabel, totals, balance, currency,
   let running = 0;
   return (
     <div>
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <Kpi label={debitLabel} value={formatCurrency(totals.debit, currency)} tone="success" compact />
-        <Kpi label={creditLabel} value={formatCurrency(totals.credit, currency)} tone="danger" compact />
-        <Kpi label={balanceLabel} value={formatCurrency(balance, currency)} tone={balance >= 0 ? "success" : "danger"} compact />
+      <div className="grid grid-cols-3 gap-1.5 md:gap-3 mb-2 md:mb-4">
+        <StatCard label={debitLabel} value={formatMoney(totals.debit, currency)} fullValue={formatCurrency(totals.debit, currency)} tone="success" />
+        <StatCard label={creditLabel} value={formatMoney(totals.credit, currency)} fullValue={formatCurrency(totals.credit, currency)} tone="danger" />
+        <StatCard label={balanceLabel} value={formatMoney(balance, currency)} fullValue={formatCurrency(balance, currency)} tone={balance >= 0 ? "success" : "danger"} />
       </div>
       <div className="overflow-auto max-h-[50vh] scroll-lined border rounded-md">
-        <table className="w-full text-sm">
+        <table className="w-full text-[10px] md:text-sm">
           <thead className="bg-paper sticky top-0">
-            <tr className="text-left text-[10px] uppercase tracking-widest text-ink-mute">
-              <th className="p-2 pl-3">Date</th>
-              <th className="p-2">Ref</th>
-              <th className="p-2">Description</th>
-              <th className="p-2 text-right">{debitLabel}</th>
-              <th className="p-2 text-right">{creditLabel}</th>
-              <th className="p-2 text-right pr-3">Balance</th>
+            <tr className="text-left text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute">
+              <th className="p-1 pl-2 md:p-2 md:pl-3">Date</th>
+              <th className="p-1 md:p-2 hidden md:table-cell">Ref</th>
+              <th className="p-1 md:p-2">Description</th>
+              <th className="p-1 md:p-2 text-right">{debitLabel}</th>
+              <th className="p-1 md:p-2 text-right">{creditLabel}</th>
+              <th className="p-1 pr-2 md:p-2 md:pr-3 text-right">Balance</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={6} className="p-8 text-center text-ink-mute">No entries for this period.</td></tr>
+              <tr><td colSpan={6} className="p-6 md:p-8 text-center text-ink-mute">No entries for this period.</td></tr>
             ) : (
               rows.map((r, i) => {
                 running += r.debit - r.credit;
                 return (
                   <tr key={i} className="border-t hover:bg-paper/40">
-                    <td className="p-2 pl-3 text-xs">{formatDate(r.date)}</td>
-                    <td className="p-2 font-mono text-xs">{r.ref}</td>
-                    <td className="p-2 text-xs">{r.description}</td>
-                    <td className="p-2 text-right num text-success">{r.debit > 0 ? formatCurrency(r.debit, currency) : "—"}</td>
-                    <td className="p-2 text-right num text-danger">{r.credit > 0 ? formatCurrency(r.credit, currency) : "—"}</td>
-                    <td className="p-2 pr-3 text-right num font-semibold">{formatCurrency(running, currency)}</td>
+                    <td className="px-1 pl-2 md:px-2 md:pl-3 h-[24px] md:h-[30px] text-[9px] md:text-xs whitespace-nowrap">
+                      <span className="md:hidden">{r.date.slice(5)}</span>
+                      <span className="hidden md:inline">{formatDate(r.date)}</span>
+                    </td>
+                    <td className="px-1 md:px-2 h-[24px] md:h-[30px] font-mono text-[10px] md:text-xs hidden md:table-cell">{r.ref}</td>
+                    <td className="px-1 md:px-2 h-[24px] md:h-[30px] text-[9px] md:text-xs truncate max-w-[110px] md:max-w-none">{r.description}</td>
+                    <td className="px-1 md:px-2 h-[24px] md:h-[30px] text-right num text-[9px] md:text-xs text-success whitespace-nowrap">{r.debit > 0 ? formatMoney(r.debit, currency) : "—"}</td>
+                    <td className="px-1 md:px-2 h-[24px] md:h-[30px] text-right num text-[9px] md:text-xs text-danger whitespace-nowrap">{r.credit > 0 ? formatMoney(r.credit, currency) : "—"}</td>
+                    <td className="px-1 pr-2 md:px-2 md:pr-3 h-[24px] md:h-[30px] text-right num text-[9px] md:text-xs font-semibold whitespace-nowrap">{formatMoney(running, currency)}</td>
                   </tr>
                 );
               })
@@ -286,10 +309,11 @@ function LedgerTable({ rows, debitLabel, creditLabel, totals, balance, currency,
           </tbody>
           <tfoot className="bg-paper/60">
             <tr className="border-t font-semibold">
-              <td colSpan={3} className="p-2 pl-3 text-xs uppercase text-ink-mute">Totals</td>
-              <td className="p-2 text-right num text-success">{formatCurrency(totals.debit, currency)}</td>
-              <td className="p-2 text-right num text-danger">{formatCurrency(totals.credit, currency)}</td>
-              <td className="p-2 pr-3 text-right num">{formatCurrency(balance, currency)}</td>
+              <td colSpan={2} className="p-1 pl-2 md:hidden text-[8px] uppercase text-ink-mute">Totals</td>
+              <td colSpan={3} className="p-2 pl-3 text-xs uppercase text-ink-mute hidden md:table-cell">Totals</td>
+              <td className="p-1 md:p-2 text-right num text-[9px] md:text-xs text-success whitespace-nowrap">{formatMoney(totals.debit, currency)}</td>
+              <td className="p-1 md:p-2 text-right num text-[9px] md:text-xs text-danger whitespace-nowrap">{formatMoney(totals.credit, currency)}</td>
+              <td className="p-1 pr-2 md:p-2 md:pr-3 text-right num text-[9px] md:text-xs whitespace-nowrap">{formatMoney(balance, currency)}</td>
             </tr>
           </tfoot>
         </table>
@@ -302,9 +326,9 @@ function ProfitLoss({ revenue, cogs, gross, expByCategory, totalExp, net, curren
   revenue: number; cogs: number; gross: number; expByCategory: [string, number][]; totalExp: number; net: number; currency: string;
 }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
       <div className="md:col-span-2 border rounded-md overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-[10px] md:text-sm">
           <tbody>
             <PLRow label="Revenue" value={revenue} currency={currency} strong />
             <PLRow label="− Cost of goods sold" value={-cogs} currency={currency} indent />
@@ -314,18 +338,18 @@ function ProfitLoss({ revenue, cogs, gross, expByCategory, totalExp, net, curren
             ))}
             <PLRow label="Total operating expenses" value={-totalExp} currency={currency} strong divider />
             <tr className="border-t bg-magenta-reg/5">
-              <td className="p-3 font-bold uppercase tracking-widest text-sm">Net profit / (loss)</td>
-              <td className={cn("p-3 text-right num font-bold text-lg", net >= 0 ? "text-success" : "text-danger")}>{formatCurrency(net, currency)}</td>
+              <td className="p-2 md:p-3 font-bold uppercase tracking-wide md:tracking-widest text-[9px] md:text-sm">Net profit / (loss)</td>
+              <td className={cn("p-2 md:p-3 text-right num font-bold text-sm md:text-lg whitespace-nowrap", net >= 0 ? "text-success" : "text-danger")}>{formatMoney(net, currency)}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div className="space-y-3">
-        <Kpi label="Revenue" value={formatCurrency(revenue, currency)} tone="success" />
-        <Kpi label="COGS" value={formatCurrency(cogs, currency)} />
-        <Kpi label="Gross margin" value={revenue > 0 ? `${((gross / revenue) * 100).toFixed(1)}%` : "—"} />
-        <Kpi label="Operating exp" value={formatCurrency(totalExp, currency)} tone="danger" />
-        <Kpi label="Net result" value={formatCurrency(net, currency)} tone={net >= 0 ? "success" : "danger"} />
+      <div className="grid grid-cols-2 md:grid-cols-1 gap-1.5 md:gap-2">
+        <StatCard label="Revenue" value={formatMoney(revenue, currency)} tone="success" />
+        <StatCard label="COGS" value={formatMoney(cogs, currency)} />
+        <StatCard label="Gross margin" value={revenue > 0 ? `${((gross / revenue) * 100).toFixed(1)}%` : "—"} />
+        <StatCard label="Operating exp" value={formatMoney(totalExp, currency)} tone="danger" />
+        <StatCard label="Net result" value={formatMoney(net, currency)} tone={net >= 0 ? "success" : "danger"} />
       </div>
     </div>
   );
@@ -334,8 +358,8 @@ function ProfitLoss({ revenue, cogs, gross, expByCategory, totalExp, net, curren
 function PLRow({ label, value, currency, strong, indent, divider }: { label: string; value: number; currency: string; strong?: boolean; indent?: boolean; divider?: boolean; }) {
   return (
     <tr className={cn(divider && "border-t")}>
-      <td className={cn("p-2", strong && "font-semibold", indent && "pl-6 text-ink-mute")}>{label}</td>
-      <td className={cn("p-2 text-right num", strong && "font-bold", value < 0 && !indent && "text-danger")}>{formatCurrency(value, currency)}</td>
+      <td className={cn("p-1.5 md:p-2", strong && "font-semibold", indent && "pl-4 md:pl-6 text-ink-mute")}>{label}</td>
+      <td className={cn("p-1.5 md:p-2 text-right num whitespace-nowrap", strong && "font-bold", value < 0 && !indent && "text-danger")}>{formatMoney(value, currency)}</td>
     </tr>
   );
 }
@@ -345,37 +369,37 @@ function StandingOrdersView({ orders, onEdit, currency }: { orders: StandingOrde
   const upsert = useUpsertStandingOrder();
   const grouped = { standing: orders.filter((o) => o.kind === "standing"), loan: orders.filter((o) => o.kind === "loan") };
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
       {(["standing", "loan"] as StandingOrderKind[]).map((kind) => (
         <div key={kind} className="border rounded-md overflow-hidden">
-          <div className="p-3 bg-paper border-b">
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">{kind === "loan" ? "Loans" : "Standing orders"}</div>
+          <div className="td-card bg-paper border-b">
+            <div className="td-kicker">{kind === "loan" ? "Loans" : "Standing orders"}</div>
           </div>
           {grouped[kind].length === 0 ? (
-            <div className="p-6 text-sm text-ink-mute text-center">No {kind === "loan" ? "loans" : "standing orders"} yet.</div>
+            <div className="p-4 md:p-6 td-body text-ink-mute text-center">No {kind === "loan" ? "loans" : "standing orders"} yet.</div>
           ) : (
             <div className="divide-y">
               {grouped[kind].map((o) => (
-                <div key={o.id} className="p-3 flex items-start gap-3">
+                <div key={o.id} className="p-2 md:p-3 flex items-start gap-2 md:gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm">{o.name}</div>
-                    <div className="text-[11px] text-ink-mute">{o.payee} · {o.frequency} · next {o.nextRunDate || "—"}</div>
+                    <div className="font-semibold td-body truncate">{o.name}</div>
+                    <div className="td-hint truncate">{o.payee} · {o.frequency} · next {o.nextRunDate || "—"}</div>
                     {kind === "loan" && o.loanBalance != null && (
-                      <div className="text-[11px] text-magenta-reg mt-0.5">
-                        Balance: {formatCurrency(o.loanBalance, o.currency || currency)}
+                      <div className="td-body text-magenta-reg mt-0.5 truncate">
+                        Balance: {formatMoney(o.loanBalance, o.currency || currency)}
                         {o.loanRate ? ` · ${o.loanRate}% APR` : ""}
                       </div>
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="num font-bold">{formatCurrency(o.amount, o.currency || currency)}</div>
-                    <div className="flex gap-1 mt-1">
-                      <button onClick={() => upsert.mutate({ ...o, active: !o.active })} className={cn("chip text-[10px] uppercase border", o.active ? "bg-success/10 text-success border-success/30" : "bg-ink/5 text-ink-mute border-line")}>
+                    <div className="num font-bold td-body whitespace-nowrap">{formatMoney(o.amount, o.currency || currency)}</div>
+                    <div className="flex gap-1 mt-1 justify-end">
+                      <button onClick={() => upsert.mutate({ ...o, active: !o.active })} className={cn("chip text-[8px] md:text-[10px] uppercase border px-1 md:px-1.5", o.active ? "bg-success/10 text-success border-success/30" : "bg-ink/5 text-ink-mute border-line")}>
                         {o.active ? "Active" : "Paused"}
                       </button>
-                      <button onClick={() => onEdit(o)} className="btn btn-ghost h-6 w-6 p-0"><Wallet className="w-3 h-3" /></button>
-                      <button onClick={() => confirm(`Delete "${o.name}"?`) && del.mutate(o.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-6 w-6 p-0 text-danger">
-                        <Trash2 className="w-3 h-3" />
+                      <button onClick={() => onEdit(o)} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0" title="Edit"><Wallet className="w-2.5 h-2.5 md:w-3 md:h-3" /></button>
+                      <button onClick={() => confirm(`Delete "${o.name}"?`) && del.mutate(o.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0 text-danger" title="Delete">
+                        <Trash2 className="w-2.5 h-2.5 md:w-3 md:h-3" />
                       </button>
                     </div>
                   </div>
@@ -394,44 +418,19 @@ function DepositsList({ deposits, currency }: { deposits: BankDeposit[]; currenc
   return (
     <div className="divide-y">
       {deposits.map((d) => (
-        <div key={d.id} className="py-2 flex items-center justify-between text-sm">
+        <div key={d.id} className="py-1 md:py-2 flex items-center justify-between td-body gap-2">
           <div className="min-w-0">
             <div className="font-semibold truncate">{d.bankName || "Bank"} · {d.reference || "no ref"}</div>
-            <div className="text-[11px] text-ink-mute">{formatDate(d.depositedAt)} · {d.createdByName || "—"}</div>
+            <div className="td-hint truncate">{formatDate(d.depositedAt)} · {d.createdByName || "—"}</div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="num font-semibold">{formatCurrency(d.amount, currency)}</span>
-            <button onClick={() => confirm("Delete this deposit?") && del.mutate(d.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-7 w-7 p-0 text-danger">
-              <Trash2 className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1 md:gap-2 shrink-0">
+            <span className="num font-semibold whitespace-nowrap">{formatMoney(d.amount, currency)}</span>
+            <button onClick={() => confirm("Delete this deposit?") && del.mutate(d.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-6 w-6 md:h-7 md:w-7 p-0 text-danger" title="Delete">
+              <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
             </button>
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-function stripCurrencyLabel(v: string) {
-  // strips a leading currency code/symbol like "UGX " so only the number remains
-  return v.replace(/^[^\d-]+/, "").trim();
-}
-
-function Kpi({ label, value, tone, compact }: { label: string; value: string; tone?: "success" | "danger"; compact?: boolean; }) {
-  const display = compact ? stripCurrencyLabel(value) : value;
-  return (
-    <div className="paper-card p-3">
-      <div className="text-[10px] uppercase tracking-widest text-ink-mute">{label}</div>
-      <div
-        title={value}
-        className={cn(
-          "font-display font-bold num mt-0.5 leading-tight break-words",
-          compact ? "text-[0.73rem]" : "text-lg",
-          tone === "success" && "text-success",
-          tone === "danger" && "text-danger"
-        )}
-      >
-        {display}
-      </div>
     </div>
   );
 }
@@ -653,25 +652,25 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
   const saving = create.isPending || persistBalancing.isPending;
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-2 md:p-4 animate-fade-in">
       <div className="paper-card w-full max-w-2xl overflow-hidden max-h-[95dvh] flex flex-col">
-        <div className="p-4 border-b flex items-center justify-between shrink-0">
+        <div className="p-2.5 md:p-4 border-b flex items-center justify-between shrink-0">
           <div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+            <div className="td-kicker">
               End-of-day cashout · {formatDate(today)}
             </div>
-            <h2 className="font-display text-lg font-bold">Daily Balancing &amp; Banking</h2>
+            <h2 className="td-title">Daily Balancing &amp; Banking</h2>
           </div>
-          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="btn btn-ghost h-7 w-7 md:h-9 md:w-9 p-0"><X className="w-4 h-4" /></button>
         </div>
 
-        <form onSubmit={submit} className="overflow-auto scroll-lined p-4 md:p-5 space-y-4">
+        <form onSubmit={submit} className="overflow-auto scroll-lined p-2.5 md:p-5 space-y-2 md:space-y-4">
           {lastCompleted && (
-            <div className="paper-card p-3 bg-success/10 border border-success/30 flex items-start gap-3">
+            <div className="paper-card td-card bg-success/10 border border-success/30 flex items-start gap-2 md:gap-3">
               <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0 text-sm">
-                <div className="font-semibold text-success">Balancing recorded</div>
-                <div className="text-xs text-ink-soft mt-0.5">
+              <div className="flex-1 min-w-0">
+                <div className="td-body font-semibold text-success">Balancing recorded</div>
+                <div className="text-[9px] md:text-[10px] text-ink-soft mt-0.5">
                   {formatDateTime(lastCompleted.at)}
                   {lastCompleted.banked > 0 && ` · banked ${formatCurrency(lastCompleted.banked, currency)}`}
                   {" · new Balance c/d "}
@@ -679,7 +678,7 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
                     {formatCurrency(lastCompleted.cd, currency)}
                   </span>
                 </div>
-                <div className="text-[11px] text-ink-mute mt-1">
+                <div className="td-hint mt-1">
                   If more transactions come in you can bank again below —
                   the summary refreshes automatically. No need to wait for
                   a new day.
@@ -689,11 +688,11 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
           )}
 
           {/* Cash Flow Summary — ALL rows read-only, auto-derived */}
-          <div className="paper-card p-4">
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute mb-3 flex items-center gap-2">
-              <Banknote className="w-4 h-4" /> Cash Flow Summary
+          <div className="paper-card td-card">
+            <div className="td-flow-kicker mb-1.5 md:mb-3 flex items-center gap-1.5 md:gap-2">
+              <Banknote className="w-3.5 h-3.5 md:w-4 md:h-4" /> Cash Flow Summary
             </div>
-            <div className="space-y-1 text-sm">
+            <div className="space-y-0.5 md:space-y-1">
               <ReadOnlyFlowRow
                 label={`Balance b/f${bfLoading ? " (loading…)" : anchorDate ? ` (auto ← ${formatDate(anchorDate)} c/d)` : " (fresh start)"}`}
                 value={openingBalance}
@@ -744,7 +743,7 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
                 </>
               )}
             </div>
-            <div className="text-[10px] text-ink-mute mt-3 pt-2 border-t flex items-start gap-1.5">
+            <div className="td-flow-hint mt-2 md:mt-3 pt-1.5 md:pt-2 border-t flex items-start gap-1.5">
               <Info className="w-3 h-3 shrink-0 mt-0.5" />
               <span>
                 Balance b/f is LIVE-DERIVED from the transaction ledger — it
@@ -757,13 +756,13 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
           </div>
 
           {/* Bank Deposit — the ONLY editable section */}
-          <div className="paper-card p-4">
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute mb-3 flex items-center gap-2">
-              <Landmark className="w-4 h-4" /> Cash Deposit to Bank
+          <div className="paper-card td-card">
+            <div className="td-kicker mb-1.5 md:mb-3 flex items-center gap-1.5 md:gap-2">
+              <Landmark className="w-3.5 h-3.5 md:w-4 md:h-4" /> Cash Deposit to Bank
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 md:gap-3">
               <div>
-                <label htmlFor="fs-deposit-amount" className="label">Amount ({currency})</label>
+                <label htmlFor="fs-deposit-amount" className="td-label">Amount ({currency})</label>
                 <input
                   id="fs-deposit-amount"
                   type="number"
@@ -773,24 +772,24 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
                   value={depositAmount || ""}
                   onChange={(e) => setDepositAmount(Number(e.target.value) || 0)}
                   placeholder="0"
-                  className="input mt-1 num text-right"
+                  className="input input-sm mt-1 num text-right"
                 />
               </div>
               <div>
-                <label htmlFor="fs-deposit-date" className="label">Date</label>
-                <input
+                <label htmlFor="fs-deposit-date" className="td-label">Date</label>
+                <GlassDatePicker
                   id="fs-deposit-date"
-                  type="date"
                   value={depositDate}
-                  onChange={(e) => setDepositDate(e.target.value)}
-                  className="input mt-1"
+                  onChange={setDepositDate}
+                  ariaLabel="Deposit date"
+                  className="input input-sm select-glass mt-1"
                 />
               </div>
               <div className="col-span-2">
-                <label htmlFor="fs-deposit-bank" className="label">
+                <label htmlFor="fs-deposit-bank" className="td-label">
                   Bank / Account
                   {mruBank && (
-                    <span className="text-[10px] text-ink-mute font-normal ml-1 normal-case tracking-normal">
+                    <span className="td-hint hidden md:inline font-normal ml-1 normal-case tracking-normal">
                       — most-recently used auto-selected
                     </span>
                   )}
@@ -799,30 +798,30 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
                   id="fs-deposit-bank"
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
-                  className="input mt-1"
+                  className="input input-sm mt-1"
                   placeholder="Stanbic Business ##3456"
                 />
               </div>
               <div className="col-span-2">
-                <label htmlFor="fs-deposit-ref" className="label">Reference / Slip #</label>
+                <label htmlFor="fs-deposit-ref" className="td-label">Reference / Slip #</label>
                 <input
                   id="fs-deposit-ref"
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
-                  className="input mt-1 num"
+                  className="input input-sm mt-1 num"
                 />
               </div>
               <div className="col-span-2">
-                <label htmlFor="fs-deposit-notes" className="label">Notes</label>
+                <label htmlFor="fs-deposit-notes" className="td-label">Notes</label>
                 <textarea
                   id="fs-deposit-notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="input mt-1 h-16"
+                  className="input input-sm mt-1 min-h-12 md:min-h-16"
                 />
               </div>
             </div>
-            <div className="text-[10px] text-ink-mute mt-3 flex items-start gap-1.5">
+            <div className="td-hint mt-2 md:mt-3 flex items-start gap-1.5">
               <Info className="w-3 h-3 shrink-0 mt-0.5" />
               <span>
                 Banking is strictly a Till → Bank transfer — NOT a sale,
@@ -835,32 +834,32 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
 
           {/* Prominent, read-only Balance c/d card */}
           <div className={cn(
-            "paper-card p-4 border-2",
+            "paper-card td-card border-2",
             closingBalance >= 0 ? "bg-magenta-reg/5 border-magenta-reg/30" : "bg-danger/5 border-danger/30"
           )}>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+            <div className="td-kicker">
               Calculated Balance c/d · leftover cash (carries to tomorrow's b/f)
             </div>
             <div className={cn(
-              "font-display font-bold num mt-1 leading-tight break-words",
-              "text-3xl md:text-4xl",
+              "td-value num mt-0.5 md:mt-1 break-words",
+              "text-xl md:text-4xl",
               closingBalance >= 0 ? "text-ink" : "text-danger"
             )}>
               {formatCurrency(closingBalance, currency)}
             </div>
-            <div className="text-[11px] text-ink-mute mt-1">
+            <div className="td-hint mt-0.5 md:mt-1">
               = Current till {formatCurrency(currentTillCash, currency)}
               {depositAmount > 0 && ` − new deposit ${formatCurrency(depositAmount, currency)}`}
             </div>
           </div>
 
-          <div className="paper-card p-4">
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute mb-3 flex items-center gap-2">
-              <Scale className="w-4 h-4" /> Physical Cash Count &amp; Variance (optional)
+          <div className="paper-card td-card">
+            <div className="td-kicker mb-1.5 md:mb-3 flex items-center gap-1.5 md:gap-2">
+              <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" /> Physical Cash Count &amp; Variance (optional)
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 md:gap-3">
               <div>
-                <label htmlFor="fs-physical-count" className="label">Physical count in till ({currency})</label>
+                <label htmlFor="fs-physical-count" className="td-label">Physical count in till ({currency})</label>
                 <input
                   id="fs-physical-count"
                   type="number"
@@ -869,13 +868,13 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
                   value={physicalCashCount}
                   onChange={(e) => setPhysicalCashCount(e.target.value)}
                   placeholder="Leave blank to skip"
-                  className="input mt-1 num text-right"
+                  className="input input-sm mt-1 num text-right"
                 />
               </div>
               <div>
-                <span className="label">Variance vs Calculated c/d</span>
+                <span className="td-label">Variance vs Calculated c/d</span>
                 <div className={cn(
-                  "input mt-1 num text-right tabular-nums flex items-center justify-end pointer-events-none",
+                  "input input-sm mt-1 num text-right tabular-nums flex items-center justify-end pointer-events-none",
                   variance === null && "text-ink-mute",
                   variance !== null && variance > 0 && "text-success",
                   variance !== null && variance < 0 && "text-danger",
@@ -884,7 +883,7 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
                 </div>
               </div>
             </div>
-            <div className="text-[10px] text-ink-mute mt-2">
+            <div className="td-hint mt-1.5 md:mt-2">
               Recorded SEPARATELY from the Calculated c/d for audit purposes.
               Positive variance = surplus cash in till; negative = shortage.
               Both are persisted in the balancing snapshot without altering
@@ -892,16 +891,16 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t">
-            <button type="button" onClick={onClose} className="btn btn-outline">
+          <div className="flex justify-end gap-1.5 md:gap-2 pt-1.5 md:pt-2 border-t">
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
               Close
             </button>
             <button
               type="submit"
               disabled={saving || bfLoading}
-              className="btn btn-primary"
+              className="btn btn-primary btn-sm"
             >
-              <ArrowUpRight className="w-4 h-4" />
+              <ArrowUpRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
               {saving ? "Saving..." : "Complete Balancing"}
             </button>
           </div>
@@ -920,12 +919,12 @@ function ReadOnlyFlowRow({ label, value, currency, positive, negative, bold }: {
 }) {
   return (
     <div className="flex items-center justify-between gap-2 py-0.5">
-      <span className={cn("text-ink-soft text-[13px]", bold && "font-bold text-ink")}>
+      <span className={cn("text-ink-soft td-flow-body", bold && "font-bold text-ink")}>
         {label}
       </span>
       <span className={cn(
         "num tabular-nums",
-        bold ? "font-bold text-base text-ink" : "text-[13px] font-semibold",
+        bold ? "td-flow-value font-bold text-ink" : "td-flow-body font-semibold",
         !bold && positive && "text-success",
         !bold && negative && "text-danger"
       )}>
@@ -974,80 +973,93 @@ function StandingOrderModal({ order, currency, onClose, createdBy }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-2 md:p-4 animate-fade-in">
       <div className="paper-card w-full max-w-lg overflow-hidden max-h-[95dvh] flex flex-col">
-        <div className="p-4 border-b flex items-center justify-between shrink-0">
+        <div className="p-2.5 md:p-4 border-b flex items-center justify-between shrink-0">
           <div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">{order ? "Edit" : "New"}</div>
-            <h2 className="font-display text-lg font-bold">{form.kind === "loan" ? "Loan payment" : "Standing order"}</h2>
+            <div className="td-kicker">{order ? "Edit" : "New"}</div>
+            <h2 className="td-title">{form.kind === "loan" ? "Loan payment" : "Standing order"}</h2>
           </div>
-          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="btn btn-ghost h-7 w-7 md:h-9 md:w-9 p-0"><X className="w-4 h-4" /></button>
         </div>
-        <form onSubmit={submit} className="p-4 space-y-3 overflow-auto scroll-lined">
+        <form onSubmit={submit} className="p-2.5 md:p-4 space-y-2 md:space-y-3 overflow-auto scroll-lined">
           <div className="grid grid-cols-2 gap-2">
             {(["standing", "loan"] as StandingOrderKind[]).map((k) => (
-              <button key={k} type="button" onClick={() => setForm({ ...form, kind: k })} className={cn("p-3 rounded-md border text-left transition", form.kind === k ? "border-ink bg-ink text-paper" : "border-line hover:border-ink")}>
+              <button key={k} type="button" onClick={() => setForm({ ...form, kind: k })} className={cn("td-card rounded-md border text-left transition", form.kind === k ? "border-ink bg-ink text-paper" : "border-line hover:border-ink")}>
                 {k === "loan" ? <ArrowDownRight className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
-                <div className="text-sm font-semibold mt-1">{k === "loan" ? "Loan payment" : "Standing order"}</div>
+                <div className="td-body font-semibold mt-0.5 md:mt-1">{k === "loan" ? "Loan payment" : "Standing order"}</div>
               </button>
             ))}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label htmlFor="fs-order-name" className="label">Name</label>
-              <input id="fs-order-name" required autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input mt-1" placeholder={form.kind === "loan" ? "Business loan" : "Office rent"} />
+              <label htmlFor="fs-order-name" className="td-label">Name</label>
+              <input id="fs-order-name" required autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input input-sm mt-1" placeholder={form.kind === "loan" ? "Business loan" : "Office rent"} />
             </div>
             <div>
-              <label htmlFor="fs-order-payee" className="label">Payee</label>
-              <input id="fs-order-payee" value={form.payee} onChange={(e) => setForm({ ...form, payee: e.target.value })} className="input mt-1" placeholder="Bank / landlord / vendor" />
+              <label htmlFor="fs-order-payee" className="td-label">Payee</label>
+              <input id="fs-order-payee" value={form.payee} onChange={(e) => setForm({ ...form, payee: e.target.value })} className="input input-sm mt-1" placeholder="Bank / landlord / vendor" />
             </div>
             <div>
-              <label htmlFor="fs-order-account" className="label">Account / ref</label>
-              <input id="fs-order-account" value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })} className="input mt-1 num" />
+              <label htmlFor="fs-order-account" className="td-label">Account / ref</label>
+              <input id="fs-order-account" value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })} className="input input-sm mt-1 num" />
             </div>
             <div>
-              <label htmlFor="fs-order-amount" className="label">Amount ({currency})</label>
-              <input id="fs-order-amount" type="number" min={0} step="0.01" required value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} className="input mt-1 num text-right" />
+              <label htmlFor="fs-order-amount" className="td-label">Amount ({currency})</label>
+              <input id="fs-order-amount" type="number" min={0} step="0.01" required value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} className="input input-sm mt-1 num text-right" />
             </div>
             <div>
-              <label htmlFor="fs-order-frequency" className="label">Frequency</label>
-              <select id="fs-order-frequency" value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as StandingOrderFrequency })} className="input mt-1">
-                <option value="weekly">Weekly</option>
-                <option value="biweekly">Bi-weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="yearly">Yearly</option>
-              </select>
+              <label htmlFor="fs-order-frequency" className="td-label">Frequency</label>
+              <GlassSelect
+                id="fs-order-frequency"
+                value={form.frequency}
+                onChange={(v) => setForm({ ...form, frequency: v as StandingOrderFrequency })}
+                ariaLabel="Frequency"
+                options={[
+                  { value: "weekly", label: "Weekly" },
+                  { value: "biweekly", label: "Bi-weekly" },
+                  { value: "monthly", label: "Monthly" },
+                  { value: "quarterly", label: "Quarterly" },
+                  { value: "yearly", label: "Yearly" },
+                ]}
+                className="input input-sm select-glass mt-1"
+              />
             </div>
             <div>
-              <label htmlFor="fs-order-next" className="label">Next payment</label>
-              <input id="fs-order-next" type="date" value={form.nextRunDate} onChange={(e) => setForm({ ...form, nextRunDate: e.target.value })} className="input mt-1" />
+              <label htmlFor="fs-order-next" className="td-label">Next payment</label>
+              <GlassDatePicker
+                id="fs-order-next"
+                value={form.nextRunDate}
+                onChange={(v) => setForm({ ...form, nextRunDate: v })}
+                ariaLabel="Next payment date"
+                className="input input-sm select-glass mt-1"
+              />
             </div>
             <div>
-              <label htmlFor="fs-order-category" className="label">Category</label>
-              <input id="fs-order-category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input mt-1" />
+              <label htmlFor="fs-order-category" className="td-label">Category</label>
+              <input id="fs-order-category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input input-sm mt-1" />
             </div>
           </div>
           {form.kind === "loan" && (
             <div className="grid grid-cols-2 gap-3 border-t pt-3">
-              <div><label htmlFor="fs-loan-principal" className="label">Loan principal</label><input id="fs-loan-principal" type="number" min={0} step="0.01" value={form.loanPrincipal} onChange={(e) => setForm({ ...form, loanPrincipal: Number(e.target.value) })} className="input mt-1 num text-right" /></div>
-              <div><label htmlFor="fs-loan-balance" className="label">Current balance</label><input id="fs-loan-balance" type="number" min={0} step="0.01" value={form.loanBalance} onChange={(e) => setForm({ ...form, loanBalance: Number(e.target.value) })} className="input mt-1 num text-right" /></div>
-              <div><label htmlFor="fs-loan-rate" className="label">Interest rate (% APR)</label><input id="fs-loan-rate" type="number" min={0} step="0.01" value={form.loanRate} onChange={(e) => setForm({ ...form, loanRate: Number(e.target.value) })} className="input mt-1 num text-right" /></div>
-              <div><label htmlFor="fs-loan-term" className="label">Term (months)</label><input id="fs-loan-term" type="number" min={0} step="1" value={form.loanTermMonths} onChange={(e) => setForm({ ...form, loanTermMonths: Number(e.target.value) })} className="input mt-1 num text-right" /></div>
+              <div><label htmlFor="fs-loan-principal" className="td-label">Loan principal</label><input id="fs-loan-principal" type="number" min={0} step="0.01" value={form.loanPrincipal} onChange={(e) => setForm({ ...form, loanPrincipal: Number(e.target.value) })} className="input input-sm mt-1 num text-right" /></div>
+              <div><label htmlFor="fs-loan-balance" className="td-label">Current balance</label><input id="fs-loan-balance" type="number" min={0} step="0.01" value={form.loanBalance} onChange={(e) => setForm({ ...form, loanBalance: Number(e.target.value) })} className="input input-sm mt-1 num text-right" /></div>
+              <div><label htmlFor="fs-loan-rate" className="td-label">Interest rate (% APR)</label><input id="fs-loan-rate" type="number" min={0} step="0.01" value={form.loanRate} onChange={(e) => setForm({ ...form, loanRate: Number(e.target.value) })} className="input input-sm mt-1 num text-right" /></div>
+              <div><label htmlFor="fs-loan-term" className="td-label">Term (months)</label><input id="fs-loan-term" type="number" min={0} step="1" value={form.loanTermMonths} onChange={(e) => setForm({ ...form, loanTermMonths: Number(e.target.value) })} className="input input-sm mt-1 num text-right" /></div>
             </div>
           )}
           <div>
-            <label htmlFor="fs-order-notes" className="label">Notes</label>
-            <textarea id="fs-order-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input mt-1 h-16" />
+            <label htmlFor="fs-order-notes" className="td-label">Notes</label>
+            <textarea id="fs-order-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input input-sm mt-1 min-h-12 md:min-h-16" />
           </div>
-          <label className="text-sm inline-flex items-center gap-2 cursor-pointer">
+          <label className="td-body inline-flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />
             Active
           </label>
-          <div className="flex justify-end gap-2 pt-2 border-t">
-            <button type="button" onClick={onClose} className="btn btn-outline">Cancel</button>
-            <button type="submit" disabled={upsert.isPending} className="btn btn-primary">
-              <Plus className="w-4 h-4" />
+          <div className="flex justify-end gap-1.5 md:gap-2 pt-1.5 md:pt-2 border-t">
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">Cancel</button>
+            <button type="submit" disabled={upsert.isPending} className="btn btn-primary btn-sm">
+              <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
               {upsert.isPending ? "Saving..." : order ? "Save" : "Add"}
             </button>
           </div>

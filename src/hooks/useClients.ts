@@ -433,22 +433,6 @@ export function useClientInvoices(params?: {
   });
 }
 
-export function useClientInvoice(id?: string | null) {
-  const businessId = useClientTenant();
-  return useQuery({
-    queryKey: ["client_invoice", businessId, id],
-    queryFn: async () => {
-      if (!id) return null;
-      let q = supabase.from("client_invoices").select("*").eq("id", id);
-      if (businessId) q = q.eq("business_id", businessId);
-      const { data, error } = await q.maybeSingle();
-      if (error) throw error;
-      return data ? mapClientInvoice(data) : null;
-    },
-    enabled: !!id,
-  });
-}
-
 /** Deterministic YYMMDDHHMMSS invoice number derived from the creation
  *  datetime. Falls back with a random suffix on the impossibly-rare
  *  collision case. */

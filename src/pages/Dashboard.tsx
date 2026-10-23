@@ -496,8 +496,8 @@ export default function Dashboard() {
         <OnboardingChecklist />
         <SubNav
           items={[
-            { to: "/", label: "Sales POS", icon: POSIcon, end: true },
-            { to: "/sales-report", label: "Sales Report", icon: SalesReportIcon },
+            { to: "/", label: "POS", icon: POSIcon, end: true },
+            { to: "/sales-report", label: "Report", icon: SalesReportIcon },
             { to: "/held", label: `Held (${heldTickets.length})`, icon: PauseIcon },
             { to: "/quotes", label: "Quotes", icon: QuotesIcon },
           ]}

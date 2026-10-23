@@ -1,29 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { mapLoyaltyTx } from "@/lib/mappers";
-import { useActiveBusiness } from "@/hooks/useBusinesses";
 import { withBusiness } from "@/lib/tenant";
-
-export function useLoyaltyTransactions(customerId?: string) {
-  const active = useActiveBusiness();
-  const businessId = active === "none" ? null : active;
-  return useQuery({
-    queryKey: ["loyalty", businessId, customerId || "all"],
-    queryFn: async () => {
-      let q = supabase
-        .from("loyalty_transactions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (businessId) q = q.eq("business_id", businessId);
-      if (customerId) q = q.eq("customer_id", customerId);
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data || []).map(mapLoyaltyTx);
-    },
-    refetchInterval: 30000,
-  });
-}
 
 export function useAdjustLoyalty() {
   const qc = useQueryClient();

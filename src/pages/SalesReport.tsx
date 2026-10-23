@@ -21,17 +21,21 @@ import {
   useAddSalePayment,
 } from "@/hooks/useSales";
 import { useShopSettings } from "@/hooks/useShopSettings";
+import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/hooks/useAuth";
 import { cn, download, formatCurrency, formatCompactCurrency, timeAgo, todayISO } from "@/lib/utils";
 import type { PaymentMethod, Sale } from "@/types";
 import DocumentView from "@/components/features/receipts/DocumentView";
 import PrintablePortal from "@/components/features/receipts/PrintablePortal";
 import ReceiptActions from "@/components/features/receipts/ReceiptActions";
+import GlassSelect from "@/components/ui/GlassSelect";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
 
 export default function SalesReport() {
   const { can, canViewCosts, profile } = useAuth();
   const { data: sales = [], isLoading } = useSales(1000);
   const { data: settings } = useShopSettings();
+  const { data: employees = [] } = useEmployees();
   const voidSale = useVoidSale();
 
   const [q, setQ] = useState("");
@@ -46,6 +50,47 @@ export default function SalesReport() {
     () => ["all", ...Array.from(new Set(sales.map((s) => s.cashierName)))],
     [sales]
   );
+
+  const initialsByCashier = useMemo(() => {
+    const names = Array.from(new Set(sales.map((s) => s.cashierName)));
+    const firstSale = new Map<string, string>();
+    for (const s of sales) {
+      const prev = firstSale.get(s.cashierName);
+      if (!prev || s.createdAt < prev) firstSale.set(s.cashierName, s.createdAt);
+    }
+    const registeredAt = new Map(
+      employees.map((e) => [e.name.trim().toLowerCase(), e.createdAt])
+    );
+    const baseInitials = (name: string) => {
+      const parts = name.trim().split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+      }
+      return (parts[0] || "?").slice(0, 2).toUpperCase();
+    };
+
+    const ordered = names
+      .map((name) => ({
+        name,
+        initials: baseInitials(name),
+        order: registeredAt.get(name.trim().toLowerCase()) || firstSale.get(name) || "",
+      }))
+      .sort((a, b) => a.order.localeCompare(b.order) || a.name.localeCompare(b.name));
+
+    const groups = new Map<string, string[]>();
+    for (const c of ordered) {
+      const list = groups.get(c.initials) || [];
+      list.push(c.name);
+      groups.set(c.initials, list);
+    }
+
+    const out = new Map<string, string>();
+    for (const c of ordered) {
+      const list = groups.get(c.initials) || [];
+      out.set(c.name, list.length > 1 ? `${c.initials}${list.indexOf(c.name) + 1}` : c.initials);
+    }
+    return out;
+  }, [sales, employees]);
 
   const filtered = useMemo(() => {
     return sales.filter((s) => {
@@ -110,118 +155,141 @@ export default function SalesReport() {
   };
 
   const currency = settings?.currency || "USD";
+  const money = (n: number) =>
+    Math.abs(n) >= 1_000_000 ? formatCompactCurrency(n, currency) : formatCurrency(n, currency);
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
       <SubNav
         items={[
-          { to: "/", label: "Sales POS", icon: LayoutDashboard, end: true },
-          { to: "/sales-report", label: "Sales Report", icon: Receipt },
+          { to: "/", label: "POS", icon: LayoutDashboard, end: true },
+          { to: "/sales-report", label: "Report", icon: Receipt },
           { to: "/held", label: "Held Tickets", icon: PauseCircle },
           { to: "/quotes", label: "Quotes", icon: FileText },
         ]}
       />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Sales in period" value={String(filtered.length)} />
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 md:gap-3">
         <Stat
           label="Revenue"
-          value={formatCompactCurrency(totals.total, currency)}
+          value={money(totals.total)}
           fullValue={formatCurrency(totals.total, currency)}
         />
         <Stat
           label="Collected"
-          value={formatCompactCurrency(totals.paid, currency)}
+          value={money(totals.paid)}
           fullValue={formatCurrency(totals.paid, currency)}
           tone="success"
         />
         <Stat
           label="Outstanding"
-          value={formatCompactCurrency(totals.due, currency)}
+          value={money(totals.due)}
           fullValue={formatCurrency(totals.due, currency)}
           tone={totals.due > 0 ? "danger" : undefined}
         />
+        <div className="hidden md:block">
+          <Stat label="Sales in period" value={String(filtered.length)} />
+        </div>
       </div>
 
       {canViewCosts && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-1.5 md:gap-3">
           <Stat
             label="Cost of goods"
-            value={formatCompactCurrency(totals.cost, currency)}
+            value={money(totals.cost)}
             fullValue={formatCurrency(totals.cost, currency)}
           />
           <Stat
             label="Gross profit"
-            value={formatCompactCurrency(totals.profit, currency)}
+            value={money(totals.profit)}
             fullValue={formatCurrency(totals.profit, currency)}
             tone={totals.profit >= 0 ? "success" : "danger"}
           />
           <Stat
             label="Tax collected"
-            value={formatCompactCurrency(totals.tax, currency)}
+            value={money(totals.tax)}
             fullValue={formatCurrency(totals.tax, currency)}
           />
         </div>
       )}
 
-      <div className="paper-card p-4 grid grid-cols-1 md:grid-cols-6 gap-3">
-        <div className="md:col-span-2 relative self-end">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Number, customer, cashier" className="input pl-9" />
+      <div className="paper-card p-2.5 md:p-4 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center md:items-end gap-x-1.5 gap-y-1.5 md:grid-cols-6 md:gap-3">
+        <div className="relative col-span-4 md:col-span-2">
+          <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Number, customer, cashier" className="input input-sm pl-7 md:pl-9" />
         </div>
-        <div>
-          <label htmlFor="sr-from" className="label">From</label>
-          <input id="sr-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input mt-1" />
+        <div className="max-md:contents">
+          <label htmlFor="sr-from" className="label max-md:text-[9px] max-md:whitespace-nowrap">From</label>
+          <GlassDatePicker id="sr-from" value={from} onChange={setFrom} ariaLabel="From date" className="input input-sm select-glass max-md:px-1.5 md:mt-1" />
         </div>
-        <div>
-          <label htmlFor="sr-to" className="label">To</label>
-          <input id="sr-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input mt-1" />
+        <div className="max-md:contents">
+          <label htmlFor="sr-to" className="label max-md:text-[9px] max-md:whitespace-nowrap">To</label>
+          <GlassDatePicker id="sr-to" value={to} onChange={setTo} ariaLabel="To date" className="input input-sm select-glass max-md:px-1.5 md:mt-1" />
         </div>
-        <div>
-          <label htmlFor="sr-payment" className="label">Payment</label>
-          <select id="sr-payment" value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod | "all")} className="input mt-1">
-            <option value="all">All methods</option>
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="transfer">Wire</option>
-            <option value="credit">Credit</option>
-            <option value="partial">Partial</option>
-          </select>
+        <div className="max-md:contents">
+          <label htmlFor="sr-payment" className="label max-md:text-[9px] max-md:whitespace-nowrap">Payment</label>
+          <GlassSelect
+            id="sr-payment"
+            value={method}
+            onChange={(v) => setMethod(v as PaymentMethod | "all")}
+            ariaLabel="Payment method"
+            options={[
+              { value: "all", label: "All methods" },
+              { value: "cash", label: "Cash" },
+              { value: "card", label: "Card" },
+              { value: "transfer", label: "Wire" },
+              { value: "credit", label: "Credit" },
+              { value: "partial", label: "Partial" },
+            ]}
+            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+          />
         </div>
-        <div>
-          <label htmlFor="sr-status" className="label">Status</label>
-          <select id="sr-status" value={status} onChange={(e) => setStatus(e.target.value as typeof status)} className="input mt-1">
-            <option value="all">All</option>
-            <option value="paid">Paid</option>
-            <option value="partial">Partial</option>
-            <option value="credit">Credit</option>
-          </select>
+        <div className="max-md:contents">
+          <label htmlFor="sr-status" className="label max-md:text-[9px] max-md:whitespace-nowrap">Status</label>
+          <GlassSelect
+            id="sr-status"
+            value={status}
+            onChange={(v) => setStatus(v as typeof status)}
+            ariaLabel="Payment status"
+            options={[
+              { value: "all", label: "All" },
+              { value: "paid", label: "Paid" },
+              { value: "partial", label: "Partial" },
+              { value: "credit", label: "Credit" },
+            ]}
+            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+          />
         </div>
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="text-xs text-ink-mute inline-flex items-center gap-2">
-          <Receipt className="w-3.5 h-3.5" />
-          {filtered.length} of {sales.length} transactions · tap any row to view receipt / invoice
+        <div className="text-[10px] md:text-xs text-ink-mute inline-flex items-center gap-1.5 md:gap-2">
+          <Receipt className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+          {filtered.length} of {sales.length}{" "}
+          <span className="md:hidden">sales</span>
+          <span className="hidden md:inline">transactions · tap any row to view receipt / invoice</span>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <select value={cashier} onChange={(e) => setCashier(e.target.value)} className="input h-9 w-auto">
-            {cashiers.map((c) => (
-              <option key={c} value={c}>
-                {c === "all" ? "All cashiers" : c}
-              </option>
-            ))}
-          </select>
+        <div className="flex gap-1 md:gap-2 flex-wrap max-md:flex-1 max-md:justify-end">
+          <GlassSelect
+            value={cashier}
+            onChange={setCashier}
+            ariaLabel="Cashier"
+            options={cashiers.map((c) => ({
+              value: c,
+              label: c === "all" ? "All cashiers" : c,
+            }))}
+            className="input input-sm select-glass"
+          />
           <button
             onClick={() => {
               setQ(""); setFrom(todayISO()); setTo(todayISO());
               setMethod("all"); setStatus("all"); setCashier("all");
             }}
-            className="btn btn-ghost"
+            className="btn btn-ghost btn-sm"
           >
-            <RotateCcw className="w-4 h-4" /> Reset
+            <RotateCcw className="w-3.5 h-3.5 md:w-4 md:h-4" /> Reset
           </button>
-          <button onClick={exportCsv} className="btn btn-primary">
-            <Download className="w-4 h-4" /> Export CSV
+          <button onClick={exportCsv} className="btn btn-primary btn-sm">
+            <Download className="w-3.5 h-3.5 md:w-4 md:h-4" /> Export CSV
           </button>
         </div>
       </div>
@@ -229,9 +297,9 @@ export default function SalesReport() {
       {/* Ultra-compact transaction rows — vertical space reduced ~81% */}
       <div className="paper-card overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-ink-mute text-sm">Loading...</div>
+          <div className="p-6 md:p-8 text-center text-ink-mute text-sm">Loading...</div>
         ) : filtered.length === 0 ? (
-          <div className="p-10 text-center text-ink-mute text-sm">
+          <div className="p-8 md:p-10 text-center text-ink-mute text-sm">
             No transactions in this range.
           </div>
         ) : (
@@ -241,6 +309,7 @@ export default function SalesReport() {
                 key={s.id}
                 sale={s}
                 currency={currency}
+                initials={initialsByCashier.get(s.cashierName) || s.cashierName.slice(0, 2).toUpperCase()}
                 canViewCosts={canViewCosts}
                 canVoid={can("sales.void")}
                 onClick={() => setViewSale(s)}
@@ -276,6 +345,7 @@ export default function SalesReport() {
 function TransactionRow({
   sale,
   currency,
+  initials,
   canViewCosts,
   canVoid,
   onClick,
@@ -283,13 +353,18 @@ function TransactionRow({
 }: {
   sale: Sale;
   currency: string;
+  initials: string;
   canViewCosts: boolean;
   canVoid: boolean;
   onClick: () => void;
   onVoid: () => void;
 }) {
   const totalQty = sale.lines.reduce((sum, l) => sum + l.qty, 0);
-  const customer = sale.customerName || "Walk-in";
+  const rawCustomer = sale.customerName?.trim();
+  const customer =
+    !rawCustomer || rawCustomer.toLowerCase() === "walk-in customer"
+      ? "Walk-in"
+      : rawCustomer;
   const methodLabel =
     sale.paymentMethod === "transfer"
       ? "Wire"
@@ -308,42 +383,58 @@ function TransactionRow({
   }[sale.paymentStatus];
 
   return (
-    <div className="flex items-center hover:bg-paper/50 transition text-[11px] leading-tight">
+    <div className="flex items-center h-[27px] max-md:h-[21px] hover:bg-paper/50 transition text-[11px] leading-tight">
       <button
         onClick={onClick}
-        className="flex-1 flex items-center gap-2 px-2 py-1 min-w-0 text-left"
+        className="flex-1 flex items-center gap-1.5 md:gap-2 px-2 max-md:pr-1 py-1 max-md:py-0 min-w-0 text-left max-md:grid max-md:grid-cols-[40px_17.5px_minmax(0,1fr)_auto_auto_auto] max-md:gap-x-1 h-full"
         title={`${customer} · ${sale.number}`}
       >
         <span
           className={cn(
-            "shrink-0 rounded-full border px-1.5 py-0 text-[8px] uppercase tracking-widest font-bold",
-            statusMeta
+            "shrink-0 rounded-full border px-1.5 py-px text-[8px] uppercase tracking-widest font-bold max-md:justify-self-start max-md:leading-none",
+            sale.paymentMethod === "transfer" && sale.paymentStatus === "paid"
+              ? "bg-cyan-reg/10 text-cyan-reg border-cyan-reg/30"
+              : statusMeta
           )}
         >
-          {sale.paymentStatus}
+          {methodLabel.slice(0, 4)}
         </span>
-        <span className="shrink-0 text-ink-mute inline-flex items-center gap-0.5" title={sale.documentType}>
+        <span
+          className="shrink-0 text-ink-mute hidden md:inline-flex items-center gap-0.5"
+          title={sale.documentType}
+        >
           {sale.documentType === "invoice" ? (
             <FileText className="w-2.5 h-2.5" />
           ) : (
             <Receipt className="w-2.5 h-2.5" />
           )}
         </span>
-        <span className="font-semibold truncate text-ink shrink-0 max-w-[110px]">
+        <span className="font-semibold truncate text-ink shrink-0 max-w-[110px] hidden md:inline">
           {sale.cashierName}
         </span>
-        <span className="text-ink-mute truncate min-w-0 flex-1">
-          <span className="text-ink font-medium">{customer}</span>
-          <span className="opacity-70"> by {methodLabel}</span>
+        <span
+          className="shrink-0 md:hidden inline-flex items-center justify-start text-[11px] font-bold text-ink max-md:leading-none"
+          title={sale.cashierName}
+        >
+          {initials}
         </span>
-        <span className="font-mono text-[9px] text-ink-mute shrink-0 hidden sm:inline">
+        <span className="min-w-0 flex flex-col leading-tight md:flex-1 md:flex-row md:items-baseline md:gap-1 max-md:contents">
+          <span className="truncate max-md:min-w-0 max-md:leading-none">
+            <span className="text-ink font-medium">{customer}</span>
+            <span className="opacity-70 hidden md:inline"> by {methodLabel}</span>
+          </span>
+          <span className="text-[10px] text-ink-mute md:hidden max-md:leading-none">
+            {timeAgo(sale.createdAt)}
+          </span>
+        </span>
+        <span className="font-mono text-[9px] text-ink-mute shrink-0 hidden md:inline">
           {sale.number}
         </span>
-        <span className="num text-ink-mute shrink-0 hidden md:inline">
-          {totalQty} item{totalQty !== 1 ? "s" : ""}
+        <span className="num text-ink-mute shrink-0 whitespace-nowrap max-md:leading-none max-md:text-[10px] max-md:font-bold">
+          {totalQty} {totalQty === 1 ? "Item" : "Items"}
         </span>
-        <span className="text-ink-mute shrink-0">{timeAgo(sale.createdAt)}</span>
-        <span className="num font-bold text-ink shrink-0 min-w-[70px] text-right">
+        <span className="text-ink-mute shrink-0 hidden md:inline">{timeAgo(sale.createdAt)}</span>
+        <span className="num font-bold text-ink shrink-0 md:min-w-[70px] text-right max-md:leading-none">
           {formatCurrency(sale.total, currency)}
         </span>
         {sale.amountDue > 0 && (
@@ -369,10 +460,10 @@ function TransactionRow({
             e.stopPropagation();
             onVoid();
           }}
-          className="px-1.5 h-6 shrink-0 text-danger hover:bg-danger/10 rounded"
+          className="px-1.5 h-6 max-md:h-full max-md:w-4 max-md:px-0 shrink-0 inline-flex items-center justify-center text-danger hover:bg-danger/10 rounded"
           title="Void"
         >
-          <Trash2 className="w-3 h-3" />
+          <Trash2 className="w-3 h-3 max-md:w-2.5 max-md:h-2.5" />
         </button>
       )}
     </div>
@@ -424,19 +515,19 @@ function TransactionViewer({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4 animate-fade-in no-print">
+      <div className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-2 sm:p-4 animate-fade-in no-print">
         <div
           className={cn(
             "bg-white rounded-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[95dvh]",
             isInvoice ? "max-w-3xl" : "max-w-md"
           )}
         >
-          <div className="p-4 border-b flex items-center justify-between shrink-0">
+          <div className="p-3 sm:p-4 border-b flex items-center justify-between shrink-0">
             <div>
-              <div className="text-[11px] uppercase tracking-widest text-gray-500">
+              <div className="text-[10px] sm:text-[11px] uppercase tracking-widest text-gray-500">
                 {isInvoice ? "Credit invoice" : "Sales receipt"}
               </div>
-              <div className="font-display text-lg font-bold text-gray-900">{sale.number}</div>
+              <div className="font-display text-base sm:text-lg font-bold text-gray-900">{sale.number}</div>
             </div>
             <button
               onClick={onClose}
@@ -467,7 +558,7 @@ function TransactionViewer({
             }
           />
           {addOpen && sale.amountDue > 0 && (
-            <div className="border-t bg-white p-4 space-y-2">
+            <div className="border-t bg-white p-3 sm:p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <select
                   value={payMethod}
@@ -523,19 +614,19 @@ function Stat({
 
   return (
     <div
-      className="paper-card p-4 min-w-0 cursor-pointer select-none"
+      className="paper-card p-2 md:p-4 min-w-0 cursor-pointer select-none"
       onDoubleClick={() => setExpanded((e) => !e)}
     >
-      <div className="text-[11px] uppercase tracking-widest text-ink-mute truncate">
+      <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest leading-none text-ink-mute truncate">
         {label}
       </div>
       <div
         title={fullValue ?? value}
         className={cn(
-          "font-display font-bold num mt-1 leading-tight break-words",
+          "font-display font-bold num mt-0.5 md:mt-1 leading-tight break-words",
           showFull
-            ? "text-[clamp(0.65rem,3vw,0.95rem)]"
-            : "text-[clamp(1rem,5.5vw,1.5rem)]",
+            ? "text-[7px] md:text-[clamp(0.65rem,3vw,0.95rem)]"
+            : "text-[12px] md:text-[clamp(1rem,5.5vw,1.5rem)]",
           tone === "success" && "text-success",
           tone === "danger" && "text-danger"
         )}

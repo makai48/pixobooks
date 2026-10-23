@@ -58,7 +58,3 @@ export async function processImageFile(
   }
   return uploadImage(file, folder);
 }
-
-export function isBase64Image(src?: string | null): boolean {
-  return !!src && src.startsWith("data:image/");
-}

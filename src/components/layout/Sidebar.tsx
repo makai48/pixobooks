@@ -262,9 +262,9 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
             nav("/login");
             onNavigate?.();
           }}
-          className="md:hidden w-full h-11 rounded-md bg-white/5 hover:bg-white/10 text-white text-sm font-semibold inline-flex items-center justify-center gap-2"
+          className="md:hidden w-full h-9 rounded-md bg-white/5 hover:bg-white/10 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5"
         >
-          <LogOut className="w-6 h-6" style={{ color: WHITE }} /> Sign out
+          <LogOut className="w-4 h-4" style={{ color: WHITE }} /> Sign out
         </button>
       </div>
     </aside>

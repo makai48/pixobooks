@@ -11,7 +11,7 @@ export type SubNavItem = {
 };
 
 const ITEM_CLASS =
-  "inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-xs font-semibold uppercase tracking-widest whitespace-nowrap transition";
+  "inline-flex items-center gap-1.5 max-md:gap-1 h-9 max-md:h-7 px-3 max-md:px-2 rounded-md text-xs max-md:text-[10px] font-semibold uppercase tracking-widest max-md:tracking-wide whitespace-nowrap transition";
 
 /**
  * Compact horizontal sub-navigation used at the top of "merged" parent
@@ -29,14 +29,14 @@ export default function SubNav({
   return (
     <div
       className={cn(
-        "paper-card p-1.5 flex items-center gap-1 overflow-x-auto scrollbar-none",
+        "paper-card p-1.5 max-md:p-1 flex items-center gap-1 max-md:gap-0.5 overflow-x-auto scrollbar-none",
         className
       )}
     >
       {items.map((i) => {
         const content = (
           <>
-            {i.icon ? <i.icon className="w-3.5 h-3.5" /> : null}
+            {i.icon ? <i.icon className="w-3.5 h-3.5 max-md:w-3 max-md:h-3" /> : null}
             {i.label}
           </>
         );

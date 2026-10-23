@@ -54,6 +54,14 @@ export function formatCompactCurrency(amount: number, currency = "USD", locale =
   }
 }
 
+/** Full currency until it would overflow a stat tile, then compact.
+ *  Shared by every Traditional-design stat card. */
+export function formatMoney(amount: number, currency = "USD", locale = "en-US") {
+  return Math.abs(amount || 0) >= 1_000_000
+    ? formatCompactCurrency(amount, currency, locale)
+    : formatCurrency(amount, currency, locale);
+}
+
 /** Format a numeric amount without any currency prefix — used in the POS
  *  current-ticket table to keep the layout compact and unambiguous. */
 export function formatNumber(amount: number, currency = "USD", locale = "en-US") {
@@ -151,12 +159,6 @@ export function localISODate(dateOrIso: string | Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function daysAgoISO(days: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
-}
-
 export function sum(arr: number[]) {
   return arr.reduce((a, b) => a + b, 0);
 }
@@ -207,14 +209,6 @@ export function getMonthMatrix(year: number, month: number): Date[] {
     days.push(d);
   }
   return days;
-}
-
-/** Return ISO date string N days ago (00-truncated). */
-export function daysAgoDate(days: number): Date {
-  const t = new Date();
-  t.setHours(0, 0, 0, 0);
-  t.setDate(t.getDate() - days);
-  return t;
 }
 
 export function startOfWeek(): Date {
@@ -273,29 +267,18 @@ export function formatIntegerWithCommas(n: number | string): string {
   return raw.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-/** Strip formatting and return the integer value (0 if empty/invalid).
- *  Clamps to `max` when provided (default 99,999 — POS Qty ceiling). */
-export function parseFormattedInteger(v: string, max = 99999): number {
-  const digits = String(v).replace(/[^\d]/g, "");
-  if (!digits) return 0;
-  const n = parseInt(digits, 10);
-  if (!Number.isFinite(n)) return 0;
-  return Math.min(Math.max(0, n), max);
-}
-
-/** Human-readable "time ago" — 6min ago, about 2hrs ago, 3d ago... */
+/** Human-readable "time ago" — 6min ago, abt 2hrs ago, 3d ago... */
 export function timeAgo(d: string | number | Date): string {
   const then = new Date(d).getTime();
   const now = Date.now();
   const seconds = Math.max(0, Math.floor((now - then) / 1000));
-  if (seconds < 10) return "just now";
-  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 60) return "Just Now";
   const minutes = Math.floor(seconds / 60);
   if (minutes === 1) return "1min ago";
   if (minutes < 60) return `${minutes}min ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours === 1) return "about 1hr ago";
-  if (hours < 24) return `about ${hours}hrs ago`;
+  if (hours === 1) return "abt 1hr ago";
+  if (hours < 24) return `abt ${hours}hrs ago`;
   const days = Math.floor(hours / 24);
   if (days === 1) return "1d ago";
   if (days < 7) return `${days}d ago`;
