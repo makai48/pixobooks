@@ -119,6 +119,28 @@ describe("buildStockWrite", () => {
     expect(b.row.new_stock).toBe(7);
     expect(b.row.old_stock).toBe(10);
   });
+
+  it("keeps the business captured when the adjustment was queued", () => {
+    const b = buildStockWrite({
+      itemId: "i1",
+      itemName: "Item",
+      oldStock: 1,
+      newStock: 2,
+      businessId: "biz-queued",
+    });
+    expect(b.row.business_id).toBe("biz-queued");
+  });
+
+  it("clamps negative resulting stock to zero", () => {
+    const b = buildStockWrite({
+      itemId: "i1",
+      itemName: "Item",
+      oldStock: 3,
+      newStock: -5,
+    });
+    expect(b.newStock).toBe(0);
+    expect(b.delta).toBe(-3);
+  });
 });
 
 describe("buildItemRow", () => {

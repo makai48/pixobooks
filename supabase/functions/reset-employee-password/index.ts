@@ -17,9 +17,25 @@
 //     expires (frontend clears it from view after the modal is dismissed).
 //  7. Return the temp password + expiry so the caller can show it in a
 //     secure result modal for copy / email / WhatsApp share.
+//
+// The SQL function is versioned in
+// `supabase/migrations/20261027000001_auth_user_onboarding_fix.sql`. After
+// resetting we verify the temp password against GoTrue, repair + retry once on
+// failure, and refuse to mark the request approved if the credential cannot
+// sign in.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
-import { corsHeaders } from "../_shared/cors.ts";
+
+// CORS headers are inlined instead of imported from `../_shared/cors.ts` so the
+// function is a single self-contained file: the Supabase Dashboard editor only
+// deploys one file per function, and a relative import outside the function
+// folder fails there. Keep this in sync with supabase/functions/_shared/cors.ts.
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE, PATCH",
+};
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -114,9 +130,45 @@ Deno.serve(async (req: Request) => {
       );
     }
     const resolvedUserId = String(rpc.data || targetUserId);
+    if (!resolvedUserId) {
+      throw new Error("Password reset returned no user id");
+    }
+
+    // 3b. Prove the new temp password works before claiming success. This is
+    // the exact grant the login form performs, so a broken auth row surfaces
+    // here instead of in front of the employee.
+    let authError = await verifyTempPassword(
+      supabaseUrl,
+      anonKey,
+      email,
+      tempPassword,
+    );
+    if (authError) {
+      console.warn("temp password verification failed, repairing:", authError);
+      const repair = await admin.rpc("pixo_repair_auth_user", {
+        p_user_id: resolvedUserId,
+        p_confirm: true,
+      });
+      if (repair.error) {
+        console.warn("auth user repair failed:", repair.error.message);
+      }
+      authError = await verifyTempPassword(
+        supabaseUrl,
+        anonKey,
+        email,
+        tempPassword,
+      );
+    }
+    if (authError) {
+      throw new Error(
+        `Password reset applied, but the temporary password cannot sign in yet (${authError}). ` +
+          `Apply supabase/migrations/20261027000001_auth_user_onboarding_fix.sql ` +
+          `in the Supabase SQL editor, then approve this request again.`,
+      );
+    }
 
     // 4. Update user_profiles — unlock, mark must_change_password, set expiry.
-    const { error: upErr } = await admin
+    const { data: profRows, error: upErr } = await admin
       .from("user_profiles")
       .update({
         must_change_password: true,
@@ -127,9 +179,15 @@ Deno.serve(async (req: Request) => {
         // approved; explicitly-rejected ones should be re-approved by
         // the owner through Account Approvals — do not overwrite here).
       })
-      .eq("id", resolvedUserId);
+      .eq("id", resolvedUserId)
+      .select("id");
     if (upErr) {
-      console.warn("profile update warning:", upErr.message);
+      throw new Error(`Profile update: ${upErr.message}`);
+    }
+    if (!profRows || profRows.length === 0) {
+      throw new Error(
+        `No employee profile found for ${email}. Re-invite the employee instead of resetting the password.`,
+      );
     }
 
     // 5. Update the request row — stamp approval + store temp password
@@ -189,6 +247,65 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+/**
+ * Attempt a real password grant against GoTrue and revoke the session.
+ * Returns null on success, or a short diagnostic string on failure.
+ */
+async function verifyTempPassword(
+  supabaseUrl: string,
+  anonKey: string,
+  email: string,
+  password: string,
+): Promise<string | null> {
+  if (!supabaseUrl || !anonKey) return "auth endpoint is not configured";
+
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({ email, password }),
+    });
+    const text = await res.text();
+    if (!res.ok) return `[${res.status}] ${shortAuthError(text)}`;
+
+    try {
+      const parsed = JSON.parse(text) as { access_token?: string };
+      if (parsed.access_token) {
+        await fetch(`${supabaseUrl}/auth/v1/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: anonKey,
+            Authorization: `Bearer ${parsed.access_token}`,
+          },
+        });
+      }
+    } catch {
+      // Session cleanup is best effort.
+    }
+    return null;
+  } catch (e) {
+    return (e as Error).message;
+  }
+}
+
+/** Pull GoTrue's message out of an error body so the owner sees something useful. */
+function shortAuthError(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const msg =
+      parsed.msg || parsed.message || parsed.error_description || parsed.error;
+    if (msg) return String(msg);
+  } catch {
+    // Not JSON — fall through to the raw body.
+  }
+  return raw.slice(0, 240);
 }
 
 function generateSecurePassword(): string {

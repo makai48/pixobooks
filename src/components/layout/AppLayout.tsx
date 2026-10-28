@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import MobileBottomNav from "./MobileBottomNav";
 import InventoryTabs from "./InventoryTabs";
+import ImportJobBanner from "@/components/features/settings/ImportJobBanner";
 import {
   setActiveBusiness,
   useActiveBusiness,
@@ -101,6 +102,7 @@ export default function AppLayout() {
         <main className="flex-1 overflow-auto pb-20 md:pb-0 scroll-lined">
           <Outlet context={{ collapsed, setCollapsed } satisfies AppOutletContext} />
         </main>
+        <ImportJobBanner />
         <div className="md:hidden">
           <MobileBottomNav onOpenMore={() => setMobileOpen(true)} />
         </div>

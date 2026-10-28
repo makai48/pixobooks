@@ -33,6 +33,10 @@ type NavItem = {
   label: string;
   icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   perm: Permission;
+  /** Shown if either `perm` or this alternative is granted. Lets a
+   *  read-only key (customers.view) open a page whose older key was
+   *  manage-level. */
+  altPerm?: Permission;
   end?: boolean;
   ownerOnly?: boolean;
   badge?: number;
@@ -79,7 +83,7 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
     {
       title: "Customers & Clients",
       items: [
-        { to: "/customers", label: "Customer Register", icon: Users, perm: "customers.manage" },
+        { to: "/customers", label: "Customer Register", icon: Users, perm: "customers.manage", altPerm: "customers.view" },
         { to: "/client-billing", label: "Client Billing", icon: BookOpen, perm: "finance.view" },
       ],
     },
@@ -176,6 +180,7 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
           const visible = g.items.filter(
             (i) =>
               can(i.perm) ||
+              (i.altPerm ? can(i.altPerm) : false) ||
               (isAppOwner && (i.perm === "audit.view" || i.perm === "password.approve"))
           );
           if (visible.length === 0) return null;

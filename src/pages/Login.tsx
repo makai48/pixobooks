@@ -18,12 +18,17 @@ import { useCreatePasswordResetRequest } from "@/hooks/usePasswordResets";
 import { createAccountApprovalRequest } from "@/hooks/useAccountApprovals";
 import { supabase } from "@/lib/supabase";
 import { mapEmployee } from "@/lib/mappers";
+import {
+  describeSignInError,
+  resolveSignInGate,
+} from "@/lib/signInFlow";
 
 type Blocked =
   | { type: "pending_first"; email: string; ownerHint?: string }
   | { type: "pending_still"; email: string; requestedAt?: string }
   | { type: "rejected"; email: string; notes?: string }
   | { type: "expired"; email: string }
+  | { type: "request_failed"; email: string; message: string }
   | null;
 
 export default function Login() {
@@ -71,72 +76,86 @@ export default function Login() {
         throw new Error(profErr?.message || "Your profile could not be loaded.");
       }
 
-      const status = (prof.approval_status || "approved") as string;
-      const mustChange = !!prof.must_change_password;
-      const expiresAt = prof.temp_password_expires_at
-        ? new Date(prof.temp_password_expires_at)
-        : null;
+      const gate = resolveSignInGate({
+        approvalStatus: prof.approval_status,
+        mustChangePassword: prof.must_change_password,
+        tempPasswordExpiresAt: prof.temp_password_expires_at,
+        approvalRequestedAt: prof.approval_requested_at,
+        notes: prof.notes,
+      });
       const emp = mapEmployee(prof);
 
-      if (mustChange && expiresAt && expiresAt < new Date()) {
-        await supabase.auth.signOut();
-        setBlocked({ type: "expired", email: prof.email });
+      const stop = (next: Blocked) => {
+        setBlocked(next);
         setLoading(false);
         submittingRef.current = false;
-        return;
-      }
+      };
 
-      if (status === "rejected") {
-        await supabase.auth.signOut();
-        setBlocked({ type: "rejected", email: prof.email, notes: prof.notes });
-        setLoading(false);
-        submittingRef.current = false;
-        return;
-      }
+      switch (gate.type) {
+        case "rejected":
+          await supabase.auth.signOut();
+          stop({
+            type: "rejected",
+            email: prof.email,
+            notes: gate.notes ?? undefined,
+          });
+          return;
 
-      if (status === "pending_first_login") {
-        try {
-          await createAccountApprovalRequest(emp);
-        } catch (err) {
-          if (import.meta.env.DEV) console.warn("approval request create failed", err);
-        }
-        await supabase.auth.signOut();
-        setBlocked({
-          type: "pending_first",
-          email: prof.email,
-          ownerHint: prof.invited_by_name || undefined,
-        });
-        setLoading(false);
-        submittingRef.current = false;
-        return;
-      }
+        case "expired":
+          await supabase.auth.signOut();
+          stop({ type: "expired", email: prof.email });
+          return;
 
-      if (status === "pending_approval") {
-        await supabase.auth.signOut();
-        setBlocked({
-          type: "pending_still",
-          email: prof.email,
-          requestedAt: prof.approval_requested_at || undefined,
-        });
-        setLoading(false);
-        submittingRef.current = false;
-        return;
-      }
+        case "pending_first_login":
+          // The request is what puts the account in the owner's Approvals
+          // queue. Never swallow a failure here — that would strand the
+          // employee as "pending" with nothing for the owner to approve.
+          try {
+            await createAccountApprovalRequest(emp);
+          } catch (err) {
+            await supabase.auth.signOut();
+            stop({
+              type: "request_failed",
+              email: prof.email,
+              message:
+                err instanceof Error
+                  ? err.message
+                  : "Your approval request could not be submitted.",
+            });
+            return;
+          }
+          await supabase.auth.signOut();
+          stop({
+            type: "pending_first",
+            email: prof.email,
+            ownerHint: prof.invited_by_name || undefined,
+          });
+          return;
 
-      if (mustChange) {
-        toast.success("Please set a new permanent password to continue.");
-        submittingRef.current = false;
-        nav("/change-password", { replace: true });
-        return;
-      }
+        case "pending_approval":
+          await supabase.auth.signOut();
+          stop({
+            type: "pending_still",
+            email: prof.email,
+            requestedAt: gate.requestedAt ?? undefined,
+          });
+          return;
 
-      toast.success("Welcome back");
-      submittingRef.current = false;
-      nav("/", { replace: true });
+        case "approved":
+          if (gate.mustChangePassword) {
+            toast.success("Please set a new permanent password to continue.");
+            submittingRef.current = false;
+            nav("/change-password", { replace: true });
+            return;
+          }
+          toast.success("Welcome back");
+          submittingRef.current = false;
+          nav("/", { replace: true });
+          return;
+      }
     } catch (err) {
       submittingRef.current = false;
-      const msg = err instanceof Error ? err.message : "Sign in failed";
-      toast.error(msg);
+      toast.error(describeSignInError(err));
       setLoading(false);
     }
   };
@@ -424,6 +443,21 @@ function BlockedPanel({
               <span className="font-semibold text-ink">{blocked.email}</span>{" "}
               has expired. Tap "Request a new one" below and the owner will
               re-issue one.
+            </>
+          ),
+        };
+      case "request_failed":
+        return {
+          icon: <ShieldAlert className="w-7 h-7 text-danger" />,
+          tint: "bg-danger/10 border-danger/40",
+          title: "Approval request not sent",
+          body: (
+            <>
+              You signed in, but your approval request for{" "}
+              <span className="font-semibold text-ink">{blocked.email}</span>{" "}
+              could not be filed, so the shop owner would not see it.
+              <span className="block mt-2 text-ink-mute">{blocked.message}</span>
+              Sign in again to retry — your temporary password is still valid.
             </>
           ),
         };

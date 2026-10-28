@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { mapAccountApprovalRequest } from "@/lib/mappers";
 import type { AccountApprovalRequest, Employee } from "@/types";
 import { logAudit } from "@/lib/audit";
-import { DEFAULT_STAFF_PERMISSIONS } from "@/types";
+import { DEFAULT_STAFF_PERMISSIONS, DEFAULT_TEMP_PASSWORD_HOURS } from "@/types";
 import { useActiveBusiness } from "@/hooks/useBusinesses";
 
 /**
@@ -42,6 +42,12 @@ export function useApproveAccount() {
       approver: { id: string; name: string; role?: string };
     }) => {
       const now = new Date().toISOString();
+      // Approval must never strand the employee behind a temp password that
+      // expired while the request sat in the queue. Grant a fresh window; the
+      // next sign-in forces a permanent password anyway.
+      const tempExpiry = new Date(
+        Date.now() + DEFAULT_TEMP_PASSWORD_HOURS * 3600 * 1000,
+      ).toISOString();
 
       // Activate the user's profile (keep must_change_password so first login
       // after approval forces them to set a permanent password).
@@ -55,6 +61,7 @@ export function useApproveAccount() {
           approved_by_name: approver.name,
           failed_login_count: 0,
           locked_until: null,
+          temp_password_expires_at: tempExpiry,
         })
         .eq("id", request.userId);
       if (profErr) throw profErr;
@@ -147,27 +154,54 @@ export function useRejectAccount() {
 export async function createAccountApprovalRequest(user: Employee) {
   const now = new Date().toISOString();
 
-  await supabase
+  // Idempotent: a retry after a partial failure must reuse the pending row
+  // instead of creating duplicates for the owner.
+  const { data: pending } = await supabase
+    .from("account_approval_requests")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .order("requested_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let row = pending;
+
+  if (!row) {
+    const { data, error } = await supabase
+      .from("account_approval_requests")
+      .insert({
+        user_id: user.id,
+        employee_name: user.name || user.email || "Unnamed",
+        email: user.email || "",
+        role: user.role || null,
+        status: "pending",
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    row = data;
+  }
+
+  // Promote the profile only after the request exists. If this update fails we
+  // roll the *new* request back so the employee stays in pending_first_login
+  // and can retry, rather than being stuck with no request for the owner.
+  const { error: profErr } = await supabase
     .from("user_profiles")
     .update({
       approval_status: "pending_approval",
-      approval_requested_at: now,
+      approval_requested_at: row.requested_at || now,
     })
     .eq("id", user.id);
 
-  const { data, error } = await supabase
-    .from("account_approval_requests")
-    .insert({
-      user_id: user.id,
-      employee_name: user.name || user.email || "Unnamed",
-      email: user.email || "",
-      role: user.role || null,
-      status: "pending",
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return mapAccountApprovalRequest(data);
+  if (profErr) {
+    if (!pending && row?.id) {
+      await supabase.from("account_approval_requests").delete().eq("id", row.id);
+    }
+    throw profErr;
+  }
+
+  return mapAccountApprovalRequest(row);
 }
 
 export { DEFAULT_STAFF_PERMISSIONS };

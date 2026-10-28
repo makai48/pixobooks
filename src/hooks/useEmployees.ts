@@ -96,6 +96,17 @@ export function useSetPermissions() {
   });
 }
 
+export type InviteDeliveryStatus =
+  | "sent"
+  | "not_configured"
+  | "no_recipient"
+  | "failed";
+
+export type InviteDelivery = {
+  status: InviteDeliveryStatus;
+  detail?: string;
+};
+
 export type InviteEmployeeInput = {
   email: string;
   name?: string;
@@ -107,6 +118,8 @@ export type InviteEmployeeInput = {
   hireDate?: string | null;
   emergencyContact?: string | null;
   emergencyContactPhone?: string | null;
+  /** Used in the server-sent email/SMS body. */
+  shopName?: string;
   actor?: { id: string; name: string; role?: string };
 };
 
@@ -118,22 +131,27 @@ export type InviteEmployeeResult = {
   expiresAt: string;
   expirationHours: number;
   userId: string;
+  /** Whether the edge function actually sent the invite, per channel. */
+  delivery?: { email: InviteDelivery; sms: InviteDelivery };
 };
 
 /**
- * NEW ONBOARDING FLOW (invite-employee edge function).
+ * ONBOARDING FLOW (invite-employee edge function) — no approval step.
  *
  *  1. Owner calls this hook with the invitee's email + name + role.
  *  2. The edge function creates the auth user with a securely-generated
- *     temporary password and sets user_profiles.approval_status =
- *     'pending_first_login', active = false, must_change_password = true and
+ *     temporary password and sets user_profiles.approval_status = 'approved',
+ *     active = true, must_change_password = true and
  *     temp_password_expires_at = now + expirationHours.
  *  3. The hook returns the temporary password + expiry so the owner can share
  *     it with the invitee (email, SMS, WhatsApp, print).
- *  4. When the invitee logs in with the temp password, the Login screen turns
- *     the profile into 'pending_approval' and inserts an account approval
- *     request. Only after the owner approves does the account become active,
- *     and the first login after approval forces a permanent password.
+ *  4. The invitee signs in with the temp password and is taken straight to
+ *     /change-password. Until they set a permanent password, `must_change_password`
+ *     keeps them out of the rest of the app.
+ *
+ * `account_approval_requests` / the Account Approvals page still exist for
+ * accounts left in `pending_first_login` / `pending_approval` by older
+ * invites; new invites never enter that path.
  */
 export function useInviteEmployee() {
   const qc = useQueryClient();
@@ -163,6 +181,7 @@ export function useInviteEmployee() {
           emergencyContact: p.emergencyContact ?? null,
           emergencyContactPhone: p.emergencyContactPhone ?? null,
           inviterName: p.actor?.name || "Owner",
+          shopName: p.shopName || undefined,
           businessId: active === "none" ? null : active,
         },
       });
@@ -212,40 +231,73 @@ export type DeleteEmployeeInput = {
   actor?: { id: string; name: string; role?: string };
 };
 
+/**
+ * Turn a failed `functions.invoke` into a message that names the real cause.
+ * `FunctionsHttpError.context` is a `Response`, and reading its body once is
+ * all we get, so the JSON `{ error }` is extracted here.
+ */
+async function describeDeleteFailure(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    const status = error.context?.status;
+    const prefix = status ? `Delete failed (${status})` : "Delete failed";
+    try {
+      const text = await error.context?.text();
+      if (text) {
+        try {
+          const parsed = JSON.parse(text) as { error?: unknown };
+          if (typeof parsed?.error === "string" && parsed.error) {
+            return `${prefix}: ${parsed.error}`;
+          }
+        } catch {
+          // Not JSON — fall through and use the raw body.
+        }
+        return `${prefix}: ${text}`;
+      }
+    } catch {
+      // Body already consumed or unreadable.
+    }
+    return `${prefix}: ${error.message}`;
+  }
+  return error instanceof Error ? error.message : "Delete failed";
+}
+
+/**
+ * Permanently delete an employee.
+ *
+ * The edge function is the ONLY thing that can remove the `auth.users` row, so
+ * a failed invoke must surface as an error. The previous version fell back to
+ * deleting just `user_profiles` and then resolved, which is why the UI said
+ * "deleted" while the account stayed in Supabase: the app lost sight of the
+ * user but the login still existed. There is no profile-only fallback now.
+ */
 export function useDeleteEmployee() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: DeleteEmployeeInput) => {
-      let edgeError: string | null = null;
-      const { error } = await supabase.functions.invoke("delete-employee", {
+      const { data, error } = await supabase.functions.invoke("delete-employee", {
         body: { userId: p.id },
       });
+
       if (error) {
-        edgeError = error.message;
-        if (error instanceof FunctionsHttpError) {
-          try {
-            const status = error.context?.status ?? 500;
-            const text = await error.context?.text();
-            edgeError = `[${status}] ${text || error.message}`;
-          } catch {
-            // ignore
-          }
-        }
-        if (import.meta.env.DEV) console.warn("delete-employee edge invoke failed:", edgeError);
-        const { error: pErr } = await supabase
-          .from("user_profiles")
-          .delete()
-          .eq("id", p.id);
-        if (pErr) throw new Error(edgeError || pErr.message);
-        // Membership rows are only cascade-deleted when the auth user is
-        // removed; the profile-only fallback must clear them explicitly.
-        await supabase.from("business_members").delete().eq("user_id", p.id);
+        const message = await describeDeleteFailure(error);
+        if (import.meta.env.DEV) console.warn("delete-employee failed:", message);
+        throw new Error(message);
       }
+
+      // A 200 response can still carry a refusal (older deployments returned
+      // `{ success: false }` instead of a non-2xx status). Never treat that as
+      // a completed delete.
+      if (data && typeof data === "object") {
+        const body = data as { success?: boolean; error?: string };
+        if (body.success === false) {
+          throw new Error(body.error || "Delete failed");
+        }
+      }
+
       if (p.actor) {
         await logAudit(p.actor, "employee.delete", "user", p.id, {
           name: p.name,
-          fully_removed: !edgeError,
-          edge_error: edgeError,
+          fully_removed: true,
         });
       }
     },

@@ -4,14 +4,24 @@ import { KeyRound, Lock, ShieldCheck, LogOut, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { describePasswordUpdateError } from "@/lib/signInFlow";
 
 /**
  * Forced password-change screen. Users land here on their first login after
  * the owner approves their account (must_change_password = true).
+ *
+ * WHY THE CURRENT PASSWORD IS ASKED FOR
+ * -------------------------------------
+ * Projects with `SECURITY_UPDATE_PASSWORD_REQUIRE_CURRENT_PASSWORD` enabled
+ * (GoTrue's default for hosted projects) reject `updateUser({ password })`
+ * with "Current password required when setting new password." unless
+ * `current_password` is sent with it. On this screen the "current" password is
+ * the temporary one the employee just signed in with.
  */
 export default function ChangePassword() {
   const nav = useNavigate();
   const { user, profile, loading, refreshProfile, logout } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
@@ -30,11 +40,14 @@ export default function ChangePassword() {
   }, [user, profile, loading, nav]);
 
   const validate = () => {
+    if (!currentPassword) return "Enter the temporary password you signed in with";
     if (password.length < 8) return "Password must be at least 8 characters";
     if (!/[A-Z]/.test(password)) return "Include at least one uppercase letter";
     if (!/[a-z]/.test(password)) return "Include at least one lowercase letter";
     if (!/[0-9]/.test(password)) return "Include at least one digit";
     if (password !== confirm) return "Passwords do not match";
+    if (password === currentPassword)
+      return "Your new password must be different from the current one";
     if (profile?.email && password.toLowerCase().includes(profile.email.split("@")[0].toLowerCase()))
       return "Password should not contain your email";
     return null;
@@ -48,8 +61,12 @@ export default function ChangePassword() {
 
     setSubmitting(true);
     try {
-      // 1. Change the auth-level password
-      const { error: authErr } = await supabase.auth.updateUser({ password });
+      // 1. Change the auth-level password. `current_password` is required by
+      //    GoTrue when update-password-require-current-password is enabled.
+      const { error: authErr } = await supabase.auth.updateUser({
+        password,
+        current_password: currentPassword,
+      });
       if (authErr) throw authErr;
 
       // 2. Clear the must_change_password + temp expiry flags on the profile
@@ -66,7 +83,7 @@ export default function ChangePassword() {
       toast.success("Password updated. Welcome to PixoBooks.");
       nav("/", { replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Update failed");
+      toast.error(describePasswordUpdateError(err));
     } finally {
       setSubmitting(false);
     }
@@ -93,12 +110,35 @@ export default function ChangePassword() {
 
         <form onSubmit={submit} className="mt-6 space-y-4">
           <div>
+            <label htmlFor="cp-current-password" className="label">
+              Current password
+            </label>
+            <div className="mt-1 relative">
+              <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
+              <input
+                id="cp-current-password"
+                autoFocus
+                type={show ? "text" : "password"}
+                required
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="The temporary password you signed in with"
+                className="input pl-9"
+              />
+            </div>
+            <div className="text-[11px] text-ink-mute mt-1">
+              Paste the temporary password you just used to sign in. It is
+              case-sensitive.
+            </div>
+          </div>
+
+          <div>
             <label htmlFor="cp-new-password" className="label">New password</label>
             <div className="mt-1 relative">
               <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
               <input
                 id="cp-new-password"
-                autoFocus
                 type={show ? "text" : "password"}
                 required
                 minLength={8}

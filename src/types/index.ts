@@ -185,6 +185,7 @@ export type Permission =
   | "inventory.edit"
   | "inventory.delete"
   | "inventory.adjust"
+  | "inventory.import"
   // Purchase Orders
   | "po.view"
   | "po.manage"
@@ -195,6 +196,7 @@ export type Permission =
   | "suppliers.manage"
   | "suppliers.delete"
   // Customers
+  | "customers.view"
   | "customers.manage"
   | "customers.delete"
   | "loyalty.manage"
@@ -211,6 +213,7 @@ export type Permission =
   | "sales.view"
   | "sales.void"
   | "reports.viewCosts"
+  | "reports.export"
   | "finance.view"
   | "finance.manage"
   // Admin
@@ -218,6 +221,12 @@ export type Permission =
   | "employees.delete"
   | "employees.payroll"
   | "employees.attendance"
+  | "users.invite"
+  | "users.permissions"
+  | "users.delete"
+  | "payroll.view"
+  | "payroll.run"
+  | "attendance.view"
   | "settings.manage"
   | "settings.shop"
   | "settings.receipt"
@@ -245,6 +254,7 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "inventory.edit", label: "Add & edit items", group: "Inventory" },
   { key: "inventory.delete", label: "Delete items", group: "Inventory" },
   { key: "inventory.adjust", label: "Adjust stock levels", group: "Inventory" },
+  { key: "inventory.import", label: "Import catalog data", group: "Inventory" },
   // Purchase Orders
   { key: "po.view", label: "View purchase orders", group: "Purchase Orders" },
   { key: "po.manage", label: "Create & edit POs", group: "Purchase Orders" },
@@ -255,6 +265,7 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "suppliers.manage", label: "Add & edit suppliers", group: "Suppliers" },
   { key: "suppliers.delete", label: "Delete suppliers", group: "Suppliers" },
   // Customers
+  { key: "customers.view", label: "View customer register", group: "Customers" },
   { key: "customers.manage", label: "Manage customers", group: "Customers" },
   { key: "customers.delete", label: "Delete customers", group: "Customers" },
   { key: "loyalty.manage", label: "Manage loyalty points", group: "Customers" },
@@ -273,11 +284,18 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "sales.void", label: "Void sales", group: "Reports" },
   { key: "stats.view", label: "View financial statistics", group: "Reports" },
   { key: "reports.viewCosts", label: "View COGS / cost & profit columns", group: "Reports" },
+  { key: "reports.export", label: "Export reports & data", group: "Reports" },
   // Admin
   { key: "employees.manage", label: "Manage employees", group: "Admin" },
   { key: "employees.delete", label: "Delete employee accounts", group: "Admin" },
   { key: "employees.payroll", label: "Manage salaries & allowances", group: "Admin" },
   { key: "employees.attendance", label: "Record attendance", group: "Admin" },
+  { key: "users.invite", label: "Invite employees", group: "Admin" },
+  { key: "users.permissions", label: "Change user permissions", group: "Admin" },
+  { key: "users.delete", label: "Permanently delete users", group: "Admin" },
+  { key: "payroll.view", label: "View payroll & salaries", group: "Admin" },
+  { key: "payroll.run", label: "Edit salaries & run payroll", group: "Admin" },
+  { key: "attendance.view", label: "View attendance", group: "Admin" },
   { key: "settings.manage", label: "Access all settings", group: "Admin" },
   { key: "audit.view", label: "View audit log", group: "Admin" },
   { key: "password.approve", label: "Approve password resets", group: "Admin" },

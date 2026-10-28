@@ -74,7 +74,10 @@
 .st .settings-header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  /* Must stay below TopBar (`relative z-30`, which owns the business
+     switcher dropdown). At z-50 this header painted over the open dropdown
+     while scrolling Settings. */
+  z-index: 20;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -435,6 +438,41 @@
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 36px;
+}
+
+/* GLOBAL RULE — dropdowns and text fields must never be wider than the text
+ * they carry. A select that stretches the full column width next to a
+ * two-letter option reads as an empty form. Every select and every text-like
+ * input therefore sizes to its own content, plus room for the caret.
+ *
+ * Measured by a tiny inline script (`fitControlWidths`) on load, resize and
+ * whenever the form re-renders. Uses canvas text metrics rather than guessing
+ * from character count, so mixed-width labels ("Receipts & invoices") measure
+ * correctly. */
+.st select.input,
+.st input.input:not([type="checkbox"]):not([type="radio"]) {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.st select.input {
+  /* longest option + caret + padding, floored at a comfortable minimum */
+  min-width: var(--fit-min, 110px);
+  max-width: calc(var(--fit-measure, 110px) + 36px + 26px);
+}
+
+.st input.input:not([type="checkbox"]):not([type="radio"]) {
+  min-width: var(--fit-min, 110px);
+  max-width: calc(var(--fit-measure, 110px) + 26px);
+}
+
+/* Inside the two-panel data screens a control that hugs its text would leave
+ * the panel looking empty, so there they stay full-width. */
+.st .data-panel select.input,
+.st .data-panel input.input {
+  width: 100%;
+  max-width: 100%;
 }
 
 .st .field-hint {
@@ -1218,6 +1256,12 @@
     grid-template-columns: 1fr !important;
   }
 
+  /* Two-panel layouts stack on narrow screens. */
+  .st .data-panels,
+  .st .data-modal-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .st .logo-upload-cluster {
     align-items: flex-start;
   }
@@ -1697,6 +1741,13 @@
   animation: pickerPop 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* The Import & Backup screen carries two side-by-side panels, so it needs a
+ * wider window than the single-column pickers. */
+.st .picker-window.is-wide {
+  width: min(1080px, 100%);
+  max-height: min(760px, calc(100vh - 32px));
+}
+
 @keyframes pickerPop {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -2016,6 +2067,301 @@
   max-width: 72%;
 }
 
+/* ------------------------------------------------------------------ *
+ * Import & Backup — the two data panels that sit side by side.
+ * Both share every class so the pair reads as one designed unit.
+ * ------------------------------------------------------------------ */
+
+.st .data-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.st .data-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.st .data-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.st .data-panel-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.st .data-panel-badge.is-import {
+  background: var(--apple-blue-tint);
+  border: 1px solid #bfdbfe;
+  color: var(--apple-blue);
+}
+
+.st .data-panel-badge.is-export {
+  background: var(--teal-surface);
+  border: 1px solid var(--teal-border);
+  color: var(--teal-text);
+}
+
+.st .data-panel-heading {
+  min-width: 0;
+}
+
+.st .data-panel-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #0f172a;
+}
+
+.st .data-panel-sub {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+.st .data-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Category rows inside each panel */
+.st .data-cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* On the modal, each panel's category list scrolls on its own so both
+ * columns stay the same height instead of the whole modal scrolling. */
+.st .data-modal-grid .data-cat-list {
+  overflow-y: auto;
+  min-height: 0;
+  max-height: 430px;
+  padding-right: 2px;
+}
+
+.st .data-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: #ffffff;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.st .data-cat-row:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.st .data-cat-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.st .data-cat-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.st .data-cat-meta {
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.st .data-panel-empty {
+  padding: 18px 12px;
+  border: 1px dashed var(--border-light);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* Supporting copy inside a panel, so the two columns carry comparable weight. */
+.st .data-import-notes {
+  padding: 10px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.st .data-import-notes-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.st .data-import-notes-list {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.st .data-import-notes-list li {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.st .data-import-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.st .data-import-cta-hint {
+  font-size: 11px;
+  color: var(--ink-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Panel action rows (the Start import / Export JSON buttons). */
+.st .data-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.st .data-import-actions .btn,
+.st .data-panel-actions .btn {
+  flex-shrink: 0;
+}
+
+/* Drop-in file zone — replaces the ad-hoc Tailwind classes so it scales with
+ * the design tokens and collapses cleanly on mobile. */
+.st .data-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 84px;
+  border: 2px dashed var(--border-light);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.st .data-dropzone:hover {
+  border-color: var(--ink-subtle);
+  background: #f8fafc;
+  color: var(--ink);
+}
+
+.st .data-dropzone svg {
+  flex-shrink: 0;
+}
+
+/* Shows which dataset the Export dropdown is pointing at. */
+.st .data-export-preview {
+  padding: 10px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.st .data-export-preview-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* The modal variant reuses the same panel shell so the popup and the
+ * on-page panels are visually identical. */
+.st .data-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* Inside the modal, each panel is a flex column so its list can flex to fill
+ * the available height rather than forcing the whole modal to scroll. */
+.st .data-modal-grid .data-panel {
+  min-height: 0;
+}
+
+/* The inline variant (Settings section 10) renders the same panels directly
+ * on the page, so it just needs the panels plus a footer line. */
+.st .data-inline-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.st .data-inline-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 2px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* The two panels are equal height (the taller one sets the row height, the
+ * other stretches to match). The modal body scrolls as a whole — that is the
+ * normal expectation for a screen carrying a 13-item category list — so no
+ * action row can ever be clipped. */
+.st .picker-body .data-modal-grid {
+  align-items: stretch;
+}
+
+.st .picker-body .data-modal-grid .data-panel {
+  min-height: 0;
+}
+
+.st .picker-body .data-modal-grid .data-cat-list {
+  flex: 0 0 auto;
+}
+
+.st .picker-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .st .picker-skeleton {
   display: flex;
   align-items: center;
@@ -2130,6 +2476,38 @@
 
   .st .picker-foot .btn {
     width: 100%;
+  }
+
+  /* Import & Backup panels: stack, uncap the scroll, let action rows wrap so
+   * the buttons never squeeze off-screen on a narrow phone. */
+  .st .picker-window.is-wide {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .st .picker-body .data-modal-grid {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .st .data-panel-actions,
+  .st .data-import-actions {
+    flex-wrap: wrap;
+  }
+
+  .st .data-panel-actions .btn,
+  .st .data-import-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  .st .data-import-cta-hint {
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+
+  .st .data-dropzone {
+    height: 76px;
   }
 }
 

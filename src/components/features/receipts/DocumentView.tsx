@@ -83,6 +83,15 @@ function ReceiptLayout({
   const change = Math.max(0, sale.amountPaid - sale.total);
   const isNarrow = settings.receipt.paperWidthMm === 58;
   const widthMm = `${settings.receipt.paperWidthMm}mm`;
+  // One column template shared by the item header, every line and the totals.
+  // Fixed tracks (instead of per-row `auto`) guarantee that a wider price or
+  // quantity can never shift its column away from the header above it.
+  const cols = isNarrow
+    ? "grid grid-cols-[minmax(0,1fr)_2rem_4rem] gap-1"
+    : "grid grid-cols-[minmax(0,1fr)_2rem_3.5rem_4rem] gap-1";
+  // Totals rows reuse the same tracks: the label spans every column but the
+  // amount one, so the amounts sit exactly under the TOTAL header.
+  const labelSpan = isNarrow ? "col-span-2" : "col-span-3";
   // Thermal design: plain numbers everywhere (currency implied by the shop),
   // formatted with the shop's own separators/grouping. Only the big TOTAL keeps
   // the currency code so the amount is unambiguous at a glance.
@@ -130,10 +139,10 @@ function ReceiptLayout({
           {settings.shopName}
         </div>
         {settings.address && (
-          <div className="text-[10px] leading-tight">{settings.address}</div>
+          <div className="text-[10px] leading-tight break-words">{settings.address}</div>
         )}
         {(settings.phone || settings.email) && (
-          <div className="text-[10px] leading-tight">
+          <div className="text-[10px] leading-tight break-words">
             {settings.phone && <>Tel: {settings.phone}</>}
             {settings.phone && settings.email && <> · </>}
             {settings.email && <>{settings.email}</>}
@@ -154,8 +163,8 @@ function ReceiptLayout({
 
       <div className="text-[9px] space-y-0.5">
         <RowLabel label="Date" value={dt} />
-        <RowLabel label="Cashier" value={sale.cashierName} bold />
-        <RowLabel label="Customer" value={sale.customerName || "Walk-in"} />
+        <RowLabel label="Cashier" value={sale.cashierName} />
+        <RowLabel label="Customer" value={sale.customerName || "Walk-in"} bold />
         <RowLabel label="Payment" value={sale.paymentMethod.toUpperCase()} />
       </div>
 
@@ -164,10 +173,10 @@ function ReceiptLayout({
       {isNarrow ? (
         <>
           {/* --- Condensed 58mm layout: Item / Qty / Total only --- */}
-          <div className="grid grid-cols-[1fr_auto_auto] gap-1 text-[8px] uppercase font-bold border-b border-gray-400 pb-0.5">
+          <div className={cn(cols, "text-[8px] uppercase font-bold border-b border-gray-400 pb-0.5")}>
             <span>Item</span>
-            <span className="text-center w-8">Qty</span>
-            <span className="text-right w-16">Total</span>
+            <span className="text-center">Qty</span>
+            <span className="text-right">Total</span>
           </div>
           {sale.lines.map((l, i) => {
             const gross = l.qty * l.unitPrice;
@@ -175,12 +184,12 @@ function ReceiptLayout({
             const net = gross - discAmt;
             return (
               <div key={i} className="py-1 border-b border-dashed border-gray-300">
-                <div className="grid grid-cols-[1fr_auto_auto] gap-1 text-[9px]">
+                <div className={cn(cols, "text-[9px]")}>
                   <span className="font-semibold pr-1 text-left break-words">
                     {l.name}
                   </span>
-                  <span className="text-center w-8 num">{l.qty}</span>
-                  <span className="text-right w-16 num font-bold whitespace-nowrap">
+                  <span className="text-center num">{l.qty}</span>
+                  <span className="text-right num font-bold whitespace-nowrap">
                     {plain(net)}
                   </span>
                 </div>
@@ -196,11 +205,11 @@ function ReceiptLayout({
       ) : (
         <>
           {/* --- Original full layout: Item / Qty / Price / Total --- */}
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-1 text-[8px] uppercase font-bold border-b border-gray-400 pb-0.5">
+          <div className={cn(cols, "text-[8px] uppercase font-bold border-b border-gray-400 pb-0.5")}>
             <span>Item</span>
-            <span className="text-center w-8">Qty</span>
-            <span className="text-right w-14">Price</span>
-            <span className="text-right w-16">Total</span>
+            <span className="text-center">Qty</span>
+            <span className="text-right">Price</span>
+            <span className="text-right">Total</span>
           </div>
           {sale.lines.map((l, i) => {
             const gross = l.qty * l.unitPrice;
@@ -208,13 +217,13 @@ function ReceiptLayout({
             const net = gross - discAmt;
             return (
               <div key={i} className="py-1 border-b border-dashed border-gray-300">
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-1 text-[9px] items-start">
+                <div className={cn(cols, "text-[9px] items-start")}>
                   <span className="font-semibold pr-1 text-left break-words">{l.name}</span>
-                  <span className="text-center w-8 num">{l.qty}</span>
-                  <span className="text-right w-14 num whitespace-nowrap">
+                  <span className="text-center num">{l.qty}</span>
+                  <span className="text-right num whitespace-nowrap">
                     {plain(l.unitPrice)}
                   </span>
-                  <span className="text-right w-16 num font-bold whitespace-nowrap">
+                  <span className="text-right num font-bold whitespace-nowrap">
                     {plain(net)}
                   </span>
                 </div>
@@ -232,9 +241,11 @@ function ReceiptLayout({
       <Rule />
 
       <div className="text-[9px] space-y-0.5">
-        <TotalRow label="Subtotal" value={plain(sale.subtotal)} />
+        <TotalRow cols={cols} labelSpan={labelSpan} label="Subtotal" value={plain(sale.subtotal)} />
         {sale.lineDiscountTotal > 0 && (
           <TotalRow
+            cols={cols}
+            labelSpan={labelSpan}
             label="Line discount"
             value={`− ${plain(sale.lineDiscountTotal)}`}
             tone="danger"
@@ -242,12 +253,16 @@ function ReceiptLayout({
         )}
         {sale.orderDiscountValue > 0 && (
           <TotalRow
+            cols={cols}
+            labelSpan={labelSpan}
             label="Order discount"
             value={`− ${plain(sale.orderDiscountValue)}`}
             tone="danger"
           />
         )}
         <TotalRow
+          cols={cols}
+          labelSpan={labelSpan}
           label={`Tax (${settings.taxRate}%)`}
           value={plain(sale.tax)}
         />
@@ -255,25 +270,27 @@ function ReceiptLayout({
 
       <Rule kind="double" />
 
-      <div className="flex justify-between font-bold text-[12px]">
-        <span>TOTAL</span>
-        <span className="num whitespace-nowrap">{formatCurrency(sale.total, currency)}</span>
+      <div className={cn(cols, "font-bold text-[12px]")}>
+        <span className={labelSpan}>TOTAL</span>
+        <span className="text-right num whitespace-nowrap">{formatCurrency(sale.total, currency)}</span>
       </div>
 
       <Rule kind="double" />
 
       <div className="text-[9px] space-y-0.5">
         <TotalRow
+          cols={cols}
+          labelSpan={labelSpan}
           label={isNarrow ? "Paid" : `Paid (${sale.paymentMethod.toUpperCase()})`}
           value={plain(sale.amountPaid)}
         />
         {change > 0 && (
-          <TotalRow label="CHANGE" value={plain(change)} />
+          <TotalRow cols={cols} labelSpan={labelSpan} label="CHANGE" value={plain(change)} />
         )}
         {sale.amountDue > 0 && (
-          <div className="flex justify-between font-bold text-red-700 mt-0.5">
-            <span>BALANCE DUE</span>
-            <span className="num whitespace-nowrap">{plain(sale.amountDue)}</span>
+          <div className={cn(cols, "font-bold text-red-700 mt-0.5")}>
+            <span className={labelSpan}>BALANCE DUE</span>
+            <span className="text-right num whitespace-nowrap">{plain(sale.amountDue)}</span>
           </div>
         )}
       </div>
@@ -283,10 +300,20 @@ function ReceiptLayout({
           <Rule />
           <div className="text-[9px] space-y-0.5">
             {sale.loyaltyEarned > 0 && (
-              <TotalRow label="Points earned" value={`+${sale.loyaltyEarned}`} />
+              <TotalRow
+                cols={cols}
+                labelSpan={labelSpan}
+                label="Points earned"
+                value={`+${sale.loyaltyEarned}`}
+              />
             )}
             {sale.loyaltyRedeemed > 0 && (
-              <TotalRow label="Points redeemed" value={`−${sale.loyaltyRedeemed}`} />
+              <TotalRow
+                cols={cols}
+                labelSpan={labelSpan}
+                label="Points redeemed"
+                value={`−${sale.loyaltyRedeemed}`}
+              />
             )}
           </div>
         </>
@@ -639,9 +666,11 @@ function RowLabel({
   bold?: boolean;
 }) {
   return (
-    <div className="flex justify-between">
-      <span className="text-gray-600">{label}:</span>
-      <span className={cn("text-gray-900", bold && "font-bold")}>{value}</span>
+    <div className="flex justify-between gap-2">
+      <span className="text-gray-600 shrink-0">{label}:</span>
+      <span className={cn("text-gray-900 text-right break-words min-w-0", bold && "font-bold")}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -650,15 +679,20 @@ function TotalRow({
   label,
   value,
   tone,
+  cols,
+  labelSpan,
 }: {
   label: string;
   value: string;
   tone?: "danger";
+  /** Shared column template so the amount lands under the TOTAL header. */
+  cols?: string;
+  labelSpan?: string;
 }) {
   return (
-    <div className={cn("flex justify-between", tone === "danger" && "text-red-700")}>
-      <span>{label}</span>
-      <span className="num">{value}</span>
+    <div className={cn(cols ?? "flex justify-between", tone === "danger" && "text-red-700")}>
+      <span className={labelSpan}>{label}</span>
+      <span className="text-right num whitespace-nowrap">{value}</span>
     </div>
   );
 }
