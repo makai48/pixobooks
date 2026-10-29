@@ -15,6 +15,7 @@ import {
   formatCurrency,
   formatDate,
   formatMoney,
+  localISODate,
   startOfMonth,
   startOfWeek,
   startOfYear,
@@ -101,8 +102,8 @@ export default function Statistics() {
     const bucketKey = (iso: string): string => {
       const d = new Date(iso);
       if (rangeDays <= 1) return `${String(d.getHours()).padStart(2, "0")}:00`;
-      if (rangeDays <= 62) return d.toISOString().slice(0, 10);
-      return d.toISOString().slice(0, 7);
+      if (rangeDays <= 62) return localISODate(d);
+      return localISODate(d).slice(0, 7);
     };
 
     const byBucket = new Map<string, { key: string; rev: number; exp: number }>();

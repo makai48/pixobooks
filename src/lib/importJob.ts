@@ -7,6 +7,7 @@ import {
   type ImportProgress,
   type ImportResult,
 } from "@/lib/import";
+import { queryClient } from "@/lib/appQueryClient";
 import type { Employee } from "@/types";
 
 /** Same actor shape `importData` accepts (for the audit trail). */
@@ -95,6 +96,8 @@ export async function startImportJob(opts: {
   file: File;
   category: ImportCategory;
   actor?: ImportActor | null;
+  /** Keep each row's original `created_at` (default true). */
+  keepOriginalDates?: boolean;
 }): Promise<void> {
   const id = ++runId;
   const { file, category, actor } = opts;
@@ -121,11 +124,18 @@ export async function startImportJob(opts: {
       (p) => {
         if (id !== runId) return;
         setJob({ ...job, progress: p });
-      }
+      },
+      { keepOriginalDates: opts.keepOriginalDates !== false }
     );
     if (id !== runId) return;
 
     setJob({ ...job, phase: "done", result, finishedAt: Date.now() });
+
+    // Rows were written directly to Supabase, bypassing every mutation hook,
+    // so every cached list is stale. Invalidate now so the Sales Report (and
+    // the rest of the app) shows imported transactions immediately, on their
+    // real transaction dates, instead of waiting for the next poll.
+    void queryClient.invalidateQueries();
 
     if (result.totalErrors === 0) {
       toast.success(

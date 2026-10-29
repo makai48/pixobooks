@@ -164,8 +164,8 @@ function ReceiptLayout({
       <div className="text-[9px] space-y-0.5">
         <RowLabel label="Date" value={dt} />
         <RowLabel label="Cashier" value={sale.cashierName} />
-        <RowLabel label="Customer" value={sale.customerName || "Walk-in"} bold />
         <RowLabel label="Payment" value={sale.paymentMethod.toUpperCase()} />
+        <RowLabel label="Customer" value={sale.customerName || "Walk-in"} bold />
       </div>
 
       <Rule />

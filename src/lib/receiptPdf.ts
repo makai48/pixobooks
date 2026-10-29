@@ -269,7 +269,13 @@ function tNeed(c: TLay, hh: number) {
 function tCenter(c: TLay, text: string, size: number, bold = false, gap = 4, space = 0) {
   c.doc.setFont(c.F, bold ? "bold" : "normal");
   c.doc.setFontSize(size);
-  if (c.ink) c.doc.text(text, c.w / 2, c.y, { align: "center", charSpace: space });
+  if (c.ink) {
+    // jsPDF's `align: "center"` ignores the tracking added by `charSpace`, which
+    // pushed tracked lines (the title and the receipt number) to the right.
+    // Measure the tracked line ourselves and draw it from the true centre.
+    const tracked = c.doc.getTextWidth(text) + space * Math.max(0, text.length - 1);
+    c.doc.text(text, (c.w - tracked) / 2, c.y, { charSpace: space });
+  }
   c.y += gap;
 }
 
@@ -353,8 +359,8 @@ function layoutThermal(c: TLay): number {
   const meta: [string, string, boolean][] = [
     ["Date", dt, false],
     ["Cashier", sale.cashierName || "—", false],
-    ["Customer", sale.customerName || "Walk-in", true],
     ["Payment", sale.paymentMethod.toUpperCase(), false],
+    ["Customer", sale.customerName || "Walk-in", true],
   ];
   for (const [k, v, b] of meta) {
     tNeed(c, 3.5);

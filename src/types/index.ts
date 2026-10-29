@@ -216,6 +216,14 @@ export type Permission =
   | "reports.export"
   | "finance.view"
   | "finance.manage"
+  | "finance.cashbook.view"
+  | "finance.bank.view"
+  | "finance.bank.manage"
+  | "finance.bank.delete"
+  | "finance.pnl.view"
+  | "finance.orders.view"
+  | "finance.orders.manage"
+  | "finance.orders.delete"
   // Admin
   | "employees.manage"
   | "employees.delete"
@@ -239,6 +247,7 @@ export type Permission =
   | "settings.discount"
   | "settings.categories"
   | "settings.export"
+  | "settings.wipe"
   | "audit.view"
   | "password.approve";
 
@@ -279,6 +288,19 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "expenses.delete", label: "Delete expenses", group: "Finance" },
   { key: "finance.view", label: "View cashbook & bank statement", group: "Finance" },
   { key: "finance.manage", label: "Daily banking, standing orders, loans", group: "Finance" },
+  // Granular finance permissions. Each tab of Financial Statements has its
+  // own read key, and the editable tabs split create/update from delete so a
+  // bookkeeper can post entries without being able to erase them. The legacy
+  // `finance.view` / `finance.manage` keys above still act as umbrellas so
+  // existing employees keep exactly the access they had.
+  { key: "finance.cashbook.view", label: "View cashbook", group: "Finance" },
+  { key: "finance.bank.view", label: "View bank statement", group: "Finance" },
+  { key: "finance.bank.manage", label: "Record & edit bank entries", group: "Finance" },
+  { key: "finance.bank.delete", label: "Delete bank entries", group: "Finance" },
+  { key: "finance.pnl.view", label: "View profit & loss", group: "Finance" },
+  { key: "finance.orders.view", label: "View standing orders & loans", group: "Finance" },
+  { key: "finance.orders.manage", label: "Create & edit standing orders & loans", group: "Finance" },
+  { key: "finance.orders.delete", label: "Delete standing orders & loans", group: "Finance" },
   // Reports
   { key: "sales.view", label: "View sales reports", group: "Reports" },
   { key: "sales.void", label: "Void sales", group: "Reports" },
@@ -311,6 +333,7 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "settings.discount", label: "Configure discount rules", group: "Settings" },
   { key: "settings.categories", label: "Manage POS categories", group: "Settings" },
   { key: "settings.export", label: "Export shop data", group: "Settings" },
+  { key: "settings.wipe", label: "Wipe app data", group: "Settings" },
 ];
 
 export const ALL_PERMISSION_KEYS: Permission[] = ALL_PERMISSIONS.map((p) => p.key);

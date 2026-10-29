@@ -220,6 +220,35 @@
   box-shadow: 0 4px 14px rgba(0, 122, 255, 0.36);
 }
 
+/* `--danger` inside `.st` is a hex token (#dc2626), not HSL components like
+ * the global theme — `hsl(var(--danger))` is invalid here and made the button
+ * render white-on-white. Always use the token directly. */
+.st .btn-danger {
+  background: var(--danger);
+  color: #ffffff;
+  border: 1px solid var(--danger);
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.28);
+}
+
+.st .btn-danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 5px 14px rgba(220, 38, 38, 0.34);
+}
+
+.st .data-panel-badge.is-danger {
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: var(--danger);
+}
+
+/* The wipe control sits below the import/export panels, full width. */
+.st .data-wipe-panel {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #f1f5f9;
+}
+
 .st .btn-sm {
   height: 34px;
   padding: 0 14px;

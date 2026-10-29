@@ -121,6 +121,33 @@ export function seedQueryClient(qc: QueryClient, storage?: StorageLike | null): 
   return restored;
 }
 
+/**
+ * Remove every persisted snapshot.
+ *
+ * Used after a data wipe: the offline cache holds whitelisted catalogs
+ * (items, customers, …) and would otherwise repaint the deleted rows on the
+ * next reload, before the refetch has a chance to correct them.
+ */
+export function clearPersistedSnapshots(storage?: StorageLike | null): number {
+  const store = storage ?? getStorage();
+  if (!store) return 0;
+  let removed = 0;
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
+      if (k && k.startsWith(PREFIX)) keys.push(k);
+    }
+    for (const k of keys) {
+      store.removeItem(k);
+      removed++;
+    }
+  } catch {
+    // storage unreadable — memory cache is still invalidated by the caller
+  }
+  return removed;
+}
+
 /** Subscribe to cache updates and persist whitelisted successes. */
 export function persistQueryCache(qc: QueryClient): () => void {
   return qc.getQueryCache().subscribe((event) => {

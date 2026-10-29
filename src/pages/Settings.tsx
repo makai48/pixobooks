@@ -122,9 +122,12 @@ export default function SettingsPage() {
   const canDiscount = can("settings.discount") || can("settings.manage");
   const canCategories = can("settings.categories") || can("settings.manage");
   const canExport = can("settings.export") || can("reports.export") || can("settings.manage");
+  // Destructive and deliberately not implied by `settings.export`: a manager
+  // who can download a backup should not be able to erase the ledger.
+  const canWipe = can("settings.wipe") || can("settings.manage");
   const anyAccess =
     canShop || canReceipt || canInvoice || canPrinter || canLoyalty ||
-    canTaxes || canTheme || canDiscount || canCategories || canExport;
+    canTaxes || canTheme || canDiscount || canCategories || canExport || canWipe;
 
   const sectionPerm: Record<string, boolean> = {
     business: canShop,
@@ -136,7 +139,7 @@ export default function SettingsPage() {
     branches: canShop,
     theme: canTheme,
     billing: canShop,
-    export: canExport,
+    export: canExport || canWipe,
   };
   const visibleSections = SECTIONS.filter((s) => sectionPerm[s.id]);
   const visibleIds = visibleSections.map((s) => s.id).join("|");
@@ -481,6 +484,7 @@ export default function SettingsPage() {
     canDiscount,
     canCategories,
     canExport,
+    canWipe,
     countryIso2,
     currencySymbol,
     moneyExample,

@@ -70,6 +70,9 @@ export default function ImportBackupScreen({
   const [exporting, setExporting] = useState<ExportCategory | null>(null);
   /** Category chosen in the Export panel's dropdown. */
   const [exportCategory, setExportCategory] = useState<ExportCategory>("sales");
+  /** Keep each row's real transaction timestamp instead of stamping the
+   *  import date. On by default — an import is a restore, not a new sale. */
+  const [keepDates, setKeepDates] = useState(true);
 
   if (variant === "popup" && !open) return null;
 
@@ -80,6 +83,7 @@ export default function ImportBackupScreen({
     setFileError(null);
     setAutoDetected(null);
     setPendingRows(null);
+    setKeepDates(true);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,6 +135,7 @@ export default function ImportBackupScreen({
       file: target,
       category: effective,
       actor: actor ? { id: actor.id, name: actor.name, role: actor.role } : undefined,
+      keepOriginalDates: keepDates,
     });
   };
 
@@ -247,6 +252,23 @@ export default function ImportBackupScreen({
                 Use a file exported from PixoBooks Settings → Import &amp; Backup.
               </div>
             </div>
+
+            <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={keepDates}
+                onChange={(e) => setKeepDates(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-semibold">Keep original transaction dates</span>
+                <span className="block field-hint">
+                  Sales, expenses, orders and documents land on the day they
+                  actually happened. Turn this off to stamp the whole import
+                  with today&apos;s date.
+                </span>
+              </span>
+            </label>
 
             {pendingRows !== null && !fileError && (
               <div className="picker-notice is-ok">

@@ -72,6 +72,53 @@ export type ImportProgress = {
 
 type Actor = Pick<Employee, "id" | "name"> & { role?: string };
 
+/** Choices the user makes on the import screen that change how rows land. */
+export type ImportOptions = {
+  /**
+   * Keep the `created_at` timestamp carried by the file.
+   *
+   * The export always contains the real timestamp of each row, but import
+   * used to strip every server-owned column — including `created_at` — so the
+   * database stamped `now()` and every imported sale/expense/document showed
+   * up on the import date. With this on (the default) the original
+   * transaction date is written back verbatim, so reports, statements and
+   * receipts stay on the days the transactions actually happened. Turn it off
+   * to deliberately stamp the whole import with the current date.
+   */
+  keepOriginalDates?: boolean;
+};
+
+/** Shape of a timestamp we are willing to write back to a `timestamptz`
+ *  column. Accepts the formats PostgREST/Postgres emit, including a bare hour
+ *  offset (`+00`) that `Date.parse` itself rejects. */
+const TIMESTAMP_RE =
+  /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}(:?\d{2})?)?)?$/;
+
+/**
+ * Normalise a timestamp carried by an export to a canonical ISO string, or
+ * return null when the value is not a usable date.
+ *
+ * Why not just `isTimestamp` + pass-through:
+ *  • Postgres can serialise UTC as `+00` (no minutes) or `+0000`, both of
+ *    which `Date.parse` rejects — those rows would silently lose their real
+ *    transaction date and land on the import date.
+ *  • Re-serialising through `toISOString()` guarantees PostgREST accepts the
+ *    value verbatim.
+ */
+function normaliseTimestamp(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const raw = value.trim();
+  if (!TIMESTAMP_RE.test(raw)) return null;
+
+  const patched = raw
+    .replace(/([+-]\d{2})(\d{2})$/, "$1:$2") // +0000 -> +00:00
+    .replace(/([+-]\d{2})$/, "$1:00"); // +00   -> +00:00
+
+  const ms = Date.parse(patched);
+  if (Number.isNaN(ms)) return null;
+  return new Date(ms).toISOString();
+}
+
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -140,6 +187,19 @@ function extractRowsForCategory(
 
     case "expenses":
       return { expenses: Array.isArray(payload.rows) ? payload.rows : [] };
+
+    case "financial_statements": {
+      // Mirror of buildExport: `rows` is an object keyed by table. Only these
+      // three tables are accepted, and `bank_deposits` is written first
+      // because `daily_balancing.bank_deposit_id` references it.
+      const r = (payload.rows as Record<string, unknown>) || {};
+      const out: Record<string, unknown[]> = {};
+      for (const table of ["bank_deposits", "daily_balancing", "standing_orders"]) {
+        const val = r[table];
+        if (Array.isArray(val)) out[table] = val;
+      }
+      return out;
+    }
 
     case "employees": {
       // The export nests each employee's attendance rows INSIDE the profile
@@ -235,11 +295,27 @@ const SERVER_OWNED_FIELDS = [
 /** Normalise a single DB row: strip read-only server fields and export-only
  *  derived columns, and stamp the active business_id — but only on tables that
  *  actually have that column. */
-function normaliseRow(row: Record<string, unknown>, table?: string): Record<string, unknown> {
+function normaliseRow(
+  row: Record<string, unknown>,
+  table?: string,
+  keepOriginalDates = true
+): Record<string, unknown> {
   const businessId = currentBusinessId();
   const out: Record<string, unknown> = { ...row };
 
-  for (const f of SERVER_OWNED_FIELDS) delete out[f];
+  for (const f of SERVER_OWNED_FIELDS) {
+    // `created_at` is the only server-owned column that carries the real
+    // transaction date. Keep it when the file has a usable timestamp so the
+    // row lands on the day it happened rather than on the import date.
+    if (f === "created_at" && keepOriginalDates) {
+      const ts = normaliseTimestamp(out.created_at);
+      if (ts) {
+        out.created_at = ts;
+        continue;
+      }
+    }
+    delete out[f];
+  }
   for (const k of Object.keys(out)) {
     if (k.endsWith(EXPORT_DERIVED_SUFFIX)) delete out[k];
   }
@@ -425,14 +501,17 @@ async function importTable(
     rowsTotal: number;
     batchesDone: number;
     batchesTotal: number;
-  }
+  },
+  options?: ImportOptions
 ): Promise<void> {
   if (!rows.length || !state) return;
+
+  const keepOriginalDates = options?.keepOriginalDates !== false;
 
   const normal = rows
     .map((r) =>
       r && typeof r === "object"
-        ? normaliseRow(r as Record<string, unknown>, table)
+        ? normaliseRow(r as Record<string, unknown>, table, keepOriginalDates)
         : null
     )
     .filter((r): r is Record<string, unknown> => r !== null);
@@ -495,14 +574,17 @@ async function importEmployeeProfiles(
     rowsTotal: number;
     batchesDone: number;
     batchesTotal: number;
-  }
+  },
+  options?: ImportOptions
 ): Promise<void> {
   if (!rows.length || !state) return;
+
+  const keepOriginalDates = options?.keepOriginalDates !== false;
 
   const normal = rows
     .map((r) =>
       r && typeof r === "object"
-        ? normaliseRow(r as Record<string, unknown>, "user_profiles")
+        ? normaliseRow(r as Record<string, unknown>, "user_profiles", keepOriginalDates)
         : null
     )
     .filter((r): r is Record<string, unknown> => r !== null);
@@ -597,7 +679,8 @@ export async function importData(
   category: ImportCategory,
   payload: ImportPayload,
   actor?: Actor | null,
-  onProgress?: (p: ImportProgress) => void
+  onProgress?: (p: ImportProgress) => void,
+  options?: ImportOptions
 ): Promise<ImportResult> {
   const tableRows = extractRowsForCategory(payload, category);
   const results: TableImportResult[] = [];
@@ -627,9 +710,9 @@ export async function importData(
       warnings: [],
     };
     if (table === "user_profiles") {
-      await importEmployeeProfiles(rows, result, onProgress, state);
+      await importEmployeeProfiles(rows, result, onProgress, state, options);
     } else {
-      await importTable(table, rows, result, onProgress, state);
+      await importTable(table, rows, result, onProgress, state, options);
     }
     results.push(result);
   }
@@ -651,6 +734,7 @@ export async function importData(
       updated: totalUpdated,
       errors: totalErrors,
       warnings: totalWarnings,
+      keepOriginalDates: options?.keepOriginalDates !== false,
     }
   ).catch(() => undefined);
 

@@ -185,13 +185,135 @@ describe("importData batching", () => {
 
   it("stamps the active business_id and strips server-owned fields", async () => {
     const rows = Array.from({ length: 3 }, (_, i) => row(i));
-    await importData("customers", payload(rows));
+    await importData("customers", payload(rows), null, undefined, {
+      keepOriginalDates: false,
+    });
 
     for (const r of firstBatch(upsert) as Record<string, unknown>[]) {
       expect(r.business_id).toBe("biz-1");
       expect(r.created_at).toBeUndefined();
       expect(r.created_by).toBeUndefined();
     }
+  });
+
+  it("keeps the original transaction date by default", async () => {
+    const rows = Array.from({ length: 3 }, (_, i) => row(i));
+    await importData("customers", payload(rows));
+
+    for (const r of firstBatch(upsert) as Record<string, unknown>[]) {
+      // Without this the row would land on the import date, so every report
+      // and statement would attribute historic data to today.
+      expect(r.created_at).toBe("2025-01-01T00:00:00.000Z");
+    }
+  });
+
+  it("accepts Postgres' bare hour offset instead of dropping the date", async () => {
+    // Postgres can serialise UTC as `+00` (no minutes). `Date.parse` rejects
+    // that, which used to make the whole timestamp look unusable and stamp the
+    // row with the import date.
+    await importData("customers", payload([
+      { id: "c1", name: "Bare offset", created_at: "2024-03-15 08:30:00+00" },
+      { id: "c2", name: "Compact offset", created_at: "2024-03-15T08:30:00+0000" },
+    ]));
+
+    const written = firstBatch(upsert) as Record<string, unknown>[];
+    expect(written[0].created_at).toBe("2024-03-15T08:30:00.000Z");
+    expect(written[1].created_at).toBe("2024-03-15T08:30:00.000Z");
+  });
+
+  it("keeps imported sales on their real transaction date", async () => {    await importData("sales", {
+      category: "sales",
+      rows: [
+        {
+          id: "s1",
+          number: "R1",
+          total: 10,
+          created_at: "2023-07-04T09:15:00+00:00",
+          payments: [{ id: "p1", sale_id: "s1", amount: 10, created_at: "2023-07-04T09:15:00+00:00" }],
+        },
+      ],
+    });
+
+    // `sales` must be written first (payments reference it) and both keep the
+    // original timestamp, otherwise the Sales Report files them under the
+    // import date.
+    expect(upsert).toHaveBeenCalled();
+    const salesBatch = firstBatch(upsert) as Record<string, unknown>[];
+    expect(salesBatch[0].created_at).toBe("2023-07-04T09:15:00.000Z");
+    expect(salesBatch[0].payments).toBeUndefined();
+  });
+
+  it("imports financial statements into their three tables, deposits first", async () => {
+    await importData("financial_statements", {
+      category: "financial_statements",
+      rows: {
+        bank_deposits: [
+          {
+            id: "d1",
+            amount: 100,
+            deposited_at: "2024-05-01T09:00:00+00:00",
+            created_at: "2024-05-01T09:00:00+00:00",
+          },
+        ],
+        daily_balancing: [
+          {
+            id: "b1",
+            balance_date: "2024-05-01",
+            bank_deposit_id: "d1",
+            created_at: "2024-05-01T18:00:00+00:00",
+            updated_at: "2024-05-02T00:00:00+00:00",
+          },
+        ],
+        standing_orders: [
+          {
+            id: "o1",
+            amount: 50,
+            next_run_date: "2024-06-01",
+            created_at: "2024-05-01T08:00:00+00:00",
+          },
+        ],
+      },
+    });
+
+    // bank_deposits must land before daily_balancing (bank_deposit_id FK).
+    expect(callTables.slice(-3)).toEqual([
+      "bank_deposits",
+      "daily_balancing",
+      "standing_orders",
+    ]);
+
+    const deposit = (callsByTable.bank_deposits as Record<string, unknown>[])[0];
+    const balancing = (callsByTable.daily_balancing as Record<string, unknown>[])[0];
+    expect(deposit.created_at).toBe("2024-05-01T09:00:00.000Z");
+    expect(balancing.created_at).toBe("2024-05-01T18:00:00.000Z");
+    // Server-owned columns are still stripped.
+    expect(balancing.updated_at).toBeUndefined();
+    expect(balancing.business_id).toBe("biz-1");
+  });
+
+  it("counts financial-statement rows across all three tables", () => {
+    expect(
+      countImportRows(
+        {
+          category: "financial_statements",
+          rows: {
+            bank_deposits: [{}, {}],
+            daily_balancing: [{}],
+            standing_orders: [{}, {}, {}],
+          },
+        },
+        "financial_statements"
+      )
+    ).toBe(6);
+  });
+
+  it("drops an unusable created_at instead of failing the row", async () => {    await importData("customers", payload([
+      { id: "c1", name: "Bad date", created_at: "not-a-date" },
+    ]));
+
+    const written = (firstBatch(upsert) as Record<string, unknown>[])[0];
+    expect(written.created_at).toBeUndefined();
+    expect(written.name).toBe("Bad date");
   });
 
   it("reports live progress per batch", async () => {

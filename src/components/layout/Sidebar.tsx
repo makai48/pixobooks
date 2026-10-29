@@ -37,6 +37,10 @@ type NavItem = {
    *  read-only key (customers.view) open a page whose older key was
    *  manage-level. */
   altPerm?: Permission;
+  /** Shown if ANY of these is granted. Used where a page has been split into
+   *  granular keys (e.g. the finance tabs) and the legacy key is only one of
+   *  several ways in. */
+  anyPerm?: Permission[];
   end?: boolean;
   ownerOnly?: boolean;
   badge?: number;
@@ -91,7 +95,7 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
       title: "Finance",
       items: [
         { to: "/expenses", label: "Expenses", icon: Wallet, perm: "expenses.view" },
-        { to: "/financial-statements", label: "Financial Statements", icon: Landmark, perm: "finance.view" },
+        { to: "/financial-statements", label: "Financial Statements", icon: Landmark, perm: "finance.view", anyPerm: ["finance.cashbook.view", "finance.bank.view", "finance.bank.manage", "finance.bank.delete", "finance.pnl.view", "finance.orders.view", "finance.orders.manage", "finance.orders.delete"] },
         { to: "/statistics", label: "Statistics", icon: BarChart3, perm: "stats.view" },
       ],
     },
@@ -181,6 +185,7 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
             (i) =>
               can(i.perm) ||
               (i.altPerm ? can(i.altPerm) : false) ||
+              (i.anyPerm ? i.anyPerm.some((p) => can(p)) : false) ||
               (isAppOwner && (i.perm === "audit.view" || i.perm === "password.approve"))
           );
           if (visible.length === 0) return null;

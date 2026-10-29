@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   UserCog,
@@ -1460,6 +1460,11 @@ function PayrollTab({ employee }: { employee: Employee }) {
 }
 
 /* Attendance tab */
+/** Short month labels for the attendance header. */
+const MONTH_NAMES = Array.from({ length: 12 }, (_, i) =>
+  new Date(2000, i, 1).toLocaleDateString(undefined, { month: "short" })
+);
+
 function AttendanceTab({ employee }: { employee: Employee }) {
   const { can } = useAuth();
   const canEdit = can("employees.attendance");
@@ -1475,6 +1480,21 @@ function AttendanceTab({ employee }: { employee: Employee }) {
 
   const changeMonth = (dir: -1 | 1) => setMonth((m) => { const d = new Date(m.year, m.month + dir, 1); return { year: d.getFullYear(), month: d.getMonth() }; });
 
+  /** Free-typed year so a bookkeeper can jump to any past month directly
+   *  instead of clicking the arrows a dozen times per year. */
+  const [yearText, setYearText] = useState(() => String(month.year));
+  useEffect(() => {
+    setYearText(String(month.year));
+  }, [month.year]);
+  const commitYear = (raw: string) => {
+    const n = Math.trunc(Number(raw));
+    if (Number.isFinite(n) && n >= 1900 && n <= 2200) {
+      setMonth((m) => (m.year === n ? m : { ...m, year: n }));
+    } else {
+      setYearText(String(month.year));
+    }
+  };
+
   const cycleStatus = (currentDate: Date, currentStatus?: AttendanceStatus) => {
     const order: AttendanceStatus[] = ["present", "halfday", "leave", "holiday", "absent"];
     let next: AttendanceStatus;
@@ -1487,8 +1507,6 @@ function AttendanceTab({ employee }: { employee: Employee }) {
     );
   };
 
-  const monthName = new Date(month.year, month.month, 1).toLocaleString(undefined, { month: "long", year: "numeric" });
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 md:gap-2">
@@ -1499,10 +1517,36 @@ function AttendanceTab({ employee }: { employee: Employee }) {
         <Stat label="Hours" value={`${stats.totalHours}h`} />
       </div>
 
-      <div className="flex items-center justify-between">
-        <button onClick={() => changeMonth(-1)} className="btn btn-ghost"><ChevronLeft className="w-4 h-4" /></button>
-        <div className="font-display text-lg font-bold">{monthName}</div>
-        <button onClick={() => changeMonth(1)} className="btn btn-ghost"><ChevronRight className="w-4 h-4" /></button>
+      <div className="flex items-center justify-between gap-1">
+        <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="btn btn-ghost shrink-0"><ChevronLeft className="w-4 h-4" /></button>
+        <div className="flex items-center gap-1 min-w-0">
+          <GlassSelect
+            value={String(month.month)}
+            onChange={(v) => setMonth((m) => ({ ...m, month: Number(v) }))}
+            ariaLabel="Attendance month"
+            options={MONTH_NAMES.map((m, i) => ({ value: String(i), label: m }))}
+            className="input input-sm select-glass"
+          />
+          <input
+            aria-label="Attendance year"
+            type="number"
+            inputMode="numeric"
+            min={1900}
+            max={2200}
+            step={1}
+            value={yearText}
+            onChange={(e) => setYearText(e.target.value)}
+            onBlur={() => commitYear(yearText)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitYear(yearText);
+              }
+            }}
+            className="input input-sm num w-20 text-center font-semibold"
+          />
+        </div>
+        <button onClick={() => changeMonth(1)} aria-label="Next month" className="btn btn-ghost shrink-0"><ChevronRight className="w-4 h-4" /></button>
       </div>
       {!canEdit && (
         <div className="text-xs text-ink-mute">

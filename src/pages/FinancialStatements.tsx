@@ -13,6 +13,7 @@ import {
   Scale,
   CheckCircle2,
   Info,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSales } from "@/hooks/useSales";
@@ -23,6 +24,7 @@ import {
   useBankDeposits,
   useCreateBankDeposit,
   useDeleteBankDeposit,
+  useUpdateBankDeposit,
   useMostRecentBankAccount,
 } from "@/hooks/useBankDeposits";
 import {
@@ -44,6 +46,20 @@ import { MONTH_NAMES, DRAWINGS_CATEGORY } from "@/types";
 
 type Tab = "cashbook" | "bank" | "pnl" | "orders";
 
+/** Tabs shown in Financial Statements, in order. Each one is gated by its own
+ *  `finance.*.view` permission (see the component below). */
+const FINANCE_TABS: {
+  k: Tab;
+  label: string;
+  short: string;
+  icon: import("lucide-react").LucideIcon;
+}[] = [
+  { k: "cashbook", label: "Cashbook", short: "Cash", icon: Banknote },
+  { k: "bank", label: "Bank Statement", short: "Bank", icon: Landmark },
+  { k: "pnl", label: "Profit & Loss", short: "P&L", icon: TrendingUp },
+  { k: "orders", label: "Standing Orders & Loans", short: "Orders", icon: Repeat },
+];
+
 export default function FinancialStatements() {
   const { profile, can } = useAuth();
   const { data: sales = [] } = useSales(1000);
@@ -52,17 +68,60 @@ export default function FinancialStatements() {
   const [now] = useState(() => new Date());
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
-  const [tab, setTab] = useState<Tab>("cashbook");
+
+  /* Granular finance access. The legacy umbrella keys (`finance.view` /
+   * `finance.manage`) are honoured as fallbacks so every employee that had
+   * access before the split keeps exactly the same tabs and buttons. */
+  const canCashbook = can("finance.cashbook.view") || can("finance.view");
+  const canBank =
+    can("finance.bank.view") ||
+    can("finance.bank.manage") ||
+    can("finance.bank.delete") ||
+    can("finance.view");
+  const canPnl = can("finance.pnl.view") || can("finance.view");
+  const canOrders =
+    can("finance.orders.view") ||
+    can("finance.orders.manage") ||
+    can("finance.orders.delete") ||
+    can("finance.view");
+  const canRecordBanking = can("finance.bank.manage") || can("finance.manage");
+  const canDeleteBanking = can("finance.bank.delete") || can("finance.manage");
+  const canManageOrders = can("finance.orders.manage") || can("finance.manage");
+  const canDeleteOrders = can("finance.orders.delete") || can("finance.manage");
+
+  const allowedTabs = useMemo(
+    () =>
+      FINANCE_TABS.filter((t) =>
+        t.k === "cashbook"
+          ? canCashbook
+          : t.k === "bank"
+            ? canBank
+            : t.k === "pnl"
+              ? canPnl
+              : canOrders
+      ),
+    [canCashbook, canBank, canPnl, canOrders]
+  );
+
+  const [tab, setTab] = useState<Tab>(() => allowedTabs[0]?.k ?? "cashbook");
   const [balancingOpen, setBalancingOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [editOrder, setEditOrder] = useState<StandingOrder | null>(null);
+  const [editDeposit, setEditDeposit] = useState<BankDeposit | null>(null);
+
+  // Permissions can change while the page is open (another admin edits them).
+  // Never leave the user parked on a tab they can no longer see.
+  useEffect(() => {
+    if (allowedTabs.length && !allowedTabs.some((t) => t.k === tab)) {
+      setTab(allowedTabs[0].k);
+    }
+  }, [allowedTabs, tab]);
 
   const from = new Date(year, month, 1).toISOString().slice(0, 10);
   const to = new Date(year, month + 1, 0).toISOString().slice(0, 10);
   const { data: deposits = [] } = useBankDeposits(from, to);
   const { data: orders = [] } = useStandingOrders();
   const currency = settings?.currency || "USD";
-  const canManage = can("finance.manage") || can("finance.view");
   const ledger = useClientReceivablesTotals();
 
   const years = useMemo(() => {
@@ -161,18 +220,22 @@ export default function FinancialStatements() {
             className="input input-sm select-glass max-md:px-1.5"
           />
         </div>
-        {canManage && (
+        {(canRecordBanking || canManageOrders) && (
           <div className="flex gap-1 md:gap-2 flex-wrap">
-            <button onClick={() => setBalancingOpen(true)} className="btn btn-accent btn-sm">
-              <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Daily Balancing &amp; Banking</span>
-              <span className="sm:hidden">Balancing</span>
-            </button>
-            <button onClick={() => { setEditOrder(null); setOrderOpen(true); }} className="btn btn-outline btn-sm">
-              <Repeat className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Standing / Loan</span>
-              <span className="sm:hidden">Standing</span>
-            </button>
+            {canRecordBanking && (
+              <button onClick={() => setBalancingOpen(true)} className="btn btn-accent btn-sm">
+                <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Daily Balancing &amp; Banking</span>
+                <span className="sm:hidden">Balancing</span>
+              </button>
+            )}
+            {canManageOrders && (
+              <button onClick={() => { setEditOrder(null); setOrderOpen(true); }} className="btn btn-outline btn-sm">
+                <Repeat className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Standing / Loan</span>
+                <span className="sm:hidden">Standing</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -204,14 +267,15 @@ export default function FinancialStatements() {
         />
       </div>
 
+      {allowedTabs.length === 0 ? (
+        <div className="paper-card p-6 text-center text-ink-mute text-sm">
+          You do not have permission to view any finance statement. Ask an owner
+          for cashbook, bank, P&amp;L or orders access.
+        </div>
+      ) : (
       <div className="paper-card overflow-hidden">
         <div className="border-b flex overflow-x-auto scrollbar-none">
-          {([
-            { k: "cashbook", label: "Cashbook", short: "Cash", icon: Banknote },
-            { k: "bank", label: "Bank Statement", short: "Bank", icon: Landmark },
-            { k: "pnl", label: "Profit & Loss", short: "P&L", icon: TrendingUp },
-            { k: "orders", label: "Standing Orders & Loans", short: "Orders", icon: Repeat },
-          ] as { k: Tab; label: string; short: string; icon: import("lucide-react").LucideIcon }[]).map(({ k, label, short, icon: Icon }) => (
+          {allowedTabs.map(({ k, label, short, icon: Icon }) => (
             <button key={k} onClick={() => setTab(k)} className={cn("px-2.5 md:px-4 h-9 md:h-12 flex items-center gap-1 md:gap-2 text-[10px] md:text-sm font-semibold border-b-2 transition whitespace-nowrap", tab === k ? "border-magenta-reg text-magenta-reg" : "border-transparent text-ink-mute hover:text-ink")}>
               <Icon className="w-3 h-3 md:w-4 md:h-4" />
               <span className="md:hidden">{short}</span>
@@ -231,10 +295,17 @@ export default function FinancialStatements() {
             <ProfitLoss revenue={revenue} cogs={cogs} gross={gross} expByCategory={expByCategory} totalExp={totalExp} net={net} currency={currency} />
           )}
           {tab === "orders" && (
-            <StandingOrdersView orders={orders} onEdit={(o) => { setEditOrder(o); setOrderOpen(true); }} currency={currency} />
+            <StandingOrdersView
+              orders={orders}
+              onEdit={(o) => { setEditOrder(o); setOrderOpen(true); }}
+              currency={currency}
+              canEdit={canManageOrders}
+              canDelete={canDeleteOrders}
+            />
           )}
         </div>
       </div>
+      )}
 
       {balancingOpen && (
         <DailyBalancingModal
@@ -250,11 +321,26 @@ export default function FinancialStatements() {
         <StandingOrderModal order={editOrder} currency={currency} onClose={() => { setOrderOpen(false); setEditOrder(null); }} createdBy={profile?.id || null} />
       )}
 
-      {tab === "cashbook" && deposits.length > 0 && canManage && (
+      {(canCashbook || canBank) && deposits.length > 0 && (
         <div className="paper-card td-card">
           <div className="td-kicker mb-1.5 md:mb-2">Recent daily banking entries</div>
-          <DepositsList deposits={deposits} currency={currency} />
+          <DepositsList
+            deposits={deposits}
+            currency={currency}
+            canEdit={canRecordBanking}
+            canDelete={canDeleteBanking}
+            onEdit={setEditDeposit}
+          />
         </div>
+      )}
+
+      {editDeposit && (
+        <BankDepositModal
+          deposit={editDeposit}
+          currency={currency}
+          actor={profile ? { id: profile.id, name: profile.name, role: profile.role } : undefined}
+          onClose={() => setEditDeposit(null)}
+        />
       )}
     </div>
   );
@@ -364,7 +450,10 @@ function PLRow({ label, value, currency, strong, indent, divider }: { label: str
   );
 }
 
-function StandingOrdersView({ orders, onEdit, currency }: { orders: StandingOrder[]; onEdit: (o: StandingOrder) => void; currency: string; }) {
+function StandingOrdersView({ orders, onEdit, currency, canEdit, canDelete }: {
+  orders: StandingOrder[]; onEdit: (o: StandingOrder) => void; currency: string;
+  canEdit: boolean; canDelete: boolean;
+}) {
   const del = useDeleteStandingOrder();
   const upsert = useUpsertStandingOrder();
   const grouped = { standing: orders.filter((o) => o.kind === "standing"), loan: orders.filter((o) => o.kind === "loan") };
@@ -394,13 +483,19 @@ function StandingOrdersView({ orders, onEdit, currency }: { orders: StandingOrde
                   <div className="text-right shrink-0">
                     <div className="num font-bold td-body whitespace-nowrap">{formatMoney(o.amount, o.currency || currency)}</div>
                     <div className="flex gap-1 mt-1 justify-end">
-                      <button onClick={() => upsert.mutate({ ...o, active: !o.active })} className={cn("chip text-[8px] md:text-[10px] uppercase border px-1 md:px-1.5", o.active ? "bg-success/10 text-success border-success/30" : "bg-ink/5 text-ink-mute border-line")}>
-                        {o.active ? "Active" : "Paused"}
-                      </button>
-                      <button onClick={() => onEdit(o)} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0" title="Edit"><Wallet className="w-2.5 h-2.5 md:w-3 md:h-3" /></button>
-                      <button onClick={() => confirm(`Delete "${o.name}"?`) && del.mutate(o.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0 text-danger" title="Delete">
-                        <Trash2 className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                      </button>
+                      {canEdit && (
+                        <>
+                          <button onClick={() => upsert.mutate({ ...o, active: !o.active })} className={cn("chip text-[8px] md:text-[10px] uppercase border px-1 md:px-1.5", o.active ? "bg-success/10 text-success border-success/30" : "bg-ink/5 text-ink-mute border-line")}>
+                            {o.active ? "Active" : "Paused"}
+                          </button>
+                          <button onClick={() => onEdit(o)} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0" title="Edit"><Wallet className="w-2.5 h-2.5 md:w-3 md:h-3" /></button>
+                        </>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => confirm(`Delete "${o.name}"?`) && del.mutate(o.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0 text-danger" title="Delete">
+                          <Trash2 className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -413,7 +508,10 @@ function StandingOrdersView({ orders, onEdit, currency }: { orders: StandingOrde
   );
 }
 
-function DepositsList({ deposits, currency }: { deposits: BankDeposit[]; currency: string; }) {
+function DepositsList({ deposits, currency, canEdit, canDelete, onEdit }: {
+  deposits: BankDeposit[]; currency: string;
+  canEdit: boolean; canDelete: boolean; onEdit: (d: BankDeposit) => void;
+}) {
   const del = useDeleteBankDeposit();
   return (
     <div className="divide-y">
@@ -425,12 +523,129 @@ function DepositsList({ deposits, currency }: { deposits: BankDeposit[]; currenc
           </div>
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
             <span className="num font-semibold whitespace-nowrap">{formatMoney(d.amount, currency)}</span>
-            <button onClick={() => confirm("Delete this deposit?") && del.mutate(d.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-6 w-6 md:h-7 md:w-7 p-0 text-danger" title="Delete">
-              <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            </button>
+            {canEdit && (
+              <button onClick={() => onEdit(d)} className="btn btn-ghost h-6 w-6 md:h-7 md:w-7 p-0" title="Edit deposit">
+                <Pencil className="w-3 h-3 md:w-3.5 md:h-3.5" />
+              </button>
+            )}
+            {canDelete && (
+              <button onClick={() => confirm("Delete this deposit?") && del.mutate(d.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-6 w-6 md:h-7 md:w-7 p-0 text-danger" title="Delete">
+                <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Edit an existing till → bank deposit. Posting a deposit is the "create"
+ *  side of the bank statement (Daily Balancing); this is the "update" side.
+ *  Gated by `finance.bank.manage`. */
+function BankDepositModal({ deposit, currency, actor, onClose }: {
+  deposit: BankDeposit; currency: string;
+  actor?: { id: string; name: string; role?: string };
+  onClose: () => void;
+}) {
+  const update = useUpdateBankDeposit();
+  const [amount, setAmount] = useState(deposit.amount);
+  const [depositedAt, setDepositedAt] = useState(deposit.depositedAt);
+  const [bankName, setBankName] = useState(deposit.bankName || "");
+  const [reference, setReference] = useState(deposit.reference || "");
+  const [notes, setNotes] = useState(deposit.notes || "");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!Number.isFinite(amount) || amount <= 0) return toast.error("Amount must be greater than 0");
+    if (!depositedAt) return toast.error("Date required");
+    try {
+      await update.mutateAsync({
+        id: deposit.id,
+        amount,
+        depositedAt,
+        bankName: bankName.trim() || null,
+        reference: reference.trim() || null,
+        notes: notes.trim() || null,
+        actor,
+      });
+      toast.success("Bank entry updated");
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-2 md:p-4 animate-fade-in">
+      <div className="paper-card w-full max-w-md overflow-hidden max-h-[95dvh] flex flex-col">
+        <div className="p-2.5 md:p-4 border-b flex items-center justify-between shrink-0">
+          <div>
+            <div className="td-kicker">Bank statement</div>
+            <h2 className="td-title">Edit bank entry</h2>
+          </div>
+          <button onClick={onClose} className="btn btn-ghost h-7 w-7 md:h-9 md:w-9 p-0"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="p-2.5 md:p-4 space-y-2 md:space-y-3 overflow-auto scroll-lined">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
+            <div>
+              <label htmlFor="fs-edit-deposit-amount" className="td-label">Amount ({currency})</label>
+              <input
+                id="fs-edit-deposit-amount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={amount || ""}
+                onChange={(e) => setAmount(Number(e.target.value) || 0)}
+                className="input input-sm mt-1 num text-right"
+              />
+            </div>
+            <div>
+              <label htmlFor="fs-edit-deposit-date" className="td-label">Date</label>
+              <GlassDatePicker
+                id="fs-edit-deposit-date"
+                value={depositedAt}
+                onChange={setDepositedAt}
+                ariaLabel="Deposit date"
+                className="input input-sm select-glass mt-1"
+              />
+            </div>
+            <div className="col-span-2">
+              <label htmlFor="fs-edit-deposit-bank" className="td-label">Bank / Account</label>
+              <input
+                id="fs-edit-deposit-bank"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                className="input input-sm mt-1"
+              />
+            </div>
+            <div className="col-span-2">
+              <label htmlFor="fs-edit-deposit-ref" className="td-label">Reference / Slip #</label>
+              <input
+                id="fs-edit-deposit-ref"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                className="input input-sm mt-1 num"
+              />
+            </div>
+            <div className="col-span-2">
+              <label htmlFor="fs-edit-deposit-notes" className="td-label">Notes</label>
+              <textarea
+                id="fs-edit-deposit-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="input input-sm mt-1 min-h-12 md:min-h-16"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-1.5 md:gap-2 pt-1.5 md:pt-2 border-t">
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">Cancel</button>
+            <button type="submit" disabled={update.isPending} className="btn btn-primary btn-sm">
+              {update.isPending ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

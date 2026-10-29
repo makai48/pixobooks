@@ -13,7 +13,7 @@ import {
 } from "@/hooks/useStockAdjustments";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useAuth } from "@/hooks/useAuth";
-import { cn, download, formatCurrency, formatDate, formatMoney, todayISO } from "@/lib/utils";
+import { cn, download, formatCurrency, formatDate, formatMoney, localISODate, todayISO } from "@/lib/utils";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassSelect from "@/components/ui/GlassSelect";
 import StatCard from "@/components/ui/StatCard";
@@ -121,7 +121,7 @@ export default function StockTaking() {
 
     // Sales sold-in-period
     for (const s of sales) {
-      const d = s.createdAt.slice(0, 10);
+      const d = localISODate(s.createdAt);
       if (d < from || d > to) continue;
       for (const l of s.lines) {
         const row = map.get(l.itemId);
@@ -177,7 +177,7 @@ export default function StockTaking() {
       let recvAfter = 0;
       let adjAfter = 0;
       for (const s of sales) {
-        const d = s.createdAt.slice(0, 10);
+        const d = localISODate(s.createdAt);
         if (d <= to) continue;
         for (const l of s.lines) {
           if (l.itemId === it.id) soldAfter += l.qty;

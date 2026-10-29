@@ -8,6 +8,7 @@ import { useUnitConversions } from "@/hooks/useUnitConversions";
 import { useUoms } from "@/hooks/useUoms";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import { relatedUoms, validateCompatibility, validateTransactionQty } from "@/lib/uom";
 import type { POLine, POStatus, PurchaseOrder } from "@/types";
 
@@ -172,12 +173,15 @@ export default function POModal({
             </div>
             <div>
               <label htmlFor="po-expected" className="label">Expected delivery</label>
-              <input
+              <GlassDatePicker
                 id="po-expected"
-                type="date"
                 value={expected}
-                onChange={(e) => setExpected(e.target.value)}
+                onChange={setExpected}
+                ariaLabel="Expected delivery"
                 className="input mt-1"
+                fullWidth
+                placeholder="Not set"
+                allowClear
               />
             </div>
           </div>

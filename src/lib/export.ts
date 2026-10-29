@@ -11,6 +11,7 @@ export type ExportCategory =
   | "customers"
   | "suppliers"
   | "expenses"
+  | "financial_statements"
   | "employees"
   | "statistics"
   | "receipts"
@@ -30,6 +31,7 @@ export const EXPORT_CATEGORIES: {
   { key: "customers", label: "Customers", description: "Customer register with contacts and loyalty." },
   { key: "suppliers", label: "Suppliers", description: "Supplier list with contacts, photos and items." },
   { key: "expenses", label: "Expenses", description: "All expense entries by date and category." },
+  { key: "financial_statements", label: "Financial statements", description: "Daily banking, bank deposits, and standing orders/loans." },
   { key: "employees", label: "Employees", description: "Team members, roles, salaries and permissions." },
   { key: "statistics", label: "Statistics", description: "Aggregated daily/monthly/annual performance." },
   { key: "receipts", label: "Receipts & invoices", description: "Sale documents with payment history." },
@@ -161,6 +163,26 @@ export async function buildExport(category: ExportCategory): Promise<Record<stri
     case "expenses": {
       const rows = await tableRows("expenses", "expense_date");
       return { exportedAt: new Date().toISOString(), category, count: rows.length, rows };
+    }
+    case "financial_statements": {
+      // Only the stored rows behind the Financial Statements module are
+      // exported. The cashbook, bank statement and P&L are derived live from
+      // sales + expenses + these deposits, so they are reproduced rather than
+      // duplicated here. Order matters for re-import: daily_balancing
+      // references bank_deposits.
+      const deposits = await tableRows("bank_deposits", "deposited_at");
+      const balancing = await tableRows("daily_balancing", "balance_date");
+      const orders = await tableRows("standing_orders", "next_run_date");
+      return {
+        exportedAt: new Date().toISOString(),
+        category,
+        count: deposits.length + balancing.length + orders.length,
+        rows: {
+          bank_deposits: deposits,
+          daily_balancing: balancing,
+          standing_orders: orders,
+        },
+      };
     }
     case "employees": {
       const rows = await tableRows("user_profiles", "username");

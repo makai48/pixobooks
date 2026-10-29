@@ -25,6 +25,7 @@ export type SettingsContextValue = {
   canDiscount: boolean;
   canCategories: boolean;
   canExport: boolean;
+  canWipe: boolean;
   countryIso2: string;
   currencySymbol: string;
   moneyExample: string;
