@@ -33,6 +33,14 @@ type NavItem = {
   label: string;
   icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   perm: Permission;
+  /** Shown if either `perm` or this alternative is granted. Lets a
+   *  read-only key (customers.view) open a page whose older key was
+   *  manage-level. */
+  altPerm?: Permission;
+  /** Shown if ANY of these is granted. Used where a page has been split into
+   *  granular keys (e.g. the finance tabs) and the legacy key is only one of
+   *  several ways in. */
+  anyPerm?: Permission[];
   end?: boolean;
   ownerOnly?: boolean;
   badge?: number;
@@ -79,7 +87,7 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
     {
       title: "Customers & Clients",
       items: [
-        { to: "/customers", label: "Customer Register", icon: Users, perm: "customers.manage" },
+        { to: "/customers", label: "Customer Register", icon: Users, perm: "customers.manage", altPerm: "customers.view" },
         { to: "/client-billing", label: "Client Billing", icon: BookOpen, perm: "finance.view" },
       ],
     },
@@ -87,7 +95,7 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
       title: "Finance",
       items: [
         { to: "/expenses", label: "Expenses", icon: Wallet, perm: "expenses.view" },
-        { to: "/financial-statements", label: "Financial Statements", icon: Landmark, perm: "finance.view" },
+        { to: "/financial-statements", label: "Financial Statements", icon: Landmark, perm: "finance.view", anyPerm: ["finance.cashbook.view", "finance.bank.view", "finance.bank.manage", "finance.bank.delete", "finance.pnl.view", "finance.orders.view", "finance.orders.manage", "finance.orders.delete"] },
         { to: "/statistics", label: "Statistics", icon: BarChart3, perm: "stats.view" },
       ],
     },
@@ -176,6 +184,8 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
           const visible = g.items.filter(
             (i) =>
               can(i.perm) ||
+              (i.altPerm ? can(i.altPerm) : false) ||
+              (i.anyPerm ? i.anyPerm.some((p) => can(p)) : false) ||
               (isAppOwner && (i.perm === "audit.view" || i.perm === "password.approve"))
           );
           if (visible.length === 0) return null;
@@ -253,6 +263,9 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
         <div className="sb-footer-status flex items-center gap-2 text-xs text-white/70 px-1">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot" />
           <span className="sb-label">Cloud sync active · PWA ready</span>
+        </div>
+        <div className="sb-label px-1 text-[9px] text-white/30 num">
+          build {typeof __APP_BUILD_ID__ !== "undefined" ? __APP_BUILD_ID__ : "dev"}
         </div>
 
         <button

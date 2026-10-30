@@ -4,7 +4,19 @@ import { mapStockAdjustment } from "./mappers";
 import { logAudit } from "./audit";
 import { currentBusinessId } from "./tenant";
 import type { StockAdjustment } from "@/types";
-import type { StockAdjustmentInput } from "@/hooks/useStockAdjustments";
+
+export type StockAdjustmentInput = {
+  itemId: string;
+  itemName: string;
+  newStock: number;
+  oldStock: number;
+  reason?: string | null;
+  adjustmentType?: StockAdjustment["adjustmentType"];
+  adjustmentDate?: string;
+  actor?: { id: string; name: string; role?: string };
+  /** Business captured when the adjustment was started (offline replay). */
+  businessId?: string | null;
+};
 
 export type BuiltStockAdjustment = {
   row: Record<string, unknown>;

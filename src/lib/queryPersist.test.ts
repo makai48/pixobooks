@@ -24,10 +24,18 @@ function memStorage() {
 }
 
 describe("queryPersist", () => {
-  it("only whitelists catalog keys", () => {
+  it("only whitelists safe cache keys", () => {
     expect(persistedKey(["shop_settings"])).toContain("shop_settings");
     expect(persistedKey(["items"])).toContain("items");
-    expect(persistedKey(["sales", 500, null])).toBeNull();
+    // Transactional feeds are persisted too (instant first paint).
+    expect(persistedKey(["sales", 500, null])).toContain("sales");
+    expect(persistedKey(["expenses", "biz", null])).toContain("expenses");
+    // Balancing + stock first paint.
+    expect(persistedKey(["stock_adjustments", "biz", "2026-10-01", "2026-10-31", undefined])).toContain("stock_adjustments");
+    expect(persistedKey(["bank_deposits", "biz", "2026-10-30", "2026-10-30"])).toContain("bank_deposits");
+    expect(persistedKey(["live_opening_balance", "biz", "2026-10-30"])).toContain("live_opening_balance");
+    // Unknown / unsafe keys are rejected.
+    expect(persistedKey(["audit_logs", "biz", 500])).toBeNull();
     expect(persistedKey([])).toBeNull();
   });
 

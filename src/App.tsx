@@ -30,6 +30,20 @@ const ClientBilling = lazy(() => import("@/pages/ClientBilling"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function PageFallback() {
+  // In-shell loader: the sidebar / top bar stay visible while a lazy route
+  // chunk loads. Never takes over the whole screen (that was the source of
+  // the "app is reloading" flash on every navigation).
+  return (
+    <div className="min-h-[45vh] w-full flex items-center justify-center">
+      <div className="flex items-center gap-3 text-ink-mute text-sm">
+        <span className="w-2 h-2 rounded-full bg-magenta-reg animate-pulse-dot" />
+        Loading…
+      </div>
+    </div>
+  );
+}
+
+function BootFallback() {
   return (
     <div className="h-screen w-screen flex items-center justify-center bg-paper">
       <div className="flex items-center gap-3 text-ink-mute text-sm">
@@ -43,7 +57,7 @@ function PageFallback() {
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) {
-    return <PageFallback />;
+    return <BootFallback />;
   }
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;

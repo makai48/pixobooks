@@ -23,7 +23,8 @@ import {
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/hooks/useAuth";
-import { cn, download, formatCurrency, formatCompactCurrency, timeAgo, todayISO } from "@/lib/utils";
+import { cn, download, formatCurrency, formatCompactCurrency, formatDate, localISODate, timeAgo, todayISO } from "@/lib/utils";
+import { byTransactionDateDesc, inDayRange } from "@/lib/salesReport";
 import type { PaymentMethod, Sale } from "@/types";
 import DocumentView from "@/components/features/receipts/DocumentView";
 import PrintablePortal from "@/components/features/receipts/PrintablePortal";
@@ -33,14 +34,24 @@ import GlassDatePicker from "@/components/ui/GlassDatePicker";
 
 export default function SalesReport() {
   const { can, canViewCosts, profile } = useAuth();
-  const { data: sales = [], isLoading } = useSales(1000);
+  // Paint instantly from the persisted 500-row feed while the full report
+  // feed (5000 rows, all transaction dates) resolves in the background.
+  const { data: recentSales = [] } = useSales();
+  const { data: fullSales = [], isLoading: fullLoading } = useSales(5000);
+  const sales = fullSales.length > 0 ? fullSales : recentSales;
+  const isLoading = fullLoading && recentSales.length === 0;
   const { data: settings } = useShopSettings();
   const { data: employees = [] } = useEmployees();
   const voidSale = useVoidSale();
 
   const [q, setQ] = useState("");
+  /** The report opens on Today (per policy). "All" clears both bounds and
+   *  shows every transaction, ordered by the date each sale actually
+   *  happened. Imported sales keep their original `created_at`, so they
+   *  appear on their real days. */
   const [from, setFrom] = useState(todayISO());
   const [to, setTo] = useState(todayISO());
+  const [rangePreset, setRangePreset] = useState<"today" | "7d" | "month" | "all" | "custom">("today");
   const [method, setMethod] = useState<"all" | PaymentMethod>("all");
   const [status, setStatus] = useState<"all" | "paid" | "partial" | "credit">("all");
   const [cashier, setCashier] = useState<string>("all");
@@ -92,11 +103,36 @@ export default function SalesReport() {
     return out;
   }, [sales, employees]);
 
+  /** Quick range presets — Today is the default. */
+  const applyPreset = (preset: "today" | "7d" | "month" | "all") => {
+    const today = todayISO();
+    setRangePreset(preset);
+    if (preset === "today") {
+      setFrom(today);
+      setTo(today);
+      return;
+    }
+    if (preset === "7d") {
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      setFrom(localISODate(d));
+      setTo(today);
+      return;
+    }
+    if (preset === "month") {
+      const d = new Date();
+      d.setDate(1);
+      setFrom(localISODate(d));
+      setTo(today);
+      return;
+    }
+    setFrom("");
+    setTo("");
+  };
+
   const filtered = useMemo(() => {
-    return sales.filter((s) => {
-      const d = s.createdAt.slice(0, 10);
-      if (d < from) return false;
-      if (d > to) return false;
+    const rows = sales.filter((s) => {
+      if (!inDayRange(s.createdAt, { from, to })) return false;
       if (method !== "all" && s.paymentMethod !== method) return false;
       if (status !== "all" && s.paymentStatus !== status) return false;
       if (cashier !== "all" && s.cashierName !== cashier) return false;
@@ -110,6 +146,8 @@ export default function SalesReport() {
       }
       return true;
     });
+    // Always present newest transaction first, regardless of query order.
+    return rows.sort(byTransactionDateDesc);
   }, [sales, q, from, to, method, status, cashier]);
 
   const totals = useMemo(() => {
@@ -135,7 +173,12 @@ export default function SalesReport() {
       ...filtered.map((s) => {
         const row = [
           s.number,
-          s.createdAt,
+          // The business-local day the sale happened (imported sales keep
+          // their real timestamp), plus the local time of day.
+          `${localISODate(s.createdAt)} ${new Date(s.createdAt).toLocaleTimeString(undefined, {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`,
           s.cashierName,
           s.customerName || "Walk-in",
           s.paymentMethod,
@@ -212,6 +255,30 @@ export default function SalesReport() {
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
+        <span className="label text-[8px] md:text-[9px] text-ink-mute mr-0.5">Range</span>
+        {([
+          { k: "today", label: "Today" },
+          { k: "7d", label: "Last 7 days" },
+          { k: "month", label: "This month" },
+          { k: "all", label: "All time" },
+        ] as const).map((p) => (
+          <button
+            key={p.k}
+            type="button"
+            onClick={() => applyPreset(p.k)}
+            className={cn(
+              "chip border px-2 h-6 text-[9px] md:text-[10px] transition",
+              rangePreset === p.k
+                ? "bg-ink text-paper border-ink"
+                : "border-line hover:border-ink"
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
       <div className="paper-card p-2.5 md:p-4 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center md:items-end gap-x-1.5 gap-y-1.5 md:grid-cols-6 md:gap-3">
         <div className="relative col-span-4 md:col-span-2">
           <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
@@ -219,11 +286,11 @@ export default function SalesReport() {
         </div>
         <div className="max-md:contents">
           <label htmlFor="sr-from" className="label max-md:text-[9px] max-md:whitespace-nowrap">From</label>
-          <GlassDatePicker id="sr-from" value={from} onChange={setFrom} ariaLabel="From date" className="input input-sm select-glass max-md:px-1.5 md:mt-1" />
+          <GlassDatePicker id="sr-from" value={from} onChange={(v) => { setFrom(v); setRangePreset("custom"); }} ariaLabel="From date" className="input input-sm select-glass max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear />
         </div>
         <div className="max-md:contents">
           <label htmlFor="sr-to" className="label max-md:text-[9px] max-md:whitespace-nowrap">To</label>
-          <GlassDatePicker id="sr-to" value={to} onChange={setTo} ariaLabel="To date" className="input input-sm select-glass max-md:px-1.5 md:mt-1" />
+          <GlassDatePicker id="sr-to" value={to} onChange={(v) => { setTo(v); setRangePreset("custom"); }} ariaLabel="To date" className="input input-sm select-glass max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear />
         </div>
         <div className="max-md:contents">
           <label htmlFor="sr-payment" className="label max-md:text-[9px] max-md:whitespace-nowrap">Payment</label>
@@ -281,7 +348,10 @@ export default function SalesReport() {
           />
           <button
             onClick={() => {
-              setQ(""); setFrom(todayISO()); setTo(todayISO());
+              setQ("");
+              setFrom(todayISO());
+              setTo(todayISO());
+              setRangePreset("today");
               setMethod("all"); setStatus("all"); setCashier("all");
             }}
             className="btn btn-ghost btn-sm"
@@ -382,6 +452,15 @@ function TransactionRow({
     credit: "bg-danger/10 text-danger border-danger/30",
   }[sale.paymentStatus];
 
+  // Show the actual transaction day, not "3mo ago" — imported sales must read
+  // on the date they happened (device-local, matching the report's day filter).
+  const dayLabel = formatDate(sale.createdAt);
+  const shortDay = new Date(sale.createdAt).toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+  });
+  const fullWhen = new Date(sale.createdAt).toLocaleString();
+
   return (
     <div className="flex items-center h-[27px] max-md:h-[21px] hover:bg-paper/50 transition text-[11px] leading-tight">
       <button
@@ -423,8 +502,8 @@ function TransactionRow({
             <span className="text-ink font-medium">{customer}</span>
             <span className="opacity-70 hidden md:inline"> by {methodLabel}</span>
           </span>
-          <span className="text-[10px] text-ink-mute md:hidden max-md:leading-none">
-            {timeAgo(sale.createdAt)}
+          <span className="text-[10px] text-ink-mute md:hidden max-md:leading-none truncate" title={fullWhen}>
+            {shortDay} · {timeAgo(sale.createdAt).replace(" ago", "")}
           </span>
         </span>
         <span className="font-mono text-[9px] text-ink-mute shrink-0 hidden md:inline">
@@ -433,7 +512,10 @@ function TransactionRow({
         <span className="num text-ink-mute shrink-0 whitespace-nowrap max-md:leading-none max-md:text-[10px] max-md:font-bold">
           {totalQty} {totalQty === 1 ? "Item" : "Items"}
         </span>
-        <span className="text-ink-mute shrink-0 hidden md:inline">{timeAgo(sale.createdAt)}</span>
+        <span className="text-ink-mute shrink-0 hidden md:inline-flex items-center gap-1" title={fullWhen}>
+          {dayLabel}
+          <span className="text-[9px] text-ink-mute/80">· {timeAgo(sale.createdAt)}</span>
+        </span>
         <span className="num font-bold text-ink shrink-0 md:min-w-[70px] text-right max-md:leading-none">
           {formatCurrency(sale.total, currency)}
         </span>

@@ -8,6 +8,7 @@ import { useUpsertQuote } from "@/hooks/useQuotes";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
 import { computeTotals } from "@/lib/pos";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import type { Quote, QuoteStatus, SaleLine } from "@/types";
 
 export default function QuoteModal({
@@ -142,12 +143,15 @@ export default function QuoteModal({
             </div>
             <div className="col-span-3">
               <label htmlFor="quote-valid-until" className="label">Valid until</label>
-              <input
+              <GlassDatePicker
                 id="quote-valid-until"
-                type="date"
                 value={validUntil}
-                onChange={(e) => setValidUntil(e.target.value)}
+                onChange={setValidUntil}
+                ariaLabel="Valid until"
                 className="input mt-1 max-w-xs"
+                fullWidth
+                placeholder="No expiry"
+                allowClear
               />
             </div>
           </div>

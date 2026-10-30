@@ -54,6 +54,9 @@ import {
 import type { GenerateMonthlyInvoicesNowResult } from "@/hooks/useClients";
 import { useItems } from "@/hooks/useItems";
 import PhoneInput from "@/components/common/PhoneInput";
+import OfficerCombobox from "@/components/features/clientbilling/OfficerCombobox";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import GlassMonthPicker from "@/components/ui/GlassMonthPicker";
 import {
   cn,
   formatCurrency,
@@ -100,8 +103,8 @@ export default function ClientBilling() {
   const [tab, setTab] = useState<Tab>("overview");
   const [range, setRange] = useState<Range>("month");
   const [anchor, setAnchor] = useState<string>(todayISO());
-  const [customFrom, setCustomFrom] = useState<string>("");
-  const [customTo, setCustomTo] = useState<string>("");
+  const [customFrom, setCustomFrom] = useState<string>(() => todayISO());
+  const [customTo, setCustomTo] = useState<string>(() => todayISO());
   const [clientFilter, setClientFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -622,16 +625,13 @@ function RangeBar({
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <button
-            onClick={() => setAnchor(todayISO())}
-            className="chip h-7 px-2 text-[10px] border border-line hover:border-ink"
-          >
-            {new Date(anchor).toLocaleDateString(undefined, {
-              month: "short",
-              day: range === "day" ? "numeric" : undefined,
-              year: range === "year" || range === "month" ? "numeric" : undefined,
-            })}
-          </button>
+          <GlassDatePicker
+            value={anchor}
+            onChange={setAnchor}
+            ariaLabel="Report period"
+            className="input h-7 text-[11px] w-32"
+            fullWidth
+          />
           <button
             onClick={() => setAnchor(shiftAnchor(anchor, range, 1))}
             className="btn btn-ghost h-7 w-7 p-0"
@@ -652,18 +652,20 @@ function RangeBar({
       </button>
       {range === "custom" && (
         <>
-          <input
-            type="date"
+          <GlassDatePicker
             value={customFrom}
-            onChange={(e) => setCustomFrom(e.target.value)}
+            onChange={setCustomFrom}
+            ariaLabel="Custom range from"
             className="input h-7 text-[11px] w-32"
+            fullWidth
           />
           <span className="text-ink-mute text-xs">→</span>
-          <input
-            type="date"
+          <GlassDatePicker
             value={customTo}
-            onChange={(e) => setCustomTo(e.target.value)}
+            onChange={setCustomTo}
+            ariaLabel="Custom range to"
             className="input h-7 text-[11px] w-32"
+            fullWidth
           />
         </>
       )}
@@ -2663,10 +2665,7 @@ function WorkEntryModal({
     }
   };
 
-  const staffListId = `officer-staff-${clientId || "none"}`;
-
-  return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4 animate-fade-in">
+  return (    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4 animate-fade-in">
       <div className="paper-card w-full max-w-xl overflow-hidden max-h-[95dvh] flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
           <div>
@@ -2701,33 +2700,24 @@ function WorkEntryModal({
             </div>
             <div>
               <label htmlFor="cb-work-date" className="label">Date *</label>
-              <input
+              <GlassDatePicker
                 id="cb-work-date"
-                type="date"
-                required
                 value={form.workDate}
-                onChange={(e) => setForm({ ...form, workDate: e.target.value })}
+                onChange={(v) => setForm({ ...form, workDate: v })}
+                ariaLabel="Work date"
                 className="input mt-1"
+                fullWidth
               />
             </div>
             <div>
               <label htmlFor="cb-work-officer" className="label">Officer / Staff *</label>
-              <input
+              <OfficerCombobox
                 id="cb-work-officer"
-                required
-                list={staffListId}
                 value={form.officer}
-                onChange={(e) => setForm({ ...form, officer: e.target.value })}
-                className="input mt-1"
-                placeholder="Pick or type a name"
+                onChange={(name) => setForm({ ...form, officer: name })}
+                staff={staff}
+                className="mt-1"
               />
-              <datalist id={staffListId}>
-                {staff.map((s) => (
-                  <option key={s.name} value={s.name}>
-                    {s.title || ""}
-                  </option>
-                ))}
-              </datalist>
               <div className="text-[9px] text-ink-mute mt-0.5">
                 {staff.length > 0
                   ? `${staff.length} staff on file · new names save automatically`
@@ -2983,11 +2973,11 @@ function GenerateMonthlyNowModal({
           </p>
           <div>
             <label className="text-[11px] uppercase tracking-widest text-ink-mute">Month</label>
-            <input
-              type="month"
+            <GlassMonthPicker
               value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="input h-9 w-full text-sm mt-1"
+              onChange={setPeriod}
+              ariaLabel="Billing period"
+              className="mt-1"
             />
             {label && <div className="text-[11px] text-ink-mute mt-1">Billing period: {label}</div>}
           </div>
@@ -3141,12 +3131,15 @@ function GenerateInvoiceModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="cb-gen-duedate" className="label">Due date (optional)</label>
-              <input
+              <GlassDatePicker
                 id="cb-gen-duedate"
-                type="date"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={setDueDate}
+                ariaLabel="Invoice due date"
                 className="input mt-1"
+                fullWidth
+                placeholder="No due date"
+                allowClear
               />
             </div>
             <div>
@@ -3727,13 +3720,13 @@ function PaymentModal({
             </div>
             <div>
               <label htmlFor="cb-pay-date" className="label">Date *</label>
-              <input
+              <GlassDatePicker
                 id="cb-pay-date"
-                type="date"
-                required
                 value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
+                onChange={setPaymentDate}
+                ariaLabel="Payment date"
                 className="input mt-1"
+                fullWidth
               />
             </div>
             <div>
@@ -3859,12 +3852,15 @@ function OutstandingInvoiceModal({
 
           <div>
             <label htmlFor="cb-out-duedate" className="label">Due date</label>
-            <input
+            <GlassDatePicker
               id="cb-out-duedate"
-              type="date"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={setDueDate}
+              ariaLabel="Outstanding due date"
               className="input mt-1"
+              fullWidth
+              placeholder="No due date"
+              allowClear
             />
           </div>
 

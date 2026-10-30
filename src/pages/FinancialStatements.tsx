@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Landmark,
   Banknote,
@@ -13,6 +14,7 @@ import {
   Scale,
   CheckCircle2,
   Info,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSales } from "@/hooks/useSales";
@@ -23,6 +25,7 @@ import {
   useBankDeposits,
   useCreateBankDeposit,
   useDeleteBankDeposit,
+  useUpdateBankDeposit,
   useMostRecentBankAccount,
 } from "@/hooks/useBankDeposits";
 import {
@@ -39,10 +42,25 @@ import { cn, formatCurrency, formatDate, formatDateTime, formatMoney, todayISO, 
 import GlassSelect from "@/components/ui/GlassSelect";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import StatCard from "@/components/ui/StatCard";
-import type { StandingOrder, StandingOrderKind, StandingOrderFrequency, BankDeposit, Sale, Expense } from "@/types";
-import { MONTH_NAMES, DRAWINGS_CATEGORY } from "@/types";
+import type { StandingOrder, StandingOrderKind, StandingOrderFrequency, BankDeposit } from "@/types";
+import { MONTH_NAMES } from "@/types";
+import { EMPTY_DAY_FLOW, effectiveBankedToday } from "@/lib/cashLedger";
 
 type Tab = "cashbook" | "bank" | "pnl" | "orders";
+
+/** Tabs shown in Financial Statements, in order. Each one is gated by its own
+ *  `finance.*.view` permission (see the component below). */
+const FINANCE_TABS: {
+  k: Tab;
+  label: string;
+  short: string;
+  icon: import("lucide-react").LucideIcon;
+}[] = [
+  { k: "cashbook", label: "Cashbook", short: "Cash", icon: Banknote },
+  { k: "bank", label: "Bank Statement", short: "Bank", icon: Landmark },
+  { k: "pnl", label: "Profit & Loss", short: "P&L", icon: TrendingUp },
+  { k: "orders", label: "Standing Orders & Loans", short: "Orders", icon: Repeat },
+];
 
 export default function FinancialStatements() {
   const { profile, can } = useAuth();
@@ -52,17 +70,70 @@ export default function FinancialStatements() {
   const [now] = useState(() => new Date());
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
-  const [tab, setTab] = useState<Tab>("cashbook");
+  /** Statement period defaults to Today (per policy). "month" switches
+   *  to the month/year pickers for historical statements. */
+  const [periodMode, setPeriodMode] = useState<"today" | "month">("today");
+
+  /* Granular finance access. The legacy umbrella keys (`finance.view` /
+   * `finance.manage`) are honoured as fallbacks so every employee that had
+   * access before the split keeps exactly the same tabs and buttons. */
+  const canCashbook = can("finance.cashbook.view") || can("finance.view");
+  const canBank =
+    can("finance.bank.view") ||
+    can("finance.bank.manage") ||
+    can("finance.bank.delete") ||
+    can("finance.view");
+  const canPnl = can("finance.pnl.view") || can("finance.view");
+  const canOrders =
+    can("finance.orders.view") ||
+    can("finance.orders.manage") ||
+    can("finance.orders.delete") ||
+    can("finance.view");
+  const canRecordBanking = can("finance.bank.manage") || can("finance.manage");
+  const canDeleteBanking = can("finance.bank.delete") || can("finance.manage");
+  const canManageOrders = can("finance.orders.manage") || can("finance.manage");
+  const canDeleteOrders = can("finance.orders.delete") || can("finance.manage");
+
+  const allowedTabs = useMemo(
+    () =>
+      FINANCE_TABS.filter((t) =>
+        t.k === "cashbook"
+          ? canCashbook
+          : t.k === "bank"
+            ? canBank
+            : t.k === "pnl"
+              ? canPnl
+              : canOrders
+      ),
+    [canCashbook, canBank, canPnl, canOrders]
+  );
+
+  const [tab, setTab] = useState<Tab>(() => allowedTabs[0]?.k ?? "cashbook");
   const [balancingOpen, setBalancingOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [editOrder, setEditOrder] = useState<StandingOrder | null>(null);
+  const [editDeposit, setEditDeposit] = useState<BankDeposit | null>(null);
 
-  const from = new Date(year, month, 1).toISOString().slice(0, 10);
-  const to = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+  // Permissions can change while the page is open (another admin edits them).
+  // Never leave the user parked on a tab they can no longer see.
+  useEffect(() => {
+    if (allowedTabs.length && !allowedTabs.some((t) => t.k === tab)) {
+      setTab(allowedTabs[0].k);
+    }
+  }, [allowedTabs, tab]);
+
+  const today = todayISO();
+  const from =
+    periodMode === "today"
+      ? today
+      : localISODate(new Date(year, month, 1));
+  const to =
+    periodMode === "today"
+      ? today
+      : localISODate(new Date(year, month + 1, 0));
   const { data: deposits = [] } = useBankDeposits(from, to);
   const { data: orders = [] } = useStandingOrders();
   const currency = settings?.currency || "USD";
-  const canManage = can("finance.manage") || can("finance.view");
   const ledger = useClientReceivablesTotals();
 
   const years = useMemo(() => {
@@ -145,34 +216,66 @@ export default function FinancialStatements() {
           <Landmark className="w-3.5 h-3.5 md:w-4 md:h-4" />
           <span className="label text-[7px] md:text-[11px] whitespace-nowrap">Statement period</span>
         </div>
-        <div className="flex items-center gap-1 md:gap-2 md:flex-1">
-          <GlassSelect
-            value={String(month)}
-            onChange={(v) => setMonth(Number(v))}
-            ariaLabel="Statement month"
-            options={MONTH_NAMES.map((m, i) => ({ value: String(i), label: m }))}
-            className="input input-sm select-glass max-md:px-1.5"
-          />
-          <GlassSelect
-            value={String(year)}
-            onChange={(v) => setYear(Number(v))}
-            ariaLabel="Statement year"
-            options={years.map((y) => ({ value: String(y), label: String(y) }))}
-            className="input input-sm select-glass max-md:px-1.5"
-          />
+        <div className="flex items-center gap-1 md:gap-2 md:flex-1 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setPeriodMode("today")}
+            className={cn(
+              "chip border px-2 h-6 text-[9px] md:text-[10px] transition",
+              periodMode === "today"
+                ? "bg-ink text-paper border-ink"
+                : "border-line hover:border-ink"
+            )}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => setPeriodMode("month")}
+            className={cn(
+              "chip border px-2 h-6 text-[9px] md:text-[10px] transition",
+              periodMode === "month"
+                ? "bg-ink text-paper border-ink"
+                : "border-line hover:border-ink"
+            )}
+          >
+            Month
+          </button>
+          {periodMode === "month" && (
+            <>
+              <GlassSelect
+                value={String(month)}
+                onChange={(v) => setMonth(Number(v))}
+                ariaLabel="Statement month"
+                options={MONTH_NAMES.map((m, i) => ({ value: String(i), label: m }))}
+                className="input input-sm select-glass max-md:px-1.5"
+              />
+              <GlassSelect
+                value={String(year)}
+                onChange={(v) => setYear(Number(v))}
+                ariaLabel="Statement year"
+                options={years.map((y) => ({ value: String(y), label: String(y) }))}
+                className="input input-sm select-glass max-md:px-1.5"
+              />
+            </>
+          )}
         </div>
-        {canManage && (
+        {(canRecordBanking || canManageOrders) && (
           <div className="flex gap-1 md:gap-2 flex-wrap">
-            <button onClick={() => setBalancingOpen(true)} className="btn btn-accent btn-sm">
-              <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Daily Balancing &amp; Banking</span>
-              <span className="sm:hidden">Balancing</span>
-            </button>
-            <button onClick={() => { setEditOrder(null); setOrderOpen(true); }} className="btn btn-outline btn-sm">
-              <Repeat className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Standing / Loan</span>
-              <span className="sm:hidden">Standing</span>
-            </button>
+            {canRecordBanking && (
+              <button onClick={() => setBalancingOpen(true)} className="btn btn-accent btn-sm">
+                <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Daily Balancing &amp; Banking</span>
+                <span className="sm:hidden">Balancing</span>
+              </button>
+            )}
+            {canManageOrders && (
+              <button onClick={() => { setEditOrder(null); setOrderOpen(true); }} className="btn btn-outline btn-sm">
+                <Repeat className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Standing / Loan</span>
+                <span className="sm:hidden">Standing</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -204,14 +307,15 @@ export default function FinancialStatements() {
         />
       </div>
 
+      {allowedTabs.length === 0 ? (
+        <div className="paper-card p-6 text-center text-ink-mute text-sm">
+          You do not have permission to view any finance statement. Ask an owner
+          for cashbook, bank, P&amp;L or orders access.
+        </div>
+      ) : (
       <div className="paper-card overflow-hidden">
         <div className="border-b flex overflow-x-auto scrollbar-none">
-          {([
-            { k: "cashbook", label: "Cashbook", short: "Cash", icon: Banknote },
-            { k: "bank", label: "Bank Statement", short: "Bank", icon: Landmark },
-            { k: "pnl", label: "Profit & Loss", short: "P&L", icon: TrendingUp },
-            { k: "orders", label: "Standing Orders & Loans", short: "Orders", icon: Repeat },
-          ] as { k: Tab; label: string; short: string; icon: import("lucide-react").LucideIcon }[]).map(({ k, label, short, icon: Icon }) => (
+          {allowedTabs.map(({ k, label, short, icon: Icon }) => (
             <button key={k} onClick={() => setTab(k)} className={cn("px-2.5 md:px-4 h-9 md:h-12 flex items-center gap-1 md:gap-2 text-[10px] md:text-sm font-semibold border-b-2 transition whitespace-nowrap", tab === k ? "border-magenta-reg text-magenta-reg" : "border-transparent text-ink-mute hover:text-ink")}>
               <Icon className="w-3 h-3 md:w-4 md:h-4" />
               <span className="md:hidden">{short}</span>
@@ -231,17 +335,22 @@ export default function FinancialStatements() {
             <ProfitLoss revenue={revenue} cogs={cogs} gross={gross} expByCategory={expByCategory} totalExp={totalExp} net={net} currency={currency} />
           )}
           {tab === "orders" && (
-            <StandingOrdersView orders={orders} onEdit={(o) => { setEditOrder(o); setOrderOpen(true); }} currency={currency} />
+            <StandingOrdersView
+              orders={orders}
+              onEdit={(o) => { setEditOrder(o); setOrderOpen(true); }}
+              currency={currency}
+              canEdit={canManageOrders}
+              canDelete={canDeleteOrders}
+            />
           )}
         </div>
       </div>
+      )}
 
       {balancingOpen && (
         <DailyBalancingModal
           onClose={() => setBalancingOpen(false)}
           currency={currency}
-          sales={sales}
-          expenses={expenses}
           actor={profile ? { id: profile.id, name: profile.name, role: profile.role } : undefined}
         />
       )}
@@ -250,11 +359,26 @@ export default function FinancialStatements() {
         <StandingOrderModal order={editOrder} currency={currency} onClose={() => { setOrderOpen(false); setEditOrder(null); }} createdBy={profile?.id || null} />
       )}
 
-      {tab === "cashbook" && deposits.length > 0 && canManage && (
+      {(canCashbook || canBank) && deposits.length > 0 && (
         <div className="paper-card td-card">
           <div className="td-kicker mb-1.5 md:mb-2">Recent daily banking entries</div>
-          <DepositsList deposits={deposits} currency={currency} />
+          <DepositsList
+            deposits={deposits}
+            currency={currency}
+            canEdit={canRecordBanking}
+            canDelete={canDeleteBanking}
+            onEdit={setEditDeposit}
+          />
         </div>
+      )}
+
+      {editDeposit && (
+        <BankDepositModal
+          deposit={editDeposit}
+          currency={currency}
+          actor={profile ? { id: profile.id, name: profile.name, role: profile.role } : undefined}
+          onClose={() => setEditDeposit(null)}
+        />
       )}
     </div>
   );
@@ -364,7 +488,10 @@ function PLRow({ label, value, currency, strong, indent, divider }: { label: str
   );
 }
 
-function StandingOrdersView({ orders, onEdit, currency }: { orders: StandingOrder[]; onEdit: (o: StandingOrder) => void; currency: string; }) {
+function StandingOrdersView({ orders, onEdit, currency, canEdit, canDelete }: {
+  orders: StandingOrder[]; onEdit: (o: StandingOrder) => void; currency: string;
+  canEdit: boolean; canDelete: boolean;
+}) {
   const del = useDeleteStandingOrder();
   const upsert = useUpsertStandingOrder();
   const grouped = { standing: orders.filter((o) => o.kind === "standing"), loan: orders.filter((o) => o.kind === "loan") };
@@ -394,13 +521,19 @@ function StandingOrdersView({ orders, onEdit, currency }: { orders: StandingOrde
                   <div className="text-right shrink-0">
                     <div className="num font-bold td-body whitespace-nowrap">{formatMoney(o.amount, o.currency || currency)}</div>
                     <div className="flex gap-1 mt-1 justify-end">
-                      <button onClick={() => upsert.mutate({ ...o, active: !o.active })} className={cn("chip text-[8px] md:text-[10px] uppercase border px-1 md:px-1.5", o.active ? "bg-success/10 text-success border-success/30" : "bg-ink/5 text-ink-mute border-line")}>
-                        {o.active ? "Active" : "Paused"}
-                      </button>
-                      <button onClick={() => onEdit(o)} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0" title="Edit"><Wallet className="w-2.5 h-2.5 md:w-3 md:h-3" /></button>
-                      <button onClick={() => confirm(`Delete "${o.name}"?`) && del.mutate(o.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0 text-danger" title="Delete">
-                        <Trash2 className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                      </button>
+                      {canEdit && (
+                        <>
+                          <button onClick={() => upsert.mutate({ ...o, active: !o.active })} className={cn("chip text-[8px] md:text-[10px] uppercase border px-1 md:px-1.5", o.active ? "bg-success/10 text-success border-success/30" : "bg-ink/5 text-ink-mute border-line")}>
+                            {o.active ? "Active" : "Paused"}
+                          </button>
+                          <button onClick={() => onEdit(o)} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0" title="Edit"><Wallet className="w-2.5 h-2.5 md:w-3 md:h-3" /></button>
+                        </>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => confirm(`Delete "${o.name}"?`) && del.mutate(o.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-5 w-5 md:h-6 md:w-6 p-0 text-danger" title="Delete">
+                          <Trash2 className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -413,7 +546,10 @@ function StandingOrdersView({ orders, onEdit, currency }: { orders: StandingOrde
   );
 }
 
-function DepositsList({ deposits, currency }: { deposits: BankDeposit[]; currency: string; }) {
+function DepositsList({ deposits, currency, canEdit, canDelete, onEdit }: {
+  deposits: BankDeposit[]; currency: string;
+  canEdit: boolean; canDelete: boolean; onEdit: (d: BankDeposit) => void;
+}) {
   const del = useDeleteBankDeposit();
   return (
     <div className="divide-y">
@@ -425,12 +561,129 @@ function DepositsList({ deposits, currency }: { deposits: BankDeposit[]; currenc
           </div>
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
             <span className="num font-semibold whitespace-nowrap">{formatMoney(d.amount, currency)}</span>
-            <button onClick={() => confirm("Delete this deposit?") && del.mutate(d.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-6 w-6 md:h-7 md:w-7 p-0 text-danger" title="Delete">
-              <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            </button>
+            {canEdit && (
+              <button onClick={() => onEdit(d)} className="btn btn-ghost h-6 w-6 md:h-7 md:w-7 p-0" title="Edit deposit">
+                <Pencil className="w-3 h-3 md:w-3.5 md:h-3.5" />
+              </button>
+            )}
+            {canDelete && (
+              <button onClick={() => confirm("Delete this deposit?") && del.mutate(d.id, { onSuccess: () => toast.success("Deleted") })} className="btn btn-ghost h-6 w-6 md:h-7 md:w-7 p-0 text-danger" title="Delete">
+                <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Edit an existing till → bank deposit. Posting a deposit is the "create"
+ *  side of the bank statement (Daily Balancing); this is the "update" side.
+ *  Gated by `finance.bank.manage`. */
+function BankDepositModal({ deposit, currency, actor, onClose }: {
+  deposit: BankDeposit; currency: string;
+  actor?: { id: string; name: string; role?: string };
+  onClose: () => void;
+}) {
+  const update = useUpdateBankDeposit();
+  const [amount, setAmount] = useState(deposit.amount);
+  const [depositedAt, setDepositedAt] = useState(deposit.depositedAt);
+  const [bankName, setBankName] = useState(deposit.bankName || "");
+  const [reference, setReference] = useState(deposit.reference || "");
+  const [notes, setNotes] = useState(deposit.notes || "");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!Number.isFinite(amount) || amount <= 0) return toast.error("Amount must be greater than 0");
+    if (!depositedAt) return toast.error("Date required");
+    try {
+      await update.mutateAsync({
+        id: deposit.id,
+        amount,
+        depositedAt,
+        bankName: bankName.trim() || null,
+        reference: reference.trim() || null,
+        notes: notes.trim() || null,
+        actor,
+      });
+      toast.success("Bank entry updated");
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-2 md:p-4 animate-fade-in">
+      <div className="paper-card w-full max-w-md overflow-hidden max-h-[95dvh] flex flex-col">
+        <div className="p-2.5 md:p-4 border-b flex items-center justify-between shrink-0">
+          <div>
+            <div className="td-kicker">Bank statement</div>
+            <h2 className="td-title">Edit bank entry</h2>
+          </div>
+          <button onClick={onClose} className="btn btn-ghost h-7 w-7 md:h-9 md:w-9 p-0"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="p-2.5 md:p-4 space-y-2 md:space-y-3 overflow-auto scroll-lined">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
+            <div>
+              <label htmlFor="fs-edit-deposit-amount" className="td-label">Amount ({currency})</label>
+              <input
+                id="fs-edit-deposit-amount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={amount || ""}
+                onChange={(e) => setAmount(Number(e.target.value) || 0)}
+                className="input input-sm mt-1 num text-right"
+              />
+            </div>
+            <div>
+              <label htmlFor="fs-edit-deposit-date" className="td-label">Date</label>
+              <GlassDatePicker
+                id="fs-edit-deposit-date"
+                value={depositedAt}
+                onChange={setDepositedAt}
+                ariaLabel="Deposit date"
+                className="input input-sm select-glass mt-1"
+              />
+            </div>
+            <div className="col-span-2">
+              <label htmlFor="fs-edit-deposit-bank" className="td-label">Bank / Account</label>
+              <input
+                id="fs-edit-deposit-bank"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                className="input input-sm mt-1"
+              />
+            </div>
+            <div className="col-span-2">
+              <label htmlFor="fs-edit-deposit-ref" className="td-label">Reference / Slip #</label>
+              <input
+                id="fs-edit-deposit-ref"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                className="input input-sm mt-1 num"
+              />
+            </div>
+            <div className="col-span-2">
+              <label htmlFor="fs-edit-deposit-notes" className="td-label">Notes</label>
+              <textarea
+                id="fs-edit-deposit-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="input input-sm mt-1 min-h-12 md:min-h-16"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-1.5 md:gap-2 pt-1.5 md:pt-2 border-t">
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">Cancel</button>
+            <button type="submit" disabled={update.isPending} className="btn btn-primary btn-sm">
+              {update.isPending ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -439,17 +692,17 @@ function DepositsList({ deposits, currency }: { deposits: BankDeposit[]; currenc
  *
  * Full audit trail: Balance b/f → Current Day Transactions → Balance c/d.
  *
- *   • Balance b/f is READ-ONLY and LIVE-DERIVED from the transaction
- *     ledger via `useLiveOpeningBalance`. It equals: the most recent
- *     prior snapshot's `opening_balance` (an immutable start-of-day
- *     anchor) PLUS every subsequent cash movement (sales, expenses,
- *     drawings, banking) read fresh from the ledger. This guarantees
- *     that late transactions on any prior business day automatically
- *     propagate forward into today's b/f — without requiring anyone
- *     to manually rebalance the affected days.
+ *   • Balance b/f is READ-ONLY: derived once from the full cash
+ *     ledger via `useLiveOpeningBalance`, then FROZEN for the modal
+ *     session. It is the sum of every net cash movement strictly
+ *     BEFORE today (cash payments, cash expenses, drawings and bank
+ *     deposits). No stored snapshot is read, and no mid-session
+ *     refetch can move it — so late settlements, back-dated entries
+ *     and repeated balancing cannot make it fluctuate while balancing.
  *
- *   • Total Sales = today's Cash Sales + today's Partial-cash portions
- *     ONLY. Previous-day carry-forward is NOT counted as today's sales.
+ *   • Total Sales = today's cash received (sale_payments cash rows,
+ *     plus legacy cash/partial sales that have no payment row).
+ *     Previous-day carry-forward is NOT counted as today's sales.
  *
  *   • Drawings is READ-ONLY — sourced live from the Drawings ledger
  *     (Expenses > Drawings tab).
@@ -466,80 +719,88 @@ function DepositsList({ deposits, currency }: { deposits: BankDeposit[]; currenc
  *     credits the Cashbook and debits the Bank Statement in a single
  *     idempotent bank_deposits row — never as a sale, income or
  *     expense, and never as two independent movements that could
- *     diverge.
+ *     diverge. Balancing deposits are ALWAYS dated today: a back-dated
+ *     deposit would retroactively move today's b/f source, so date
+ *     corrections belong in the bank-entry editor, not in this modal.
  *
  *   • Same-day re-balancing is supported: the deposit form resets
  *     after each save while the summary refreshes from the live
  *     ledger, so late transactions can be re-banked without waiting
  *     for a new business day.
  */
-function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
-  onClose: () => void; currency: string; sales: Sale[]; expenses: Expense[];
+function DailyBalancingModal({ onClose, currency, actor }: {
+  onClose: () => void; currency: string;
   actor?: { id: string; name: string; role?: string };
 }) {
   const today = todayISO();
+  const qc = useQueryClient();
   const create = useCreateBankDeposit();
   const persistBalancing = useUpsertDailyBalancing();
-  const { data: liveBF, isLoading: bfLoading } = useLiveOpeningBalance(today);
+  const { data: liveLedger, isLoading: bfLoading } = useLiveOpeningBalance(today);
   const { data: mruBank } = useMostRecentBankAccount();
   const { data: todayDeposits = [] } = useBankDeposits(today, today);
 
-  // Balance b/f — LIVE-DERIVED from the transaction ledger. Never
-  // reads the stale `closing_balance` of any prior snapshot (which
-  // could have been saved BEFORE late transactions arrived on that
-  // day). Instead anchors on the most recent snapshot's immutable
-  // `opening_balance` and folds in every subsequent ledger movement.
-  // Legacy localStorage fallback used only during the initial load
-  // flash for shops migrating from the pre-persisted-balancing build.
-  const legacyKey = `pixobooks:cash_bf:${today}`;
-  const openingBalance = useMemo(() => {
-    if (liveBF) return liveBF.openingBalance;
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(legacyKey);
-      if (stored != null) return Number(stored);
+  // Balance b/f — FROZEN at the first successful ledger load for this
+  // modal session. The live figure is the sum of every net cash movement
+  // strictly BEFORE today, so intraday sales and same-day banking can
+  // never move it — but refetch timing / back-dated writes landing
+  // mid-session made the on-screen number jump. Freezing keeps the
+  // b/f → c/d chain the user balances against perfectly stable while
+  // the modal is open. (Next open re-derives from the live ledger.)
+  const [frozenBf, setFrozenBf] = useState<number | null>(null);
+  useEffect(() => {
+    if (frozenBf === null && !bfLoading && liveLedger) {
+      setFrozenBf(liveLedger.openingBalance);
     }
-    return 0;
-  }, [liveBF, legacyKey]);
-  const anchorDate = liveBF?.anchorDate ?? null;
+  }, [liveLedger, bfLoading, frozenBf]);
+  const bfReady = frozenBf !== null;
+  const openingBalance = frozenBf ?? 0;
 
-  // Today's cash movements — all auto-derived from the ledger. Filter
-  // by LOCAL business date so a sale rung up at 23:59 local (which is
-  // UTC previous/next day depending on offset) is correctly assigned.
-  const todaySales = sales.filter((s) => localISODate(s.createdAt) === today);
-  const cashSales = todaySales
-    .filter((s) => s.paymentMethod === "cash" || s.paymentMethod === "partial")
-    .reduce((sum, s) => sum + (s.amountPaid || 0), 0);
+  // Today's flow stays LIVE so transactions rung up after banking are
+  // immediately bankable in the same session.
+  const dayFlow = liveLedger?.day ?? EMPTY_DAY_FLOW;
+  const cashSales = dayFlow.cashSales;
+  const cashExpenses = dayFlow.cashExpenses;
+  const drawings = dayFlow.drawings;
 
-  const cashExpenses = expenses
-    .filter((e) =>
-      e.expenseDate === today &&
-      e.paymentMethod === "cash" &&
-      e.category !== DRAWINGS_CATEGORY
-    )
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  // Drawings — READ-ONLY, live-sourced from the Drawings ledger
-  const drawings = expenses
-    .filter((e) =>
-      e.expenseDate === today &&
-      e.category === DRAWINGS_CATEGORY &&
-      e.paymentMethod === "cash"
-    )
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  // Everything already banked today (from prior Complete Balancing runs
-  // on the same day). Any new deposit is added on top.
-  const alreadyBankedToday = todayDeposits.reduce((sum, d) => sum + d.amount, 0);
+  // Session-aware "already banked": the live ledger refetch lags a
+  // just-completed deposit, so track this session's deposits locally.
+  // `baseBanked` is the ledger figure at first load; the effective value
+  // is base + session (floored by the live figure so deposits made on
+  // another device while this modal is open are never lost). Without
+  // this, two quick same-day bankings used a stale already-banked value —
+  // allowing over-banking past the real till and persisting an
+  // under-counted deposit_amount snapshot.
+  const [sessionBanked, setSessionBanked] = useState(0);
+  const baseBankedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (baseBankedRef.current === null && !bfLoading && liveLedger) {
+      baseBankedRef.current = liveLedger.day.banked;
+    }
+  }, [liveLedger, bfLoading]);
+  const liveBanked = dayFlow.banked;
+  const baseBanked = baseBankedRef.current ?? liveBanked;
+  // Already-banked accounting is session-aware (see effectiveBankedToday):
+  // the live ledger refetch lags a just-completed deposit, so the modal
+  // base + session value is used, floored by the live figure.
+  const alreadyBankedToday = effectiveBankedToday(
+    liveBanked,
+    baseBanked,
+    sessionBanked
+  );
 
   const netCashFlow = openingBalance + cashSales - cashExpenses - drawings;
   const currentTillCash = netCashFlow - alreadyBankedToday;
 
-  // Only editable inputs — the new deposit being captured now
+  // Only editable inputs — the new deposit being captured now.
+  // Balancing deposits are ALWAYS recorded for today: a back-dated
+  // deposit would retroactively shrink today's (frozen) b/f source and
+  // reintroduce the fluctuation this modal exists to eliminate.
+  // Date corrections belong in the bank-entry editor, not here.
   const [depositAmount, setDepositAmount] = useState(0);
   const [bankName, setBankName] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
-  const [depositDate, setDepositDate] = useState(today);
   // Physical cash counted in the till — stored SEPARATELY from the
   // Calculated c/d. Blank = not counted (audit-safe default).
   const [physicalCashCount, setPhysicalCashCount] = useState<string>("");
@@ -560,6 +821,8 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
   // banked. This is the SOLE authoritative source of the next business
   // day's b/f (per the accounting requirement:
   //   "Next Day B/F = Previous Day Final C/D").
+  // Balancing deposits are always dated today (see above), so every
+  // deposit in this modal reduces today's till exactly once.
   const closingBalance = currentTillCash - depositAmount;
 
   // Physical count + Variance stay separate from Calculated c/d.
@@ -577,6 +840,7 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!bfReady) return toast.error("Still loading today's figures — try again in a moment");
     if (depositAmount < 0) return toast.error("Amount cannot be negative");
     if (depositAmount > currentTillCash + 0.01) {
       return toast.error(
@@ -593,17 +857,21 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
           notes:
             notes ||
             `Daily balancing · b/f ${formatCurrency(openingBalance, currency)} · Drawings ${formatCurrency(drawings, currency)}`,
-          depositedAt: depositDate,
+          depositedAt: today,
           actor,
         });
         depositId = deposit.id;
+        // Account for this deposit immediately so a second same-day
+        // banking in this session validates against the true till even
+        // before the ledger refetch lands.
+        setSessionBanked((s) => s + depositAmount);
       }
 
-      // The snapshot's opening_balance is the LIVE-DERIVED b/f, so the
-      // chain of subsequent b/f resolutions remains authoritative even
-      // if late transactions arrive on older business dates. Physical
-      // count and variance are stored SEPARATELY — they never affect
-      // the calculated b/f → c/d chain.
+      // The snapshot's opening_balance is the FROZEN b/f, and the
+      // deposit total is cumulative for the day, so re-balancing after
+      // later transactions only ever extends the chain — it can never
+      // rewrite it. Physical count and variance are stored SEPARATELY —
+      // they never affect the calculated b/f → c/d chain.
       const totalBanked = alreadyBankedToday + depositAmount;
       await persistBalancing.mutateAsync({
         balanceDate: today,
@@ -621,8 +889,13 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
         actor,
       });
 
-      // The database is now authoritative — drop legacy localStorage b/f
-      if (typeof window !== "undefined") localStorage.removeItem(legacyKey);
+      // Converge the live ledger + today's deposit list immediately so
+      // the summary below reflects the just-completed banking without
+      // waiting for the background poll.
+      await Promise.all([
+        qc.refetchQueries({ queryKey: ["live_opening_balance"] }),
+        qc.refetchQueries({ queryKey: ["bank_deposits"] }),
+      ]);
 
       toast.success(
         `Balancing recorded · Balance c/d ${formatCurrency(closingBalance, currency)}`
@@ -642,7 +915,6 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
       setDepositAmount(0);
       setReference("");
       setNotes("");
-      setDepositDate(today);
       setPhysicalCashCount("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -694,8 +966,9 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
             </div>
             <div className="space-y-0.5 md:space-y-1">
               <ReadOnlyFlowRow
-                label={`Balance b/f${bfLoading ? " (loading…)" : anchorDate ? ` (auto ← ${formatDate(anchorDate)} c/d)` : " (fresh start)"}`}
+                label={`Balance b/f${!bfReady ? " (loading…)" : " (frozen for this session)"}`}
                 value={openingBalance}
+                loading={!bfReady}
                 currency={currency}
               />
               <ReadOnlyFlowRow
@@ -746,14 +1019,48 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
             <div className="td-flow-hint mt-2 md:mt-3 pt-1.5 md:pt-2 border-t flex items-start gap-1.5">
               <Info className="w-3 h-3 shrink-0 mt-0.5" />
               <span>
-                Balance b/f is LIVE-DERIVED from the transaction ledger — it
-                equals the anchor snapshot's start-of-day value plus every
-                subsequent cash sale, expense, drawing and banking recorded
-                since. Late edits on prior business dates propagate here
-                automatically — no manual rebalance required.
+                Balance b/f is LIVE-DERIVED from the full cash ledger
+                (payments, cash expenses, drawings and banking). It never
+                reads a stored snapshot, so late settlements and back-dated
+                entries propagate automatically and repeated same-day
+                balancing cannot move it.
               </span>
             </div>
           </div>
+
+          {todayDeposits.length > 0 && (
+            <div className="paper-card td-card">
+              <div className="td-kicker mb-1.5 md:mb-2 flex items-center gap-1.5 md:gap-2">
+                <Landmark className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                Banked today · {todayDeposits.length}{" "}
+                {todayDeposits.length === 1 ? "entry" : "entries"}
+              </div>
+              <div className="space-y-1">
+                {todayDeposits.map((d) => (
+                  <div
+                    key={d.id}
+                    className="flex items-center justify-between gap-2 text-[10px] md:text-xs border-t first:border-t-0 pt-1 first:pt-0"
+                  >
+                    <span className="truncate">
+                      <span className="font-semibold num">
+                        {formatCurrency(d.amount, currency)}
+                      </span>
+                      {d.bankName ? ` · ${d.bankName}` : ""}
+                      {d.reference ? ` · ${d.reference}` : ""}
+                    </span>
+                    <span className="text-ink-mute shrink-0">
+                      {d.createdByName || ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="td-hint mt-1.5">
+                Total banked today {formatCurrency(alreadyBankedToday, currency)}.
+                You can bank again after more transactions — each deposit is
+                a separate ledger entry.
+              </div>
+            </div>
+          )}
 
           {/* Bank Deposit — the ONLY editable section */}
           <div className="paper-card td-card">
@@ -776,14 +1083,10 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
                 />
               </div>
               <div>
-                <label htmlFor="fs-deposit-date" className="td-label">Date</label>
-                <GlassDatePicker
-                  id="fs-deposit-date"
-                  value={depositDate}
-                  onChange={setDepositDate}
-                  ariaLabel="Deposit date"
-                  className="input input-sm select-glass mt-1"
-                />
+                <span className="td-label">Date (today)</span>
+                <div className="input input-sm mt-1 num flex items-center pointer-events-none">
+                  {formatDate(today)}
+                </div>
               </div>
               <div className="col-span-2">
                 <label htmlFor="fs-deposit-bank" className="td-label">
@@ -849,7 +1152,7 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
             </div>
             <div className="td-hint mt-0.5 md:mt-1">
               = Current till {formatCurrency(currentTillCash, currency)}
-              {depositAmount > 0 && ` − new deposit ${formatCurrency(depositAmount, currency)}`}
+              {depositAmount > 0 && ` - new deposit ${formatCurrency(depositAmount, currency)}`}
             </div>
           </div>
 
@@ -897,7 +1200,7 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
             </button>
             <button
               type="submit"
-              disabled={saving || bfLoading}
+              disabled={saving || !bfReady}
               className="btn btn-primary btn-sm"
             >
               <ArrowUpRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -913,9 +1216,9 @@ function DailyBalancingModal({ onClose, currency, sales, expenses, actor }: {
 /** Compact read-only row used inside the Cash Flow Summary card. NO
  *  input boxes, borders or editable controls — the value is a derived
  *  ledger figure displayed as plain text with contextual coloring. */
-function ReadOnlyFlowRow({ label, value, currency, positive, negative, bold }: {
+function ReadOnlyFlowRow({ label, value, currency, positive, negative, bold, loading }: {
   label: string; value: number; currency: string;
-  positive?: boolean; negative?: boolean; bold?: boolean;
+  positive?: boolean; negative?: boolean; bold?: boolean; loading?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-2 py-0.5">
@@ -928,7 +1231,7 @@ function ReadOnlyFlowRow({ label, value, currency, positive, negative, bold }: {
         !bold && positive && "text-success",
         !bold && negative && "text-danger"
       )}>
-        {formatCurrency(value, currency)}
+        {loading ? "…" : formatCurrency(value, currency)}
       </span>
     </div>
   );

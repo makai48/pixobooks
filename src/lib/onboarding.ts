@@ -1,23 +1,11 @@
+// First-run checklist state + step calculation. Kept free of React so it can
+// be unit-tested and reused by the dashboard card.
 import type { Settings } from "@/types";
 
-export type OnboardingStepId =
-  | "shop"
-  | "catalog"
-  | "sale"
-  | "team"
-  | "backup";
-
-export type OnboardingStep = {
-  id: OnboardingStepId;
-  label: string;
-  done: boolean;
-  to: string;
-};
-
-const DISMISS_KEY = "pixobooks.onboarding.dismissed";
+const DISMISSED_KEY = "pixobooks.onboarding.dismissed";
 const BACKUP_KEY = "pixobooks.backup.doneAt";
 
-/** True once any export/backup has completed on this device. */
+/** True once the owner has successfully uploaded a backup. */
 export function hasBackupDone(): boolean {
   try {
     return !!localStorage.getItem(BACKUP_KEY);
@@ -26,18 +14,18 @@ export function hasBackupDone(): boolean {
   }
 }
 
-/** Call on every successful export or cloud backup. */
+/** Record a successful backup so the checklist can tick itself off. */
 export function markBackupDone(): void {
   try {
     localStorage.setItem(BACKUP_KEY, new Date().toISOString());
   } catch {
-    // ignore
+    // Storage can be unavailable (private mode) — the checklist is cosmetic.
   }
 }
 
 export function isOnboardingDismissed(): boolean {
   try {
-    return localStorage.getItem(DISMISS_KEY) === "1";
+    return localStorage.getItem(DISMISSED_KEY) === "1";
   } catch {
     return false;
   }
@@ -45,24 +33,37 @@ export function isOnboardingDismissed(): boolean {
 
 export function dismissOnboarding(): void {
   try {
-    localStorage.setItem(DISMISS_KEY, "1");
+    localStorage.setItem(DISMISSED_KEY, "1");
   } catch {
-    // ignore
+    // Ignore storage failures — dismissal only hides a hint card.
   }
 }
 
-export function buildOnboardingSteps(args: {
+export type OnboardingStep = {
+  id: string;
+  label: string;
+  done: boolean;
+  to: string;
+};
+
+export type OnboardingFacts = {
   settings?: Settings | null;
   itemCount: number;
   saleCount: number;
   userCount: number;
-}): OnboardingStep[] {
-  const { settings, itemCount, saleCount, userCount } = args;
+};
+
+export function buildOnboardingSteps({
+  settings,
+  itemCount,
+  saleCount,
+  userCount,
+}: OnboardingFacts): OnboardingStep[] {
   return [
     {
       id: "shop",
       label: "Set up your shop (name, currency, tax)",
-      done: Boolean(settings?.shopName && settings?.currency),
+      done: !!(settings?.shopName && settings?.currency),
       to: "/settings",
     },
     {
@@ -92,7 +93,7 @@ export function buildOnboardingSteps(args: {
   ];
 }
 
-export function onboardingProgress(steps: OnboardingStep[]): number {
+export function onboardingProgress(steps: Pick<OnboardingStep, "done">[]): number {
   if (steps.length === 0) return 100;
   return Math.round((steps.filter((s) => s.done).length / steps.length) * 100);
 }

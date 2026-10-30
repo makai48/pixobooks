@@ -73,7 +73,10 @@ export function useUpsertExpense() {
       if (error) throw error;
       return mapExpense(data);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["expenses"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["live_opening_balance"] });
+    },
   });
 }
 
@@ -84,6 +87,9 @@ export function useDeleteExpense() {
       const { error } = await supabase.from("expenses").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["expenses"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["live_opening_balance"] });
+    },
   });
 }

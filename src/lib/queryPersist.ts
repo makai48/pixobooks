@@ -6,13 +6,53 @@ import type { QueryClient } from "@tanstack/react-query";
 const PREFIX = "pixobooks:qcache:";
 const VERSION = 1;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const MAX_BYTES = 400_000;
+/** Per-snapshot ceiling. Large enough to hold the default 500-row sales /
+ *  expense / purchase feeds, small enough to leave room in the ~5 MB
+ *  localStorage quota for the catalog snapshots. Anything bigger is simply
+ *  not persisted (the live query still works). */
+const MAX_BYTES = 1_500_000;
 
-// Base query keys safe to persist (exact key must start with one of these;
-// param queries like ["sales", limit, branch] are intentionally excluded).
-// uoms + unit_conversions are included: POS discrete validation and stock
-// math must work offline after a hard refresh.
-const PERSISTED_BASE_KEYS = ["shop_settings", "items", "customers", "branches", "uoms", "unit_conversions", "uom_categories"];
+// Base query keys safe to persist (exact key must start with one of these).
+// Catalog + settings make the POS/inventory usable offline; the
+// transactional feeds are included so Statistics, the Sales Report and
+// Purchase Orders paint instantly after a reload instead of showing a
+// full-page spinner. Param queries (e.g. ["sales", biz, 5000, branch])
+// are persisted only when their encoded snapshot fits MAX_BYTES.
+//
+// The second group covers the remaining first-paint reads: the balancing
+// till, the banking list, the stock-adjustment log and the derived
+// opening balance. Without them those screens flash empty/loading on
+// every mount while the network refetch resolves, even though the data
+// barely changed.
+const PERSISTED_BASE_KEYS = [
+  // Catalog & configuration
+  "shop_settings",
+  "items",
+  "customers",
+  "branches",
+  "uoms",
+  "unit_conversions",
+  "uom_categories",
+  "suppliers",
+  "employees",
+  // Transactional feeds (instant first paint)
+  "sales",
+  "expenses",
+  "purchase_orders",
+  "client_accounts",
+  "client_invoices",
+  "client_work_entries",
+  "client_services",
+  "standing_orders",
+  "held_tickets",
+  "quotes",
+  // Balancing + stock first paint
+  "stock_adjustments",
+  "bank_deposits",
+  "daily_balancing",
+  "live_opening_balance",
+  "mru_bank_account",
+];
 
 export type StoredSnapshot = {
   v: number;
@@ -119,6 +159,33 @@ export function seedQueryClient(qc: QueryClient, storage?: StorageLike | null): 
     // storage unreadable — boot continues without cache
   }
   return restored;
+}
+
+/**
+ * Remove every persisted snapshot.
+ *
+ * Used after a data wipe: the offline cache holds whitelisted catalogs
+ * (items, customers, …) and would otherwise repaint the deleted rows on the
+ * next reload, before the refetch has a chance to correct them.
+ */
+export function clearPersistedSnapshots(storage?: StorageLike | null): number {
+  const store = storage ?? getStorage();
+  if (!store) return 0;
+  let removed = 0;
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
+      if (k && k.startsWith(PREFIX)) keys.push(k);
+    }
+    for (const k of keys) {
+      store.removeItem(k);
+      removed++;
+    }
+  } catch {
+    // storage unreadable — memory cache is still invalidated by the caller
+  }
+  return removed;
 }
 
 /** Subscribe to cache updates and persist whitelisted successes. */

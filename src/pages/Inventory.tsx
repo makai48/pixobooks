@@ -143,11 +143,13 @@ export default function Inventory() {
               className="input pl-9"
             />
           </div>
+          {(can("inventory.import") || can("inventory.edit")) && (
+            <button onClick={() => setImportOpen(true)} className="btn btn-outline" title="Import inventory JSON from another shop">
+              <Upload className="w-4 h-4" /> Import
+            </button>
+          )}
           {can("inventory.edit") && (
             <>
-              <button onClick={() => setImportOpen(true)} className="btn btn-outline" title="Import inventory JSON from another shop">
-                <Upload className="w-4 h-4" /> Import
-              </button>
               <button
                 onClick={() => {
                   if (!confirm("Remove bundled sample items and customers? Your own records are untouched.")) return;

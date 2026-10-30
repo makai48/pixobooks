@@ -150,7 +150,7 @@ export async function downloadReceiptPdf(
   if (kind === "quick") {
     const w = opts?.widthMm || settings.receipt.paperWidthMm || 80;
     const h = opts?.heightMm || (w >= 99 ? 210 : 200);
-    downloadThermalPdf(sale, settings, payments, w, h, loaded.cropped);
+    return downloadThermalPdf(sale, settings, payments, w, h, loaded.cropped);
   } else if ((opts?.design || "preview") === "preview") {
     const w = opts?.widthMm || 210;
     const h = opts?.heightMm || 297;
@@ -160,10 +160,10 @@ export async function downloadReceiptPdf(
     } catch (err) {
       // Never leave the user empty-handed: fall back to the classic layout.
       console.error("Preview PDF capture failed, using classic layout", err);
-      downloadCorporatePdf(sale, settings, payments, opts, loaded.cropped || loaded.raw);
+      return downloadCorporatePdf(sale, settings, payments, opts, loaded.cropped || loaded.raw);
     }
   } else {
-    downloadCorporatePdf(sale, settings, payments, opts, loaded.cropped || loaded.raw);
+    return downloadCorporatePdf(sale, settings, payments, opts, loaded.cropped || loaded.raw);
   }
 }
 
@@ -226,8 +226,36 @@ type TLay = {
   logo: string | null;
   condensed: boolean;
   L: number;
-  R: number;
+  cols: ThermalCols;
 };
+
+/** Column geometry for the thermal receipt. The header, every line item and
+ *  the totals block all read their x positions from this one object, so a
+ *  value can never drift away from the header it belongs to. */
+export type ThermalCols = {
+  /** Left edge of the item description. */
+  itemX: number;
+  /** Width available to the item description before the QTY column. */
+  itemWidth: number;
+  /** Centre of the QTY column — header and values share it. */
+  qtyCenterX: number;
+  /** Right edge of the unit-price column; null on condensed paper. */
+  priceRightX: number | null;
+  /** Right edge of the line total and of every totals amount. */
+  amountRightX: number;
+};
+
+export function thermalColumns(w: number): ThermalCols {
+  const condensed = w < 70;
+  const amountRightX = w - 4;
+  return {
+    itemX: 4,
+    itemWidth: condensed ? w - 30 : w - 46,
+    qtyCenterX: condensed ? w - 22 : w - 34,
+    priceRightX: condensed ? null : w - 20,
+    amountRightX,
+  };
+}
 
 const T_RED: [number, number, number] = [185, 28, 28];
 
@@ -241,7 +269,13 @@ function tNeed(c: TLay, hh: number) {
 function tCenter(c: TLay, text: string, size: number, bold = false, gap = 4, space = 0) {
   c.doc.setFont(c.F, bold ? "bold" : "normal");
   c.doc.setFontSize(size);
-  if (c.ink) c.doc.text(text, c.w / 2, c.y, { align: "center", charSpace: space });
+  if (c.ink) {
+    // jsPDF's `align: "center"` ignores the tracking added by `charSpace`, which
+    // pushed tracked lines (the title and the receipt number) to the right.
+    // Measure the tracked line ourselves and draw it from the true centre.
+    const tracked = c.doc.getTextWidth(text) + space * Math.max(0, text.length - 1);
+    c.doc.text(text, (c.w - tracked) / 2, c.y, { charSpace: space });
+  }
   c.y += gap;
 }
 
@@ -260,11 +294,32 @@ function tRow(c: TLay, label: string, val: string, bold = false, red = false) {
   if (red) c.doc.setTextColor(...T_RED);
   if (c.ink) {
     c.doc.text(label, c.L, c.y);
-    c.doc.text(val, c.R, c.y, { align: "right" });
+    c.doc.text(val, c.cols.amountRightX, c.y, { align: "right" });
   }
   if (red) c.doc.setTextColor(0, 0, 0);
   c.doc.setFontSize(7);
   c.y += 4;
+}
+
+/** Centred text that wraps inside the paper instead of running off the edge.
+ *  Long shop names, addresses and contact lines used to be clipped by the page
+ *  boundary; splitTextToSize keeps every character on the receipt. */
+function tCenterBlock(
+  c: TLay,
+  text: string,
+  size: number,
+  bold: boolean,
+  lineGap: number,
+  space = 0
+) {
+  c.doc.setFont(c.F, bold ? "bold" : "normal");
+  c.doc.setFontSize(size);
+  const lines = c.doc.splitTextToSize(text, c.w - 8);
+  tNeed(c, lineGap * lines.length);
+  for (const line of lines) {
+    if (c.ink) c.doc.text(line, c.w / 2, c.y, { align: "center", charSpace: space });
+    c.y += lineGap;
+  }
 }
 
 function layoutThermal(c: TLay): number {
@@ -283,10 +338,10 @@ function layoutThermal(c: TLay): number {
     }
     c.y += 17;
   }
-  tCenter(c, s.shopName || "Receipt", 10, true, 5);
-  if (s.address) tCenter(c, s.address, 7.5, false, 3.5);
+  tCenterBlock(c, s.shopName || "Receipt", 10, true, 5);
+  if (s.address) tCenterBlock(c, s.address, 7.5, false, 3.5);
   const contact = [s.phone && `Tel: ${s.phone}`, s.email].filter(Boolean).join(" · ");
-  if (contact) tCenter(c, contact, 7.5, false, 3.5);
+  if (contact) tCenterBlock(c, contact, 7.5, false, 3.5);
   tRule(c, "=");
 
   tCenter(c, sale.documentType === "invoice" ? "SALES INVOICE" : "SALES RECEIPT", 9, true, 4.5, 0.5);
@@ -303,16 +358,25 @@ function layoutThermal(c: TLay): number {
   });
   const meta: [string, string, boolean][] = [
     ["Date", dt, false],
-    ["Cashier", sale.cashierName || "—", true],
-    ["Customer", sale.customerName || "Walk-in", false],
+    ["Cashier", sale.cashierName || "—", false],
     ["Payment", sale.paymentMethod.toUpperCase(), false],
+    ["Customer", sale.customerName || "Walk-in", true],
   ];
   for (const [k, v, b] of meta) {
     tNeed(c, 3.5);
     doc.setFont(c.F, b ? "bold" : "normal");
     doc.setFontSize(7.5);
-    if (c.ink) doc.text(`${k}: ${v}`.slice(0, 48), c.L, c.y);
-    c.y += 3.5;
+    const prefix = `${k}: `;
+    const valueX = c.L + doc.getTextWidth(prefix);
+    // Wrap the value under itself instead of letting a long name run past the
+    // paper edge (a 24-character customer name does not fit 58 mm).
+    const valueLines: string[] = doc.splitTextToSize(v, Math.max(12, c.cols.amountRightX - valueX));
+    tNeed(c, 3.5 * valueLines.length);
+    if (c.ink) {
+      doc.text(prefix, c.L, c.y);
+      valueLines.forEach((line, i) => doc.text(line, valueX, c.y + i * 3.5));
+    }
+    c.y += 3.5 * valueLines.length;
   }
   tRule(c);
 
@@ -321,14 +385,14 @@ function layoutThermal(c: TLay): number {
   const headY = c.y;
   if (c.ink) {
     if (c.condensed) {
-      doc.text("ITEM", c.L, headY);
-      doc.text("QTY", c.w - 22, headY, { align: "center" });
-      doc.text("TOTAL", c.R, headY, { align: "right" });
+      doc.text("ITEM", c.cols.itemX, headY);
+      doc.text("QTY", c.cols.qtyCenterX, headY, { align: "center" });
+      doc.text("TOTAL", c.cols.amountRightX, headY, { align: "right" });
     } else {
-      doc.text("ITEM", c.L, headY);
-      doc.text("QTY", c.w - 34, headY, { align: "center" });
-      doc.text("PRICE", c.w - 20, headY, { align: "right" });
-      doc.text("TOTAL", c.R, headY, { align: "right" });
+      doc.text("ITEM", c.cols.itemX, headY);
+      doc.text("QTY", c.cols.qtyCenterX, headY, { align: "center" });
+      doc.text("PRICE", c.cols.priceRightX ?? c.cols.amountRightX, headY, { align: "right" });
+      doc.text("TOTAL", c.cols.amountRightX, headY, { align: "right" });
     }
   }
   c.y += 4;
@@ -338,17 +402,17 @@ function layoutThermal(c: TLay): number {
   for (const l of sale.lines || []) {
     const gross = l.qty * l.unitPrice;
     const net = gross * (1 - (l.discountPct || 0) / 100);
-    const nameW = c.condensed ? c.w - 30 : c.w - 46;
-    const nameLines = doc.splitTextToSize(l.name || "", Math.max(10, nameW));
+    const nameLines = doc.splitTextToSize(l.name || "", Math.max(10, c.cols.itemWidth));
     tNeed(c, 3.5 * nameLines.length + (l.discountPct > 0 ? 3.5 : 0) + 1);
     doc.setFont(c.F, "bold");
-    if (c.ink) doc.text(nameLines, c.L, c.y);
-    const qtyX = c.condensed ? c.w - 22 : c.w - 34;
+    if (c.ink) doc.text(nameLines, c.cols.itemX, c.y);
     doc.setFont(c.F, "normal");
-    if (c.ink) doc.text(String(l.qty), qtyX, c.y, { align: "center" });
-    if (!c.condensed && c.ink) doc.text(plain(l.unitPrice, s), c.w - 20, c.y, { align: "right" });
+    if (c.ink) doc.text(String(l.qty), c.cols.qtyCenterX, c.y, { align: "center" });
+    if (!c.condensed && c.cols.priceRightX !== null && c.ink) {
+      doc.text(plain(l.unitPrice, s), c.cols.priceRightX, c.y, { align: "right" });
+    }
     doc.setFont(c.F, "bold");
-    if (c.ink) doc.text(plain(net, s), c.R, c.y, { align: "right" });
+    if (c.ink) doc.text(plain(net, s), c.cols.amountRightX, c.y, { align: "right" });
     c.y += 3.5 * nameLines.length;
     if (l.discountPct > 0) {
       doc.setFont(c.F, "normal");
@@ -373,7 +437,7 @@ function layoutThermal(c: TLay): number {
   doc.setFontSize(10);
   if (c.ink) {
     doc.text("TOTAL", c.L, c.y);
-    doc.text(money(sale.total, s.currency || "USD"), c.R, c.y, { align: "right" });
+    doc.text(money(sale.total, s.currency || "USD"), c.cols.amountRightX, c.y, { align: "right" });
   }
   doc.setFontSize(7.5);
   c.y += 5;
@@ -400,7 +464,7 @@ function layoutThermal(c: TLay): number {
       tNeed(c, 3.5);
       if (c.ink) {
         doc.text(`${new Date(p.createdAt).toLocaleDateString()} ${p.paymentMethod}`.slice(0, 30), c.L, c.y);
-        doc.text(plain(p.amount, s), c.R, c.y, { align: "right" });
+        doc.text(plain(p.amount, s), c.cols.amountRightX, c.y, { align: "right" });
       }
       c.y += 3.5;
     }
@@ -444,7 +508,7 @@ async function downloadThermalPdf(
   measure.setFont(fm, "normal");
   const mctx: TLay = {
     doc: measure, F: fm, w, h: CAP, y: 8, ink: false, s, sale, payments, logo,
-    condensed: w < 70, L: 4, R: w - 4,
+    condensed: w < 70, L: 4, cols: thermalColumns(w),
   };
   const endY = layoutThermal(mctx);
   const h = Math.min(CAP, Math.max(40, endY + 4));
@@ -453,7 +517,7 @@ async function downloadThermalPdf(
   doc.setFont(F, "normal");
   const ctx: TLay = {
     doc, F, w, h, y: 8, ink: true, s, sale, payments, logo,
-    condensed: w < 70, L: 4, R: w - 4,
+    condensed: w < 70, L: 4, cols: thermalColumns(w),
   };
   layoutThermal(ctx);
   doc.save(`${fileStem(sale.number)}.pdf`);

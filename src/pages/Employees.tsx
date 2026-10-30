@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   UserCog,
@@ -24,10 +24,14 @@ import {
   Clock,
   Link as LinkIcon,
   MessageCircle,
+  MessageSquare,
   UserCheck,
   Clock3,
   Home,
   Contact2,
+  History,
+  RefreshCw,
+  Eye,
 } from "lucide-react";
 import {
   useEmployees,
@@ -36,6 +40,7 @@ import {
   useInviteEmployee,
   useDeleteEmployee,
   type InviteEmployeeResult,
+  type InviteDelivery,
 } from "@/hooks/useEmployees";
 import { useAuth } from "@/hooks/useAuth";
 import { useShopSettings } from "@/hooks/useShopSettings";
@@ -80,10 +85,12 @@ export default function Employees() {
   const selected = employees.find((e) => e.id === selectedId) || employees[0];
   const [tab, setTab] = useState<TabKey>("profile");
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [invitesOpen, setInvitesOpen] = useState(false);
   const del = useDeleteEmployee();
 
-  const canManage = can("employees.manage");
-  const canDelete = can("employees.delete") || isAppOwner;
+  const canInvite = can("employees.manage") || can("users.invite");
+  const canDelete =
+    can("employees.delete") || can("users.delete") || isAppOwner;
 
   const handleDelete = (e: Employee) => {
     if (isShopOwner(e.email, e.role)) {
@@ -135,21 +142,31 @@ export default function Employees() {
             <h2 className="font-display text-sm md:text-lg font-bold">All employees</h2>
             <p className="text-[10px] md:text-xs text-ink-mute mt-0.5 md:mt-1">Add, edit or remove any account below.</p>
           </div>
-          {canManage && (
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
-              onClick={() => {
-                if (!canAddUser(employees.length, settings)) {
-                  upgradeToast(`More than ${getPlanLimits(settings).users} team members`);
-                  return;
-                }
-                setInviteOpen(true);
-              }}
-              className="btn btn-primary btn-sm shrink-0"
+              onClick={() => setInvitesOpen(true)}
+              className="btn btn-outline btn-sm"
+              title="Sent invites — status, resend and revoke"
             >
-              <UserPlus className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Add</span>
+              <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Invites</span>
             </button>
-          )}
+            {canInvite && (
+              <button
+                onClick={() => {
+                  if (!canAddUser(employees.length, settings)) {
+                    upgradeToast(`More than ${getPlanLimits(settings).users} team members`);
+                    return;
+                  }
+                  setInviteOpen(true);
+                }}
+                className="btn btn-primary btn-sm"
+              >
+                <UserPlus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Add</span>
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex-1 overflow-auto max-h-[40vh] lg:max-h-none scroll-lined">
           {isLoading ? (
@@ -214,13 +231,13 @@ export default function Employees() {
           <div className="border-b flex overflow-x-auto scrollbar-none">
             {(
               [
-                { k: "profile", label: "Profile", icon: UserIcon, perm: "employees.manage" },
-                { k: "payroll", label: "Payroll", icon: Wallet, perm: "employees.payroll" },
-                { k: "attendance", label: "Attendance", icon: CalendarDays, perm: "employees.attendance" },
-                { k: "permissions", label: "Permissions", icon: Shield, perm: "employees.manage" },
-              ] as { k: TabKey; label: string; icon: import("lucide-react").LucideIcon; perm: Permission }[]
+                { k: "profile", label: "Profile", icon: UserIcon, perms: ["employees.manage", "users.permissions"] },
+                { k: "payroll", label: "Payroll", icon: Wallet, perms: ["employees.payroll", "payroll.view"] },
+                { k: "attendance", label: "Attendance", icon: CalendarDays, perms: ["employees.attendance", "attendance.view"] },
+                { k: "permissions", label: "Permissions", icon: Shield, perms: ["employees.manage", "users.permissions"] },
+              ] as { k: TabKey; label: string; icon: import("lucide-react").LucideIcon; perms: Permission[] }[]
             )
-              .filter((t) => can(t.perm))
+              .filter((t) => t.perms.some((p) => can(p)))
               .map(({ k, label, icon: Icon }) => (
                 <button
                   key={k}
@@ -241,14 +258,15 @@ export default function Employees() {
           <div className="flex-1 overflow-auto p-2.5 md:p-6 scroll-lined">
             {tab === "profile" && (
               <ProfileTab
+                key={selected.id}
                 employee={selected}
                 onDelete={() => handleDelete(selected)}
                 canDelete={canDelete && !isShopOwner(selected.email, selected.role) && selected.id !== profile?.id}
               />
             )}
-            {tab === "payroll" && <PayrollTab employee={selected} />}
-            {tab === "attendance" && <AttendanceTab employee={selected} />}
-            {tab === "permissions" && <PermissionsTab employee={selected} />}
+            {tab === "payroll" && <PayrollTab key={selected.id} employee={selected} />}
+            {tab === "attendance" && <AttendanceTab key={selected.id} employee={selected} />}
+            {tab === "permissions" && <PermissionsTab key={selected.id} employee={selected} />}
           </div>
         </div>
       ) : (
@@ -258,6 +276,14 @@ export default function Employees() {
       )}
 
       {inviteOpen && <InviteEmployeeModal onClose={() => setInviteOpen(false)} />}
+      {invitesOpen && (
+        <SentInvitesModal
+          employees={employees}
+          canDelete={canDelete}
+          canResend={canInvite}
+          onClose={() => setInvitesOpen(false)}
+        />
+      )}
       </div>
     </div>
   );
@@ -326,10 +352,15 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
         emergencyContact: form.emergencyContact.trim() || null,
         emergencyContactPhone: form.emergencyContactPhone.trim() || null,
         expirationHours: form.hours,
+        shopName: modalSettings?.shopName || undefined,
         actor: profile ? { id: profile.id, name: profile.name, role: profile.role } : undefined,
       });
       setResult(r);
-      toast.success(`Account created — share temp password with ${r.email}`);
+      if (r.delivery?.email.status === "sent") {
+        toast.success(`Invite emailed to ${r.email}`);
+      } else {
+        toast.success(`Account created — share the temp password with ${r.email}`);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Invite failed");
     }
@@ -356,6 +387,7 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
           {result ? (
             <InviteResultView
               result={result}
+              phone={form.phone}
               shopName={modalSettings?.shopName || "the shop"}
               onClose={onClose}
               onInviteAnother={() => {
@@ -367,11 +399,9 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
             <form onSubmit={submit} className="p-4 md:p-5 space-y-4">
               <p className="text-xs text-ink-mute">
                 A secure temporary password will be generated and displayed
-                here for you to share. The account starts as{" "}
-                <span className="font-semibold text-ink">Inactive / Pending</span>
-                . On first login the employee triggers an approval request. Only
-                after you approve does the account activate — and the first
-                sign-in after approval forces a permanent password.
+                here for you to share. The account is ready immediately — the
+                employee signs in with that password and is asked to choose a
+                permanent one before using the app. There is no approval step.
               </p>
 
               <SectionLabel>Identity</SectionLabel>
@@ -515,11 +545,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function InviteResultView({
   result,
+  phone,
   shopName,
   onClose,
   onInviteAnother,
 }: {
   result: InviteEmployeeResult;
+  phone?: string;
   shopName: string;
   onClose: () => void;
   onInviteAnother: () => void;
@@ -539,21 +571,46 @@ function InviteResultView({
   const copy = (label: string, value: string) =>
     navigator.clipboard.writeText(value).then(() => toast.success(`${label} copied`));
 
+  const emailDelivery = result.delivery?.email;
+  const smsDelivery = result.delivery?.sms;
+  const anySent =
+    emailDelivery?.status === "sent" || smsDelivery?.status === "sent";
+  const smsHref = `sms:${encodeURIComponent(phone || "")}?&body=${encodeURIComponent(
+    message
+  )}`;
+
   return (
     <div className="p-5 space-y-4">
       <div className="w-14 h-14 rounded-full bg-success/10 mx-auto flex items-center justify-center">
         <UserCheck className="w-6 h-6 text-success" />
       </div>
       <div className="text-center">
-        <h3 className="font-display text-lg font-bold">Account created — pending approval</h3>
+        <h3 className="font-display text-lg font-bold">Account created</h3>
         <p className="text-xs text-ink-mute mt-1">
           The account is already email-verified and can sign in immediately
-          with the temporary password below. Share these credentials with{" "}
-          <span className="font-semibold text-ink">{result.name}</span> via
-          the buttons below (email, SMS or WhatsApp). Once they sign in an
-          approval request will appear in your Account Approvals list.
+          with the temporary password below.{" "}
+          {anySent
+            ? "The invite was sent from the server to the channels marked below."
+            : "Automatic delivery is not configured, so share these credentials with "}
+          {!anySent && (
+            <span className="font-semibold text-ink">{result.name}</span>
+          )}
+          {!anySent && " using the buttons below."} On their first sign-in they
+          will be asked to choose their own permanent password — there is no
+          approval step.
         </p>
       </div>
+
+      {(emailDelivery || smsDelivery) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <DeliveryBadge label="Email" channel={emailDelivery} target={result.email} />
+          <DeliveryBadge
+            label="SMS"
+            channel={smsDelivery}
+            target={phone || "no phone number"}
+          />
+        </div>
+      )}
 
       <div className="rounded-lg border-2 border-magenta-reg/30 bg-magenta-reg/5 p-3 space-y-2">
         <FieldRow icon={<Mail className="w-3.5 h-3.5" />} label="Login email" value={result.email} onCopy={() => copy("Email", result.email)} />
@@ -572,12 +629,15 @@ function InviteResultView({
         <textarea id="emp-ready-message" readOnly value={message} className="input h-32 text-xs font-mono leading-relaxed" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <a
           href={`mailto:${encodeURIComponent(result.email)}?subject=${encodeURIComponent(`Your ${shopName} login (temporary password)`)}&body=${encodeURIComponent(message)}`}
           className="btn btn-primary h-10"
         >
-          <Mail className="w-4 h-4" /> Email to invitee
+          <Mail className="w-4 h-4" /> Email
+        </a>
+        <a href={smsHref} className="btn btn-outline h-10">
+          <MessageSquare className="w-4 h-4" /> SMS
         </a>
         <a
           href={`https://wa.me/?text=${encodeURIComponent(message)}`}
@@ -585,13 +645,13 @@ function InviteResultView({
           rel="noreferrer"
           className="btn btn-outline h-10"
         >
-          <MessageCircle className="w-4 h-4" /> Send via WhatsApp
+          <MessageCircle className="w-4 h-4" /> WhatsApp
         </a>
       </div>
       <p className="text-[10px] text-ink-mute text-center">
-        "Email to invitee" opens your default mail client with these credentials
-        pre-filled — recipient, subject and body are ready to send. This is the
-        recommended delivery method; the app itself does not send emails.
+        {anySent
+          ? "Email/SMS delivery happens on the server. The buttons above are a manual backup — they open your device's mail or messaging app with everything pre-filled."
+          : "These buttons open your device's mail or messaging app with the recipient, subject and body pre-filled. Add RESEND_API_KEY + INVITE_EMAIL_FROM (email) or TWILIO_* secrets (SMS) to send automatically."}
       </p>
 
       <div className="flex flex-col-reverse md:flex-row md:justify-between gap-2 pt-2 border-t">
@@ -602,6 +662,40 @@ function InviteResultView({
           Done
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Small status pill for one delivery channel. */
+function DeliveryBadge({
+  label,
+  channel,
+  target,
+}: {
+  label: string;
+  channel?: InviteDelivery;
+  target: string;
+}) {
+  if (!channel) return null;
+  const meta =
+    channel.status === "sent"
+      ? { text: `Sent to ${target}`, cls: "text-success bg-success/10 border-success/30", icon: CheckCircle2 }
+      : channel.status === "failed"
+      ? { text: `Send failed — ${channel.detail || "unknown error"}`, cls: "text-danger bg-danger/10 border-danger/30", icon: X }
+      : channel.status === "no_recipient"
+      ? { text: "No phone number on this invite", cls: "text-ink-mute bg-ink/5 border-ink/15", icon: Clock3 }
+      : { text: "Not configured — send manually", cls: "text-yellow-reg bg-yellow-reg/10 border-yellow-reg/30", icon: Clock3 };
+  const Icon = meta.icon;
+  return (
+    <div className={cn("rounded-md border px-2.5 py-1.5 text-[11px] flex items-start gap-1.5", meta.cls)}>
+      <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+      <span className="min-w-0 break-words">
+        <span className="font-semibold">{label}: </span>
+        {meta.text}
+        {channel.status === "not_configured" && channel.detail && (
+          <span className="block text-[10px] opacity-80">{channel.detail}</span>
+        )}
+      </span>
     </div>
   );
 }
@@ -656,9 +750,9 @@ Temporary password: ${opts.tempPassword}
 Expires:            ${new Date(opts.expiresAt).toLocaleString()}
 Login link:         ${opts.loginUrl}
 
-Please sign in with the temporary password above. Your first sign-in will
-send an approval request to the shop owner. Once approved, sign in again —
-you'll be asked to set a permanent password of your own.
+Please sign in with the temporary password above. You'll be asked to choose
+a permanent password of your own before you can use the app — there is no
+approval step, so you can start as soon as you've set it.
 
 — ${opts.shopName}`;
 }
@@ -668,6 +762,393 @@ function formatHours(h: number): string {
   if (h < 168) return `${Math.round(h / 24)} days`;
   if (h < 720) return `${Math.round(h / 168)} weeks`;
   return `${Math.round(h / 720)} months`;
+}
+
+/* ---------- Sent invites ---------- */
+type InviteState = { label: string; cls: string };
+
+function inviteState(e: Employee): InviteState {
+  if (!e.mustChangePassword) {
+    return { label: "Password set", cls: "text-success bg-success/10 border-success/30" };
+  }
+  const expires = e.tempPasswordExpiresAt
+    ? new Date(e.tempPasswordExpiresAt).getTime()
+    : 0;
+  if (expires && expires < Date.now()) {
+    return { label: "Invite expired", cls: "text-danger bg-danger/10 border-danger/30" };
+  }
+  return {
+    label: "Awaiting first sign-in",
+    cls: "text-yellow-reg bg-yellow-reg/10 border-yellow-reg/30",
+  };
+}
+
+/**
+ * Every account that has an invite record (`invited_at`), newest first.
+ *
+ * This is the "+ view" next to the invite button: the owner can see who was
+ * invited, whether they have signed in and set a password, when the temporary
+ * password expires, resend a fresh one, or revoke the account.
+ */
+function SentInvitesModal({
+  employees,
+  canDelete,
+  canResend,
+  onClose,
+}: {
+  employees: Employee[];
+  canDelete: boolean;
+  canResend: boolean;
+  onClose: () => void;
+}) {
+  const { profile } = useAuth();
+  const { data: settings } = useShopSettings();
+  const invite = useInviteEmployee();
+  const del = useDeleteEmployee();
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [resent, setResent] = useState<InviteEmployeeResult | null>(null);
+
+  const invited = useMemo(
+    () =>
+      employees
+        .filter((e) => !!e.invitedAt || !!e.mustChangePassword)
+        .sort(
+          (a, b) =>
+            new Date(b.invitedAt || b.createdAt).getTime() -
+            new Date(a.invitedAt || a.createdAt).getTime()
+        ),
+    [employees]
+  );
+
+  const detail = invited.find((e) => e.id === detailId) || null;
+
+  const resend = (e: Employee) => {
+    if (!e.email) {
+      toast.error("This employee has no email address on file");
+      return;
+    }
+    invite.mutate(
+      {
+        email: e.email,
+        name: e.name,
+        role: e.role,
+        permissions: e.permissions,
+        phone: e.phone ?? null,
+        shopName: settings?.shopName || undefined,
+        actor: profile
+          ? { id: profile.id, name: profile.name, role: profile.role }
+          : undefined,
+      },
+      {
+        onSuccess: (r) => {
+          setResent(r);
+          toast.success(
+            r.delivery?.email.status === "sent"
+              ? `Invite re-sent to ${r.email}`
+              : `New temporary password generated for ${r.email}`
+          );
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Resend failed"),
+      }
+    );
+  };
+
+  const revoke = (e: Employee) => {
+    if (
+      !confirm(
+        `Revoke ${e.name}'s invite and delete the account?\n\nThey lose access immediately. This cannot be undone.`
+      )
+    )
+      return;
+    del.mutate(
+      {
+        id: e.id,
+        name: e.name,
+        actor: profile
+          ? { id: profile.id, name: profile.name, role: profile.role }
+          : undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success(`${e.name}'s invite revoked`);
+          setDetailId(null);
+          if (resent?.userId === e.id) setResent(null);
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Revoke failed"),
+      }
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
+      <div className="paper-card w-full max-w-3xl overflow-hidden max-h-[95dvh] flex flex-col rounded-t-2xl md:rounded-xl">
+        <div className="p-4 md:p-5 border-b flex items-center justify-between shrink-0">
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+              Users &amp; permissions
+            </div>
+            <h2 className="font-display text-lg md:text-xl font-bold truncate">
+              Sent invites
+            </h2>
+            <p className="text-xs text-ink-mute mt-0.5">
+              {invited.length} invite{invited.length === 1 ? "" : "s"} · status,
+              resend and revoke
+            </p>
+          </div>
+          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0 shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto scroll-lined flex-1 p-3 md:p-4 space-y-3">
+          {resent && (
+            <div className="rounded-lg border border-success/40 bg-success/5 p-3 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-success">
+                <CheckCircle2 className="w-3.5 h-3.5" /> New temporary password for{" "}
+                {resent.email}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="font-mono text-[13px] px-2 py-1 rounded bg-ink/5">
+                  {resent.tempPassword}
+                </code>
+                <button
+                  onClick={() =>
+                    navigator.clipboard
+                      .writeText(resent.tempPassword)
+                      .then(() => toast.success("Password copied"))
+                  }
+                  className="btn btn-outline h-7 text-[11px]"
+                >
+                  <Copy className="w-3 h-3" /> Copy
+                </button>
+                <a
+                  href={`mailto:${encodeURIComponent(resent.email)}?subject=${encodeURIComponent(
+                    `Your ${settings?.shopName || "shop"} login (temporary password)`
+                  )}&body=${encodeURIComponent(
+                    buildInviteMessage({
+                      shopName: settings?.shopName || "the shop",
+                      name: resent.name,
+                      email: resent.email,
+                      tempPassword: resent.tempPassword,
+                      loginUrl:
+                        typeof window !== "undefined"
+                          ? window.location.origin + "/login"
+                          : "",
+                      expiresAt: resent.expiresAt,
+                    })
+                  )}`}
+                  className="btn btn-outline h-7 text-[11px]"
+                >
+                  <Mail className="w-3 h-3" /> Email
+                </a>
+                {resent.delivery?.email.status === "sent" && (
+                  <span className="text-[10px] text-ink-mute">
+                    Also emailed automatically
+                  </span>
+                )}
+              </div>
+              <div className="text-[10px] text-ink-mute">
+                Expires {new Date(resent.expiresAt).toLocaleString()}
+              </div>
+            </div>
+          )}
+
+          {invited.length === 0 ? (
+            <div className="p-8 text-center text-ink-mute text-sm">
+              <History className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              No invites sent yet. Use “Add” to invite the first team member.
+            </div>
+          ) : detail ? (
+            <InviteDetail
+              employee={detail}
+              canDelete={canDelete}
+              canResend={canResend}
+              busy={del.isPending || invite.isPending}
+              onBack={() => setDetailId(null)}
+              onResend={() => resend(detail)}
+              onRevoke={() => revoke(detail)}
+            />
+          ) : (
+            <div className="divide-y">
+              {invited.map((e) => {
+                const state = inviteState(e);
+                return (
+                  <div
+                    key={e.id}
+                    className="py-2.5 flex flex-col sm:flex-row sm:items-center gap-2"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="w-9 h-9 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold flex items-center justify-center shrink-0">
+                        {e.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm truncate">{e.name}</div>
+                        <div className="text-[11px] text-ink-mute truncate">
+                          {e.email || "no email"}
+                          {e.phone ? ` · ${e.phone}` : ""}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                      <span
+                        className={cn(
+                          "chip border text-[10px] whitespace-nowrap",
+                          state.cls
+                        )}
+                      >
+                        {state.label}
+                      </span>
+                      <span className="text-[10px] text-ink-mute whitespace-nowrap">
+                        {e.invitedAt ? formatDate(e.invitedAt) : formatDate(e.createdAt)}
+                      </span>
+                      <button
+                        onClick={() => setDetailId(e.id)}
+                        className="btn btn-ghost h-7 px-2 text-[11px]"
+                        title="View invite details"
+                      >
+                        <Eye className="w-3 h-3" /> View
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="picker-foot border-t p-3 flex items-center justify-end gap-2 shrink-0">
+          {detail && (
+            <button onClick={() => setDetailId(null)} className="btn btn-outline h-9">
+              Back to list
+            </button>
+          )}
+          <button onClick={onClose} className="btn btn-primary h-9">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InviteDetail({
+  employee,
+  canDelete,
+  canResend,
+  busy,
+  onBack,
+  onResend,
+  onRevoke,
+}: {
+  employee: Employee;
+  canDelete: boolean;
+  canResend: boolean;
+  busy: boolean;
+  onBack: () => void;
+  onResend: () => void;
+  onRevoke: () => void;
+}) {
+  const state = inviteState(employee);
+  const expires = employee.tempPasswordExpiresAt
+    ? new Date(employee.tempPasswordExpiresAt)
+    : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-display text-lg font-bold truncate">
+            {employee.name}
+          </div>
+          <div className="text-xs text-ink-mute truncate">
+            {employee.email || "no email"}
+          </div>
+        </div>
+        <span className={cn("chip border text-[10px]", state.cls)}>
+          {state.label}
+        </span>
+      </div>
+
+      <div className="rounded-lg border p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        <DetailRow label="Role" value={employee.role} />
+        <DetailRow label="Phone" value={employee.phone || "—"} />
+        <DetailRow
+          label="Invited by"
+          value={employee.invitedByName || "—"}
+        />
+        <DetailRow
+          label="Invited at"
+          value={
+            employee.invitedAt
+              ? new Date(employee.invitedAt).toLocaleString()
+              : "—"
+          }
+        />
+        <DetailRow
+          label="Temp password expires"
+          value={expires ? expires.toLocaleString() : "—"}
+        />
+        <DetailRow
+          label="First sign-in"
+          value={
+            employee.mustChangePassword
+              ? "Not completed — temporary password still required"
+              : "Completed — password set by the employee"
+          }
+        />
+        <DetailRow
+          label="Permissions"
+          value={`${employee.permissions.length} granted`}
+        />
+        <DetailRow label="Account" value={employee.active ? "Active" : "Inactive"} />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {canResend && (
+          <button
+            onClick={onResend}
+            disabled={busy || !employee.email}
+            className="btn btn-primary h-9"
+            title="Issue a new temporary password and send the invite again"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Resend invite
+          </button>
+        )}
+        {canDelete && (
+          <button
+            onClick={onRevoke}
+            disabled={busy}
+            className="btn btn-outline h-9 text-danger"
+            title="Delete the account and cancel the invite"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Revoke &amp; delete
+          </button>
+        )}
+        <button onClick={onBack} className="btn btn-ghost h-9 ml-auto">
+          Back
+        </button>
+      </div>
+
+      <p className="text-[10px] text-ink-mute">
+        Resending replaces the temporary password — the previous one stops
+        working. Revoking deletes the Supabase auth account, so the invite link
+        and any session are dead immediately.
+      </p>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-widest text-ink-mute">
+        {label}
+      </div>
+      <div className="break-words">{value}</div>
+    </div>
+  );
 }
 
 /* ---------- Profile tab (split emergency contact into name + phone) ---------- */
@@ -810,6 +1291,8 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
 
 /* Payroll tab — overflow-safe salary cards */
 function PayrollTab({ employee }: { employee: Employee }) {
+  const { can } = useAuth();
+  const canEdit = can("employees.payroll") || can("payroll.run");
   const update = useUpdateEmployee();
   const { data: settings } = useShopSettings();
   const defaultCurrency = employee.salary?.currency || settings?.currency || "USD";
@@ -849,7 +1332,10 @@ function PayrollTab({ employee }: { employee: Employee }) {
   };
 
   return (
-    <div className="space-y-6">
+    <fieldset
+      disabled={!canEdit}
+      className="space-y-6 border-0 p-0 m-0 min-w-0"
+    >
       {/*
         Overflow-safe salary stat grid. Uses `min-w-0`, `break-words` and a
         responsive font size so very large currency values (e.g. "10,000,000
@@ -958,17 +1444,30 @@ function PayrollTab({ employee }: { employee: Employee }) {
         )}
       </div>
 
-      <div className="flex justify-end sticky bottom-0 bg-card pt-3">
-        <button onClick={save} disabled={update.isPending} className="btn btn-primary">
-          <Save className="w-4 h-4" /> Save payroll
-        </button>
+      <div className="flex justify-end items-center gap-2 sticky bottom-0 bg-card pt-3">
+        {canEdit ? (
+          <button onClick={save} disabled={update.isPending} className="btn btn-primary">
+            <Save className="w-4 h-4" /> Save payroll
+          </button>
+        ) : (
+          <span className="text-xs text-ink-mute">
+            View only — the payroll.run permission is required to edit salaries.
+          </span>
+        )}
       </div>
-    </div>
+    </fieldset>
   );
 }
 
 /* Attendance tab */
+/** Short month labels for the attendance header. */
+const MONTH_NAMES = Array.from({ length: 12 }, (_, i) =>
+  new Date(2000, i, 1).toLocaleDateString(undefined, { month: "short" })
+);
+
 function AttendanceTab({ employee }: { employee: Employee }) {
+  const { can } = useAuth();
+  const canEdit = can("employees.attendance");
   const [month, setMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
   const upsert = useUpsertAttendance();
 
@@ -980,6 +1479,21 @@ function AttendanceTab({ employee }: { employee: Employee }) {
   const days = getMonthMatrix(month.year, month.month);
 
   const changeMonth = (dir: -1 | 1) => setMonth((m) => { const d = new Date(m.year, m.month + dir, 1); return { year: d.getFullYear(), month: d.getMonth() }; });
+
+  /** Free-typed year so a bookkeeper can jump to any past month directly
+   *  instead of clicking the arrows a dozen times per year. */
+  const [yearText, setYearText] = useState(() => String(month.year));
+  useEffect(() => {
+    setYearText(String(month.year));
+  }, [month.year]);
+  const commitYear = (raw: string) => {
+    const n = Math.trunc(Number(raw));
+    if (Number.isFinite(n) && n >= 1900 && n <= 2200) {
+      setMonth((m) => (m.year === n ? m : { ...m, year: n }));
+    } else {
+      setYearText(String(month.year));
+    }
+  };
 
   const cycleStatus = (currentDate: Date, currentStatus?: AttendanceStatus) => {
     const order: AttendanceStatus[] = ["present", "halfday", "leave", "holiday", "absent"];
@@ -993,8 +1507,6 @@ function AttendanceTab({ employee }: { employee: Employee }) {
     );
   };
 
-  const monthName = new Date(month.year, month.month, 1).toLocaleString(undefined, { month: "long", year: "numeric" });
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 md:gap-2">
@@ -1005,11 +1517,42 @@ function AttendanceTab({ employee }: { employee: Employee }) {
         <Stat label="Hours" value={`${stats.totalHours}h`} />
       </div>
 
-      <div className="flex items-center justify-between">
-        <button onClick={() => changeMonth(-1)} className="btn btn-ghost"><ChevronLeft className="w-4 h-4" /></button>
-        <div className="font-display text-lg font-bold">{monthName}</div>
-        <button onClick={() => changeMonth(1)} className="btn btn-ghost"><ChevronRight className="w-4 h-4" /></button>
+      <div className="flex items-center justify-between gap-1">
+        <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="btn btn-ghost shrink-0"><ChevronLeft className="w-4 h-4" /></button>
+        <div className="flex items-center gap-1 min-w-0">
+          <GlassSelect
+            value={String(month.month)}
+            onChange={(v) => setMonth((m) => ({ ...m, month: Number(v) }))}
+            ariaLabel="Attendance month"
+            options={MONTH_NAMES.map((m, i) => ({ value: String(i), label: m }))}
+            className="input input-sm select-glass"
+          />
+          <input
+            aria-label="Attendance year"
+            type="number"
+            inputMode="numeric"
+            min={1900}
+            max={2200}
+            step={1}
+            value={yearText}
+            onChange={(e) => setYearText(e.target.value)}
+            onBlur={() => commitYear(yearText)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitYear(yearText);
+              }
+            }}
+            className="input input-sm num w-20 text-center font-semibold"
+          />
+        </div>
+        <button onClick={() => changeMonth(1)} aria-label="Next month" className="btn btn-ghost shrink-0"><ChevronRight className="w-4 h-4" /></button>
       </div>
+      {!canEdit && (
+        <div className="text-xs text-ink-mute">
+          View only — the employees.attendance permission is required to mark days.
+        </div>
+      )}
 
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-widest text-ink-mute">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (<div key={d} className="pb-1">{d}</div>))}
@@ -1022,7 +1565,7 @@ function AttendanceTab({ employee }: { employee: Employee }) {
           const meta = record ? ATTENDANCE_META[record.status] : null;
           const isToday = iso === new Date().toISOString().slice(0, 10);
           return (
-            <button key={i} onClick={() => cycleStatus(d, record?.status)} disabled={!inMonth} className={cn("aspect-square border rounded-md text-xs flex flex-col items-center justify-center transition", !inMonth && "opacity-30 cursor-default", meta?.color, isToday && "ring-2 ring-magenta-reg")} title={meta?.label || "Click to mark"}>
+            <button key={i} onClick={() => canEdit && cycleStatus(d, record?.status)} disabled={!inMonth || !canEdit} className={cn("aspect-square border rounded-md text-xs flex flex-col items-center justify-center transition", !inMonth && "opacity-30 cursor-default", meta?.color, isToday && "ring-2 ring-magenta-reg")} title={canEdit ? (meta?.label || "Click to mark") : "View only"}>
               <div className="text-[11px] font-semibold">{d.getDate()}</div>
               {meta && <div className="text-[10px] font-bold mt-0.5">{meta.symbol}</div>}
             </button>
@@ -1039,6 +1582,8 @@ function AttendanceTab({ employee }: { employee: Employee }) {
 
 /* Permissions tab */
 function PermissionsTab({ employee }: { employee: Employee }) {
+  const { can } = useAuth();
+  const canEdit = can("employees.manage") || can("users.permissions");
   const setPerms = useSetPermissions();
   const update = useUpdateEmployee();
   const [perms, setPermsState] = useState<Permission[]>(employee.permissions);
@@ -1080,58 +1625,71 @@ function PermissionsTab({ employee }: { employee: Employee }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-ink-mute" />
-          <div>
-            <div className="font-display font-bold">Permissions ({perms.length}/{ALL_PERMISSION_KEYS.length})</div>
-            <div className="text-xs text-ink-mute">Same per-user permissions apply on desktop and mobile.</div>
-          </div>
+      {!canEdit && (
+        <div className="text-xs text-ink-mute">
+          View only — the employees.manage or users.permissions permission is required to change
+          permissions.
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="label inline-flex items-center gap-1"><Sparkles className="w-3 h-3" /> Presets:</span>
-          <button onClick={() => applyPreset("cashier")} className="chip border hover:bg-ink/5">Cashier</button>
-          <button onClick={() => applyPreset("designer")} className="chip border hover:bg-ink/5">Designer</button>
-          <button onClick={() => applyPreset("manager")} className="chip border hover:bg-ink/5">Manager</button>
-          <button onClick={() => applyPreset("owner")} className="chip bg-magenta-reg/10 text-magenta-reg border border-magenta-reg/30">Owner (all)</button>
-          <button onClick={() => applyPreset("none")} className="chip border hover:bg-ink/5">Clear</button>
-        </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {[...grouped.entries()].map(([group, list]) => (
-          <div key={group} className="paper-card p-2.5 md:p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">{group}</div>
-              <button
-                onClick={() => {
-                  const groupKeys = list.map((p) => p.key);
-                  const allOn = groupKeys.every((k) => perms.includes(k));
-                  if (allOn) setPermsState(perms.filter((p) => !groupKeys.includes(p)));
-                  else setPermsState([...new Set([...perms, ...groupKeys])]);
-                }}
-                className="text-[10px] text-ink-mute hover:text-ink underline"
-              >
-                Toggle all
-              </button>
-            </div>
-            <div className="mt-2 space-y-1.5">
-              {list.map((p) => (
-                <label key={p.key} className="flex items-center gap-2 text-[11px] md:text-sm cursor-pointer">
-                  <input type="checkbox" checked={perms.includes(p.key)} onChange={() => toggle(p.key)} />
-                  {p.label}
-                </label>
-              ))}
+      <fieldset disabled={!canEdit} className="space-y-4 border-0 p-0 m-0 min-w-0">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-ink-mute" />
+            <div>
+              <div className="font-display font-bold">Permissions ({perms.length}/{ALL_PERMISSION_KEYS.length})</div>
+              <div className="text-xs text-ink-mute">Same per-user permissions apply on desktop and mobile.</div>
             </div>
           </div>
-        ))}
-      </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="label inline-flex items-center gap-1"><Sparkles className="w-3 h-3" /> Presets:</span>
+            <button onClick={() => applyPreset("cashier")} className="chip border hover:bg-ink/5">Cashier</button>
+            <button onClick={() => applyPreset("designer")} className="chip border hover:bg-ink/5">Designer</button>
+            <button onClick={() => applyPreset("manager")} className="chip border hover:bg-ink/5">Manager</button>
+            <button onClick={() => applyPreset("owner")} className="chip bg-magenta-reg/10 text-magenta-reg border border-magenta-reg/30">Owner (all)</button>
+            <button onClick={() => applyPreset("none")} className="chip border hover:bg-ink/5">Clear</button>
+          </div>
+        </div>
 
-      <div className="flex justify-end sticky bottom-0 bg-card pt-3">
-        <button onClick={save} disabled={setPerms.isPending} className="btn btn-primary">
-          <UserCog className="w-4 h-4" /> Save permissions
-        </button>
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {[...grouped.entries()].map(([group, list]) => (
+            <div key={group} className="paper-card p-2.5 md:p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">{group}</div>
+                <button
+                  onClick={() => {
+                    const groupKeys = list.map((p) => p.key);
+                    const allOn = groupKeys.every((k) => perms.includes(k));
+                    if (allOn) setPermsState(perms.filter((p) => !groupKeys.includes(p)));
+                    else setPermsState([...new Set([...perms, ...groupKeys])]);
+                  }}
+                  className="text-[10px] text-ink-mute hover:text-ink underline"
+                >
+                  Toggle all
+                </button>
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {list.map((p) => (
+                  <label key={p.key} className="flex items-center gap-2 text-[11px] md:text-sm cursor-pointer">
+                    <input type="checkbox" checked={perms.includes(p.key)} onChange={() => toggle(p.key)} />
+                    {p.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end sticky bottom-0 bg-card pt-3">
+          {canEdit ? (
+            <button onClick={save} disabled={setPerms.isPending} className="btn btn-primary">
+              <UserCog className="w-4 h-4" /> Save permissions
+            </button>
+          ) : (
+            <span className="text-xs text-ink-mute">View only</span>
+          )}
+        </div>
+      </fieldset>
     </div>
   );
 }

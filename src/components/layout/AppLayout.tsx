@@ -4,13 +4,37 @@ import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import MobileBottomNav from "./MobileBottomNav";
 import InventoryTabs from "./InventoryTabs";
+import ImportJobBanner from "@/components/features/settings/ImportJobBanner";
 import {
   setActiveBusiness,
   useActiveBusiness,
   useBusinesses,
 } from "@/hooks/useBusinesses";
+import { useItems } from "@/hooks/useItems";
+import { useCustomers } from "@/hooks/useCustomers";
+import { useShopSettings } from "@/hooks/useShopSettings";
+import { useUoms } from "@/hooks/useUoms";
+import { useUnitConversions } from "@/hooks/useUnitConversions";
+import { useBranches } from "@/hooks/useBranches";
 
 const COLLAPSE_KEY = "pixobooks:sidebar_collapsed";
+
+/**
+ * Warm the cache for the POS / inventory catalog as soon as the active
+ * business is known. These are the queries every selling screen needs, so
+ * opening POS, Inventory or Statistics paints from cache instead of a
+ * spinner. The hooks stay mounted (they are cheap, low-frequency polls) and
+ * share the same cache entries as the pages.
+ */
+function CorePrefetch() {
+  useItems();
+  useCustomers();
+  useShopSettings();
+  useUoms();
+  useUnitConversions();
+  useBranches();
+  return null;
+}
 
 export type AppOutletContext = {
   collapsed: boolean;
@@ -70,6 +94,7 @@ export default function AppLayout() {
 
   return (
     <div className="h-[100dvh] w-screen overflow-hidden flex flex-col md:flex-row bg-paper text-ink">
+      {activeBusiness !== "none" && <CorePrefetch />}
       {/* Desktop sidebar */}
       <div className="hidden md:flex">
         <Sidebar
@@ -101,6 +126,7 @@ export default function AppLayout() {
         <main className="flex-1 overflow-auto pb-20 md:pb-0 scroll-lined">
           <Outlet context={{ collapsed, setCollapsed } satisfies AppOutletContext} />
         </main>
+        <ImportJobBanner />
         <div className="md:hidden">
           <MobileBottomNav onOpenMore={() => setMobileOpen(true)} />
         </div>

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import {
-  ClipboardList, Download, Plus,
+  ClipboardList, Download, Plus, Printer, Upload,
   X, ChevronLeft, ChevronRight, Edit3,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,7 +13,15 @@ import {
 } from "@/hooks/useStockAdjustments";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useAuth } from "@/hooks/useAuth";
-import { cn, download, formatCurrency, formatDate, formatMoney, todayISO } from "@/lib/utils";
+import { cn, download, formatCurrency, formatDate, formatMoney, localISODate, todayISO } from "@/lib/utils";
+import {
+  buildWorksheetRows,
+  parseCsv,
+  planWorksheetUpload,
+  worksheetToCsv,
+  type WorksheetItem,
+} from "@/lib/stockWorksheet";
+import PrintablePortal from "@/components/features/receipts/PrintablePortal";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassSelect from "@/components/ui/GlassSelect";
 import StatCard from "@/components/ui/StatCard";
@@ -57,6 +65,9 @@ export default function StockTaking() {
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [typeFilter, setTypeFilter] = useState<string>("All");
   const [adjustItem, setAdjustItem] = useState<Item | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [printSheet, setPrintSheet] = useState(false);
+  const closePrint = useCallback(() => setPrintSheet(false), []);
 
   const from =
     rangeMode === "custom"
@@ -121,7 +132,7 @@ export default function StockTaking() {
 
     // Sales sold-in-period
     for (const s of sales) {
-      const d = s.createdAt.slice(0, 10);
+      const d = localISODate(s.createdAt);
       if (d < from || d > to) continue;
       for (const l of s.lines) {
         const row = map.get(l.itemId);
@@ -177,7 +188,7 @@ export default function StockTaking() {
       let recvAfter = 0;
       let adjAfter = 0;
       for (const s of sales) {
-        const d = s.createdAt.slice(0, 10);
+        const d = localISODate(s.createdAt);
         if (d <= to) continue;
         for (const l of s.lines) {
           if (l.itemId === it.id) soldAfter += l.qty;
@@ -327,6 +338,25 @@ export default function StockTaking() {
     }
   };
 
+  // Blank count sheet for the inventory officer: every stocked item with
+  // its system quantity, Counted Qty left empty to fill in (on paper or
+  // in Excel). The filled file comes back through "Upload counts".
+  const downloadWorksheet = () => {
+    const sheet: WorksheetItem[] = stocked.map((i) => ({
+      id: i.id,
+      sku: i.sku,
+      name: i.name,
+      category: i.category,
+      baseUnit: i.baseUnit,
+      stock: Number(i.stock || 0),
+    }));
+    download(
+      `stock-count-worksheet-${todayISO()}.csv`,
+      worksheetToCsv(buildWorksheetRows(sheet))
+    );
+    toast.success(`Count sheet ready · ${sheet.length} items — fill Counted Qty and upload it back`);
+  };
+
   return (
     <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
       {/* Period control */}
@@ -420,6 +450,17 @@ export default function StockTaking() {
           <button onClick={() => exportCsv("adjustments")} className="btn btn-outline btn-sm">
             <Download className="w-3.5 h-3.5 md:w-4 md:h-4" /> Adjustments CSV
           </button>
+          <button onClick={downloadWorksheet} className="btn btn-outline btn-sm" title="Blank count sheet: System Qty filled, Counted Qty empty">
+            <ClipboardList className="w-3.5 h-3.5 md:w-4 md:h-4" /> Count sheet
+          </button>
+          <button onClick={() => setPrintSheet(true)} className="btn btn-outline btn-sm" title="Print a paper count sheet">
+            <Printer className="w-3.5 h-3.5 md:w-4 md:h-4" /> Print sheet
+          </button>
+          {canAdjust && (
+            <button onClick={() => setUploadOpen(true)} className="btn btn-primary btn-sm" title="Upload a filled count sheet">
+              <Upload className="w-3.5 h-3.5 md:w-4 md:h-4" /> Upload counts
+            </button>
+          )}
         </div>
       </div>
 
@@ -656,6 +697,363 @@ export default function StockTaking() {
           actor={actor}
         />
       )}
+
+      {uploadOpen && (
+        <WorksheetUploadModal onClose={() => setUploadOpen(false)} actor={actor} />
+      )}
+
+      {printSheet && (
+        <PrintablePortal>
+          <WorksheetPrintSheet
+            shopName={settings?.shopName || "Stock count"}
+            date={todayISO()}
+            rows={stocked.map((i) => ({
+              sku: i.sku,
+              name: i.name,
+              unit: i.baseUnit,
+              system: Number(i.stock || 0),
+            }))}
+            onDone={closePrint}
+          />
+        </PrintablePortal>
+      )}
+    </div>
+  );
+}
+
+/** Paper count sheet: generous blank Counted/Notes cells for handwriting,
+ *  plus sign-off lines. Rendered inside PrintablePortal so ONLY this
+ *  sheet prints (the app shell is hidden by the print CSS). */
+function WorksheetPrintSheet({
+  shopName,
+  date,
+  rows,
+  onDone,
+}: {
+  shopName: string;
+  date: string;
+  rows: { sku: string; name: string; unit: string; system: number }[];
+  onDone: () => void;
+}) {
+  useEffect(() => {
+    const t = setTimeout(() => window.print(), 150);
+    window.addEventListener("afterprint", onDone);
+    // Fallback for environments where afterprint never fires.
+    const t2 = setTimeout(onDone, 5000);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(t2);
+      window.removeEventListener("afterprint", onDone);
+    };
+  }, [onDone]);
+
+  return (
+    <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000" }}>
+      <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{shopName} — Physical stock count</h1>
+      <p style={{ fontSize: 12, margin: "4px 0 12px" }}>
+        Date: {formatDate(date)} · {rows.length} items · Count each item, write the counted quantity, return the sheet for upload.
+      </p>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <thead>
+          <tr>
+            {["#", "SKU", "Item", "Unit", "System", "Counted", "Notes"].map((h) => (
+              <th
+                key={h}
+                style={{ border: "1px solid #000", padding: "6px 8px", textAlign: h === "Item" || h === "Notes" ? "left" : "center", background: "#eee" }}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, ix) => (
+            <tr key={r.sku || ix}>
+              <td style={{ border: "1px solid #000", padding: "6px 8px", textAlign: "center" }}>{ix + 1}</td>
+              <td style={{ border: "1px solid #000", padding: "6px 8px" }}>{r.sku}</td>
+              <td style={{ border: "1px solid #000", padding: "6px 8px" }}>{r.name}</td>
+              <td style={{ border: "1px solid #000", padding: "6px 8px", textAlign: "center" }}>{r.unit}</td>
+              <td style={{ border: "1px solid #000", padding: "6px 8px", textAlign: "right" }}>{r.system}</td>
+              <td style={{ border: "1px solid #000", padding: "6px 8px", height: 28 }} />
+              <td style={{ border: "1px solid #000", padding: "6px 8px" }} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ display: "flex", gap: 32, marginTop: 24, fontSize: 12 }}>
+        <div>Counted by: ______________________</div>
+        <div>Checked by: ______________________</div>
+        <div>Date: __________</div>
+      </div>
+    </div>
+  );
+}
+
+/** Upload a filled count sheet (CSV). Rows are matched by SKU (or exact
+ *  item name), validated, previewed, then applied as `stocktake`
+ *  adjustments — skipping zero-delta lines. Blank counted cells mean
+ *  "not counted" and are never applied. */
+function WorksheetUploadModal({
+  onClose,
+  actor,
+}: {
+  onClose: () => void;
+  actor?: { id: string; name: string; role?: string };
+}) {
+  const { data: items = [] } = useItems();
+  const { data: uoms = [] } = useUoms();
+  const create = useCreateStockAdjustment();
+  const [fileName, setFileName] = useState("");
+  const [text, setText] = useState<string | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [result, setResult] = useState<{
+    applied: number;
+    queued: number;
+    skipped: number;
+    failed: { ref: string; reason: string }[];
+  } | null>(null);
+
+  const stocked = useMemo(
+    () =>
+      items.filter(
+        (i) => i.itemType === "material" || i.itemType === "intermediate" || i.itemType === "ready"
+      ),
+    [items]
+  );
+
+  const plan = useMemo(() => {
+    if (text === null) return null;
+    try {
+      return planWorksheetUpload(
+        parseCsv(text),
+        stocked.map(
+          (i): WorksheetItem => ({
+            id: i.id,
+            sku: i.sku,
+            name: i.name,
+            category: i.category,
+            baseUnit: i.baseUnit,
+            stock: Number(i.stock || 0),
+          })
+        )
+      );
+    } catch {
+      return null;
+    }
+  }, [text, stocked]);
+
+  const pick = async (f: File | undefined) => {
+    if (!f) return;
+    setFileName(f.name);
+    setResult(null);
+    setReadError(null);
+    try {
+      setText(await f.text());
+    } catch {
+      setReadError("Could not read that file — try exporting a fresh count sheet first.");
+    }
+  };
+
+  const apply = async () => {
+    if (!plan || applying) return;
+    setApplying(true);
+    setResult(null);
+    const fresh = new Map(items.map((i) => [i.id, i]));
+    let applied = 0;
+    let queued = 0;
+    let skipped = 0;
+    const failed: { ref: string; reason: string }[] = [];
+    setProgress({ done: 0, total: plan.planned.length });
+    let done = 0;
+    for (const p of plan.planned) {
+      const live = fresh.get(p.item.id);
+      const oldStock = Number(live?.stock ?? p.item.stock ?? 0);
+      const delta = p.counted - oldStock;
+      if (delta === 0) {
+        skipped++;
+      } else {
+        const check = validateTransactionQty(p.counted, live?.baseUnit || p.item.baseUnit, uoms, {
+          itemAllowDecimalQty: live?.allowDecimalQty,
+          label: p.item.name,
+        });
+        if (!check.ok) {
+          failed.push({ ref: p.item.sku || p.item.name, reason: check.reason });
+        } else {
+          try {
+            await create.mutateAsync({
+              itemId: p.item.id,
+              itemName: p.item.name,
+              oldStock,
+              newStock: p.counted,
+              reason: p.note || "Physical count upload",
+              adjustmentType: "stocktake",
+              adjustmentDate: todayISO(),
+              actor,
+            });
+            applied++;
+          } catch (err) {
+            const { isOfflineQueuedError } = await import("@/hooks/useOfflineQueue");
+            if (isOfflineQueuedError(err)) queued++;
+            else failed.push({ ref: p.item.sku || p.item.name, reason: err instanceof Error ? err.message : "Failed" });
+          }
+        }
+      }
+      done++;
+      setProgress({ done, total: plan.planned.length });
+    }
+    setApplying(false);
+    setResult({ applied, queued, skipped, failed });
+    if (applied > 0 || queued > 0) {
+      toast.success(
+        `Count applied · ${applied} adjusted${queued ? ` · ${queued} queued offline` : ""}${
+          skipped ? ` · ${skipped} unchanged` : ""
+        }${failed.length ? ` · ${failed.length} failed` : ""}`
+      );
+    } else if (failed.length === 0) {
+      toast.success("Nothing to apply — every counted line already matches system stock");
+    }
+  };
+
+  const toApply = (plan?.planned || []).filter((p) => p.delta !== 0);
+  const noChange = (plan?.planned || []).filter((p) => p.delta === 0);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-2 sm:p-4 animate-fade-in">
+      <div className="paper-card w-full max-w-2xl overflow-hidden max-h-[95dvh] flex flex-col">
+        <div className="p-3 sm:p-4 border-b flex items-center justify-between shrink-0">
+          <div>
+            <div className="text-[10px] sm:text-[11px] uppercase tracking-widest text-ink-mute">
+              Stock take
+            </div>
+            <h2 className="font-display text-base sm:text-lg font-bold">Upload counted sheet</h2>
+          </div>
+          <button onClick={onClose} className="btn btn-ghost h-8 w-8 p-0" disabled={applying}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 overflow-auto scroll-lined">
+          <div>
+            <label htmlFor="st-worksheet-file" className="label">Filled count sheet (.csv)</label>
+            <input
+              id="st-worksheet-file"
+              type="file"
+              accept=".csv,text/csv"
+              disabled={applying}
+              onChange={(e) => pick(e.target.files?.[0])}
+              className="input mt-1"
+            />
+            {fileName && (
+              <div className="text-[10px] sm:text-xs text-ink-mute mt-1 truncate">{fileName}</div>
+            )}
+          </div>
+
+          {readError && <div className="text-xs text-danger">{readError}</div>}
+          {plan === null && text !== null && !readError && (
+            <div className="text-xs text-danger">That file could not be understood as a count sheet.</div>
+          )}
+
+          {plan && (
+            <div className="space-y-2 text-[11px] sm:text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <MiniCount label="To apply" value={toApply.length} tone="success" />
+                <MiniCount label="No change" value={noChange.length} />
+                <MiniCount label="Not counted" value={plan.skippedBlank} />
+                <MiniCount
+                  label="Problems"
+                  value={plan.unknown.length + plan.invalid.length}
+                  tone={plan.unknown.length + plan.invalid.length > 0 ? "danger" : undefined}
+                />
+              </div>
+
+              {toApply.length > 0 && (
+                <div className="border rounded-md overflow-hidden">
+                  <div className="bg-paper/60 px-2 py-1 text-[9px] sm:text-[10px] uppercase tracking-widest text-ink-mute">
+                    Adjustments to record
+                  </div>
+                  <div className="max-h-44 overflow-auto scroll-lined divide-y">
+                    {toApply.slice(0, 50).map((p) => (
+                      <div key={p.item.id} className="px-2 py-1 flex items-center justify-between gap-2">
+                        <span className="truncate font-semibold">{p.item.name}</span>
+                        <span className="num whitespace-nowrap text-ink-mute">
+                          {p.item.stock} → <span className={cn("font-bold", p.delta > 0 ? "text-success" : "text-danger")}>
+                            {p.counted} ({p.delta > 0 ? "+" : ""}{p.delta})
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                    {toApply.length > 50 && (
+                      <div className="px-2 py-1 text-ink-mute">…and {toApply.length - 50} more</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {plan.unknown.length > 0 && (
+                <div className="text-ink-mute">Unknown — not in catalog, skipped: {plan.unknown.slice(0, 10).join(", ")}{plan.unknown.length > 10 ? ` (+${plan.unknown.length - 10} more)` : ""}</div>
+              )}
+              {plan.invalid.length > 0 && (
+                <div className="text-danger">
+                  Invalid quantities: {plan.invalid.slice(0, 5).map((f) => `${f.ref} (${f.reason})`).join("; ")}
+                  {plan.invalid.length > 5 ? ` (+${plan.invalid.length - 5} more)` : ""}
+                </div>
+              )}
+              {plan.duplicates.length > 0 && (
+                <div className="text-ink-mute">Duplicate lines in file (last copy wins): {plan.duplicates.join(", ")}</div>
+              )}
+
+              {applying && (
+                <div>
+                  <div className="h-2 rounded bg-ink/10 overflow-hidden">
+                    <div
+                      className="h-full bg-magenta-reg transition-all"
+                      style={{ width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <div className="text-ink-mute mt-1">Recording {progress.done} of {progress.total}…</div>
+                </div>
+              )}
+
+              {result && (
+                <div className="border rounded-md p-2 bg-paper/50 space-y-0.5">
+                  <div className="font-semibold">Result: {result.applied} adjusted{result.queued ? ` · ${result.queued} queued offline` : ""}{result.skipped ? ` · ${result.skipped} unchanged` : ""}</div>
+                  {result.failed.length > 0 && (
+                    <div className="text-danger">
+                      {result.failed.length} failed: {result.failed.slice(0, 5).map((f) => `${f.ref} (${f.reason})`).join("; ")}
+                      {result.failed.length > 5 ? ` (+${result.failed.length - 5} more)` : ""}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="p-3 sm:p-4 border-t flex justify-end gap-1.5 sm:gap-2 shrink-0">
+          <button onClick={onClose} className="btn btn-outline" disabled={applying}>Close</button>
+          <button
+            onClick={apply}
+            disabled={applying || !plan || toApply.length === 0}
+            className="btn btn-primary"
+          >
+            <Upload className="w-4 h-4" />
+            {applying ? `Recording ${progress.done}/${progress.total}…` : `Record ${toApply.length} adjustment${toApply.length === 1 ? "" : "s"}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniCount({ label, value, tone }: { label: string; value: number; tone?: "success" | "danger" }) {
+  return (
+    <div className="border rounded-md p-1.5 text-center">
+      <div className={cn("num font-bold text-sm", tone === "success" && "text-success", tone === "danger" && "text-danger")}>
+        {value}
+      </div>
+      <div className="text-[9px] uppercase tracking-widest text-ink-mute">{label}</div>
     </div>
   );
 }

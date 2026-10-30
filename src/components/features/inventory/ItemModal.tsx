@@ -217,6 +217,9 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
   const [uploading, setUploading] = useState(false);
   const [imageBroken, setImageBroken] = useState(false);
   const [dupPrompt, setDupPrompt] = useState<{ original: Item } | null>(null);
+  /** Clone opens behind a mandatory "new identity" prompt: a duplicate must
+   *  not start life with the source item's SKU or barcode. */
+  const [cloneSetupOpen, setCloneSetupOpen] = useState(!!cloneFrom);
   const [toastState, setToastState] = useState<{ message: string; tone: string; show: boolean }>({
     message: "",
     tone: "#34c759",
@@ -623,6 +626,36 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
     if (upsert.isPending || uploading) return;
     if (!form.name.trim() || !form.sku.trim()) {
       showToast("SKU and name are required", "error");
+      return;
+    }
+
+    // Never write a duplicate identity. The DB has a per-business unique index
+    // on SKU, but failing there produces a raw constraint error; catch it here
+    // with the conflicting item's name. Barcode is not DB-unique, so this is
+    // the only guard against two items scanning to the same product.
+    const norm = (s: string | null | undefined) => (s || "").trim().toLowerCase();
+    const skuConflict = items.find(
+      (i) => i.id !== item?.id && norm(i.sku) === norm(form.sku)
+    );
+    if (skuConflict) {
+      showToast(
+        `SKU "${form.sku.trim()}" is already used by ${skuConflict.name}. Choose a different SKU.`,
+        "error"
+      );
+      document.getElementById("itemSku")?.focus();
+      return;
+    }
+    const barcodeConflict = form.barcode.trim()
+      ? items.find(
+          (i) => i.id !== item?.id && norm(i.barcode) === norm(form.barcode)
+        )
+      : null;
+    if (barcodeConflict) {
+      showToast(
+        `Barcode "${form.barcode.trim()}" is already used by ${barcodeConflict.name}. Scan a different code or leave it blank.`,
+        "error"
+      );
+      document.getElementById("itemBarcode")?.focus();
       return;
     }
     if (!form.saleUnit) {
@@ -1590,6 +1623,18 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
         </div>
       </div>
 
+      {cloneSetupOpen && cloneFrom && (
+        <CloneSetupModal
+          source={cloneFrom}
+          items={items}
+          onCancel={onClose}
+          onConfirm={({ sku, barcode }) => {
+            update({ sku, barcode });
+            setCloneSetupOpen(false);
+          }}
+        />
+      )}
+
       {dupPrompt && (
         <DuplicatePromptModal
           onCancel={() => setDupPrompt(null)}
@@ -1730,6 +1775,187 @@ function DuplicatePromptModal({
             </button>
           </div>
         </footer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** First free SKU based on the source: `ABC` -> `ABC-2`, `ABC-3`, … */
+function nextFreeSku(base: string, items: Item[]): string {
+  const norm = (s: string) => (s || "").trim().toLowerCase();
+  const taken = new Set(items.map((i) => norm(i.sku)));
+  const root = (base || "ITEM").trim() || "ITEM";
+  if (!taken.has(norm(root))) return root;
+  for (let n = 2; n < 10000; n += 1) {
+    const candidate = `${root}-${n}`;
+    if (!taken.has(norm(candidate))) return candidate;
+  }
+  return `${root}-${Date.now().toString(36).toUpperCase()}`;
+}
+
+/**
+ * Shown the moment "Clone" is pressed. A duplicate must never start with the
+ * source item's SKU (the DB rejects it per business) or barcode (the DB allows
+ * it, which is exactly how two products end up scanning as one).
+ */
+function CloneSetupModal({
+  source,
+  items,
+  onCancel,
+  onConfirm,
+}: {
+  source: Item;
+  items: Item[];
+  onCancel: () => void;
+  onConfirm: (v: { sku: string; barcode: string }) => void;
+}) {
+  const [sku, setSku] = useState(() => nextFreeSku(source.sku, items));
+  const [barcode, setBarcode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const norm = (s: string | null | undefined) => (s || "").trim().toLowerCase();
+
+  const confirm = () => {
+    const nextSku = sku.trim();
+    const nextBarcode = barcode.trim();
+    if (!nextSku) {
+      setError("A new SKU is required.");
+      return;
+    }
+    if (norm(nextSku) === norm(source.sku)) {
+      setError("The SKU must be different from the item you are duplicating.");
+      return;
+    }
+    const skuTaken = items.find((i) => norm(i.sku) === norm(nextSku));
+    if (skuTaken) {
+      setError(`SKU "${nextSku}" is already used by ${skuTaken.name}.`);
+      return;
+    }
+    if (nextBarcode) {
+      const barcodeTaken = items.find((i) => norm(i.barcode) === norm(nextBarcode));
+      if (barcodeTaken) {
+        setError(`Barcode "${nextBarcode}" is already used by ${barcodeTaken.name}.`);
+        return;
+      }
+      if (source.barcode && norm(nextBarcode) === norm(source.barcode)) {
+        setError(
+          "The barcode must be different from the item you are duplicating, or left blank."
+        );
+        return;
+      }
+    }
+    onConfirm({ sku: nextSku, barcode: nextBarcode });
+  };
+
+  return (
+    <div className="im">
+      <div className="im-stack">
+        <div
+          aria-labelledby="cloneHeading"
+          aria-modal="true"
+          className="modal-window im-dialog"
+          role="dialog"
+        >
+          <span className="ios-sheet-handle" />
+          <header className="modal-head">
+            <div className="modal-head-left">
+              <div className="eyebrow">Duplicating an item</div>
+              <div
+                className="modal-title-input"
+                id="cloneHeading"
+                style={{ maxWidth: "100%", paddingLeft: 0 }}
+              >
+                Give the copy its own SKU &amp; barcode
+              </div>
+            </div>
+            <button
+              aria-label="Close dialog"
+              className="btn-close"
+              onClick={onCancel}
+              type="button"
+            >
+              ✕
+            </button>
+          </header>
+          <div className="modal-body">
+            <p className="helper-text" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+              <strong style={{ color: "var(--ios-label)" }}>{source.name}</strong>{" "}
+              <span className="num" style={{ color: "var(--ios-secondary-label)" }}>
+                (SKU {source.sku}
+                {source.barcode ? ` · barcode ${source.barcode}` : ""})
+              </span>{" "}
+              will be copied. Every item needs a unique SKU so stock, sales and
+              reports stay separate. Replace or clear the barcode too.
+            </p>
+            <div className="form-group">
+              <label className="label" htmlFor="item-clone-sku">
+                New SKU <span className="req">*</span>
+              </label>
+              <input
+                autoFocus
+                className="input-control num"
+                id="item-clone-sku"
+                onChange={(e) => {
+                  setSku(e.target.value);
+                  setError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    confirm();
+                  }
+                }}
+                value={sku}
+              />
+              <div className="helper-text" style={{ fontSize: 10.5 }}>
+                Suggested from the original — edit it to match your own scheme.
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="label" htmlFor="item-clone-barcode">
+                New barcode / UPC
+              </label>
+              <input
+                className="input-control num"
+                id="item-clone-barcode"
+                onChange={(e) => {
+                  setBarcode(e.target.value);
+                  setError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    confirm();
+                  }
+                }}
+                placeholder="Scan or type a new code, or leave blank"
+                value={barcode}
+              />
+              <div className="helper-text" style={{ fontSize: 10.5 }}>
+                The copy cannot reuse the original barcode or any code already in
+                the catalog.
+              </div>
+            </div>
+            {error && (
+              <div
+                role="alert"
+                style={{ color: "#d3222a", fontSize: 12, lineHeight: 1.4 }}
+              >
+                {error}
+              </div>
+            )}
+          </div>
+          <footer className="modal-footer">
+            <div className="footer-actions" style={{ marginLeft: "auto" }}>
+              <button className="btn btn-secondary" onClick={onCancel} type="button">
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={confirm} type="button">
+                Continue to duplicate
+              </button>
+            </div>
+          </footer>
         </div>
       </div>
     </div>

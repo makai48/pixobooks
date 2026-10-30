@@ -4,8 +4,19 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
 // Local dev and production use the root path.
+const buildId = new Date()
+  .toISOString()
+  .slice(0, 16)
+  .replace(/[-:T]/g, (m) => (m === "T" ? "-" : ""));
+
 export default defineConfig({
   base: "/",
+
+  // Build stamp shown in the sidebar footer so any screen can be matched
+  // to the exact bundle it runs (stale-PWA diagnosis).
+  define: {
+    __APP_BUILD_ID__: JSON.stringify(buildId),
+  },
 
   plugins: [react()],
 

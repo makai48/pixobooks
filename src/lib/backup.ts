@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { buildExport, type ExportCategory } from "@/lib/export";
+import { buildExport, EXPORT_CATEGORIES, type ExportCategory } from "@/lib/export";
 
 /**
  * Full off-site backup: builds every export category and uploads a single
@@ -7,21 +7,9 @@ import { buildExport, type ExportCategory } from "@/lib/export";
  * Call from Settings → Data or a nightly cron/edge function.
  */
 export async function backupAllToStorage(): Promise<{ path: string; bytes: number }> {
-  const cats: ExportCategory[] = [
-    "sales",
-    "purchases",
-    "inventory",
-    "boms",
-    "customers",
-    "suppliers",
-    "expenses",
-    "employees",
-    "statistics",
-    "receipts",
-    "loyalty",
-    "client_billing",
-    "audit",
-  ];
+  // Derived from the category list so a newly added dataset can never be
+  // silently left out of the off-site backup.
+  const cats: ExportCategory[] = EXPORT_CATEGORIES.map((c) => c.key);
   const payload: Record<string, unknown> = {
     exportedAt: new Date().toISOString(),
     app: "pixobooks",

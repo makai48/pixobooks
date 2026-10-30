@@ -87,6 +87,42 @@ export function useCreateBankDeposit() {
   });
 }
 
+export function useUpdateBankDeposit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      p: Partial<BankDeposit> & {
+        id: string;
+        actor?: { id: string; name: string; role?: string };
+      }
+    ) => {
+      const patch: Record<string, unknown> = {};
+      if (p.amount !== undefined) patch.amount = Number(p.amount || 0);
+      if (p.depositedAt) patch.deposited_at = p.depositedAt;
+      if (p.bankName !== undefined) patch.bank_name = p.bankName || null;
+      if (p.reference !== undefined) patch.reference = p.reference || null;
+      if (p.notes !== undefined) patch.notes = p.notes || null;
+
+      const { data, error } = await supabase
+        .from("bank_deposits")
+        .update(patch)
+        .eq("id", p.id)
+        .select()
+        .single();
+      if (error) throw error;
+      if (p.actor) {
+        await logAudit(p.actor, "bank.deposit.update", "bank_deposit", p.id, patch);
+      }
+      return mapBankDeposit(data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bank_deposits"] });
+      qc.invalidateQueries({ queryKey: ["live_opening_balance"] });
+      qc.invalidateQueries({ queryKey: ["mru_bank_account"] });
+    },
+  });
+}
+
 export function useDeleteBankDeposit() {
   const qc = useQueryClient();
   return useMutation({
@@ -101,7 +137,6 @@ export function useDeleteBankDeposit() {
     },
   });
 }
-
 /**
  * Most-recently-used Bank/Account name — used to auto-select the
  * Bank/Account dropdown in the Daily Balancing modal. Falls back to

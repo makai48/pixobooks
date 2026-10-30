@@ -286,10 +286,21 @@ export async function executeSaleWrite(input: CheckoutInput): Promise<Sale> {
   const totals = { total: (salePayload.total as number) ?? 0 };
 
   if (paymentRow) {
-    await supabase.from("sale_payments").insert({
+    // The initial payment row is what anchors this sale's cash to the
+    // correct business day in the cash ledger. A sale WITHOUT its payment
+    // row silently falls back to `sales.amount_paid`, and a later payment
+    // then moves that cash to a different day — a classic b/f fluctuation.
+    // So a failed payment insert must fail the whole write (with a
+    // compensating sale delete so a retry is safe), never be swallowed.
+    const { error: payErr } = await supabase.from("sale_payments").insert({
       ...paymentRow,
       sale_id: saleData.id,
     });
+    if (payErr) {
+      await supabase.from("sales").delete().eq("id", saleData.id);
+      console.error("sale payment insert failed, sale rolled back", payErr);
+      throw toError(payErr, "Checkout failed");
+    }
   }
 
   await Promise.all(

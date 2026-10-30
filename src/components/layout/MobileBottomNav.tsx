@@ -21,6 +21,7 @@ type Tab = {
   label: string;
   icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   perm: Permission;
+  anyPerm?: Permission[];
   end?: boolean;
 };
 
@@ -32,7 +33,7 @@ const ALL_TABS: Tab[] = [
   { to: "/inventory", label: "Inventory", icon: Boxes, perm: "inventory.view" },
   { to: "/sales-report", label: "Sales", icon: Receipt, perm: "sales.view" },
   { to: "/expenses", label: "Expenses", icon: Wallet, perm: "expenses.view" },
-  { to: "/financial-statements", label: "Finance", icon: Landmark, perm: "finance.view" },
+  { to: "/financial-statements", label: "Finance", icon: Landmark, perm: "finance.view", anyPerm: ["finance.cashbook.view", "finance.bank.view", "finance.bank.manage", "finance.bank.delete", "finance.pnl.view", "finance.orders.view", "finance.orders.manage", "finance.orders.delete"] },
   { to: "/client-billing", label: "Billing", icon: BookOpen, perm: "finance.view" },
   { to: "/customers", label: "Customers", icon: Users, perm: "customers.manage" },
   { to: "/statistics", label: "Stats", icon: BarChart3, perm: "stats.view" },
@@ -41,7 +42,9 @@ const ALL_TABS: Tab[] = [
 
 export default function MobileBottomNav({ onOpenMore }: { onOpenMore: () => void }) {
   const { can } = useAuth();
-  const visible = ALL_TABS.filter((t) => can(t.perm));
+  const visible = ALL_TABS.filter(
+    (t) => can(t.perm) || (t.anyPerm ? t.anyPerm.some((p) => can(p)) : false)
+  );
   const primary = visible.slice(0, 4);
 
   return (

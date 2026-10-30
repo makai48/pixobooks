@@ -1,32 +1,14 @@
 import { Component, StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider, keepPreviousData } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { registerPWA } from "@/lib/pwa";
 import { initMonitoring } from "@/lib/monitoring";
 import { persistQueryCache, seedQueryClient } from "@/lib/queryPersist";
+import { queryClient } from "@/lib/appQueryClient";
 import "./index.css";
-
-// Flicker-free policy (applies to every screen + device):
-// - Cached data paints instantly and is KEPT while background refreshes
-//   resolve (keepPreviousData) — never flash back to skeletons.
-// - No refetch storm every time the window regains focus (POS devices
-//   switch apps constantly); per-hook polling + reconnect cover freshness.
-// - structuralSharing (default) skips re-renders when payloads are identical.
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      gcTime: 15 * 60_000,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
-      placeholderData: keepPreviousData,
-      retry: 1,
-    },
-  },
-});
 
 class BootErrorBoundary extends Component<
   { children: ReactNode },

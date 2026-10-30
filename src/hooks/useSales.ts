@@ -25,6 +25,10 @@ import { logAudit } from "@/lib/audit";
  * distinct so POS behavior is preserved unchanged.
  */
 
+/** PostgREST returns at most 1000 rows per request, so anything above that
+ *  has to be paged. */
+const SALES_PAGE_SIZE = 1000;
+
 export function useSales(limit = 500) {
   // Branch-aware: a specific active branch filters server-side; "all" keeps
   // legacy full-pool behavior. Key includes branch so switching refetches.
@@ -35,16 +39,29 @@ export function useSales(limit = 500) {
   return useQuery({
     queryKey: ["sales", businessId, limit, branchId],
     queryFn: async () => {
-      let q = supabase
-        .from("sales")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(limit);
-      if (businessId) q = q.eq("business_id", businessId);
-      if (branchId) q = q.eq("branch_id", branchId);
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data || []).map(mapSale);
+      // Ordered by `created_at`, which is the real transaction timestamp —
+      // imported sales carry their original timestamp, so they interleave
+      // with live sales by the day they actually happened, not import day.
+      const rows: Record<string, unknown>[] = [];
+      for (let offset = 0; offset < limit; offset += SALES_PAGE_SIZE) {
+        const end = Math.min(offset + SALES_PAGE_SIZE, limit) - 1;
+        let q = supabase
+          .from("sales")
+          .select("*")
+          .order("created_at", { ascending: false })
+          // Stable tie-breaker so paging cannot skip/repeat rows that share a
+          // timestamp (bulk imports often land whole seconds together).
+          .order("id", { ascending: true })
+          .range(offset, end);
+        if (businessId) q = q.eq("business_id", businessId);
+        if (branchId) q = q.eq("branch_id", branchId);
+        const { data, error } = await q;
+        if (error) throw error;
+        const page = (data || []) as Record<string, unknown>[];
+        rows.push(...page);
+        if (page.length < end - offset + 1) break;
+      }
+      return rows.map(mapSale);
     },
     refetchInterval: 20000,
   });
@@ -123,6 +140,9 @@ export function useCompleteSale() {
       qc.invalidateQueries({ queryKey: ["shop_settings"] });
       qc.invalidateQueries({ queryKey: ["loyalty"] });
       qc.invalidateQueries({ queryKey: ["attendance"] });
+      // The new sale is a cash movement — the balancing b/f / till must
+      // re-derive from the live ledger.
+      qc.invalidateQueries({ queryKey: ["live_opening_balance"] });
     },
   });
 }
@@ -185,6 +205,7 @@ export function useAddSalePayment() {
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["sale_payments", variables.saleId] });
+      qc.invalidateQueries({ queryKey: ["live_opening_balance"] });
     },
   });
 }
@@ -205,6 +226,9 @@ export function useVoidSale() {
       if (error) throw error;
       await logAudit(null, "sale.delete", "sale", id, sale || {});
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sales"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["live_opening_balance"] });
+    },
   });
 }

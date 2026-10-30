@@ -185,6 +185,7 @@ export type Permission =
   | "inventory.edit"
   | "inventory.delete"
   | "inventory.adjust"
+  | "inventory.import"
   // Purchase Orders
   | "po.view"
   | "po.manage"
@@ -195,6 +196,7 @@ export type Permission =
   | "suppliers.manage"
   | "suppliers.delete"
   // Customers
+  | "customers.view"
   | "customers.manage"
   | "customers.delete"
   | "loyalty.manage"
@@ -211,13 +213,28 @@ export type Permission =
   | "sales.view"
   | "sales.void"
   | "reports.viewCosts"
+  | "reports.export"
   | "finance.view"
   | "finance.manage"
+  | "finance.cashbook.view"
+  | "finance.bank.view"
+  | "finance.bank.manage"
+  | "finance.bank.delete"
+  | "finance.pnl.view"
+  | "finance.orders.view"
+  | "finance.orders.manage"
+  | "finance.orders.delete"
   // Admin
   | "employees.manage"
   | "employees.delete"
   | "employees.payroll"
   | "employees.attendance"
+  | "users.invite"
+  | "users.permissions"
+  | "users.delete"
+  | "payroll.view"
+  | "payroll.run"
+  | "attendance.view"
   | "settings.manage"
   | "settings.shop"
   | "settings.receipt"
@@ -230,6 +247,7 @@ export type Permission =
   | "settings.discount"
   | "settings.categories"
   | "settings.export"
+  | "settings.wipe"
   | "audit.view"
   | "password.approve";
 
@@ -245,6 +263,7 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "inventory.edit", label: "Add & edit items", group: "Inventory" },
   { key: "inventory.delete", label: "Delete items", group: "Inventory" },
   { key: "inventory.adjust", label: "Adjust stock levels", group: "Inventory" },
+  { key: "inventory.import", label: "Import catalog data", group: "Inventory" },
   // Purchase Orders
   { key: "po.view", label: "View purchase orders", group: "Purchase Orders" },
   { key: "po.manage", label: "Create & edit POs", group: "Purchase Orders" },
@@ -255,6 +274,7 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "suppliers.manage", label: "Add & edit suppliers", group: "Suppliers" },
   { key: "suppliers.delete", label: "Delete suppliers", group: "Suppliers" },
   // Customers
+  { key: "customers.view", label: "View customer register", group: "Customers" },
   { key: "customers.manage", label: "Manage customers", group: "Customers" },
   { key: "customers.delete", label: "Delete customers", group: "Customers" },
   { key: "loyalty.manage", label: "Manage loyalty points", group: "Customers" },
@@ -268,16 +288,36 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "expenses.delete", label: "Delete expenses", group: "Finance" },
   { key: "finance.view", label: "View cashbook & bank statement", group: "Finance" },
   { key: "finance.manage", label: "Daily banking, standing orders, loans", group: "Finance" },
+  // Granular finance permissions. Each tab of Financial Statements has its
+  // own read key, and the editable tabs split create/update from delete so a
+  // bookkeeper can post entries without being able to erase them. The legacy
+  // `finance.view` / `finance.manage` keys above still act as umbrellas so
+  // existing employees keep exactly the access they had.
+  { key: "finance.cashbook.view", label: "View cashbook", group: "Finance" },
+  { key: "finance.bank.view", label: "View bank statement", group: "Finance" },
+  { key: "finance.bank.manage", label: "Record & edit bank entries", group: "Finance" },
+  { key: "finance.bank.delete", label: "Delete bank entries", group: "Finance" },
+  { key: "finance.pnl.view", label: "View profit & loss", group: "Finance" },
+  { key: "finance.orders.view", label: "View standing orders & loans", group: "Finance" },
+  { key: "finance.orders.manage", label: "Create & edit standing orders & loans", group: "Finance" },
+  { key: "finance.orders.delete", label: "Delete standing orders & loans", group: "Finance" },
   // Reports
   { key: "sales.view", label: "View sales reports", group: "Reports" },
   { key: "sales.void", label: "Void sales", group: "Reports" },
   { key: "stats.view", label: "View financial statistics", group: "Reports" },
   { key: "reports.viewCosts", label: "View COGS / cost & profit columns", group: "Reports" },
+  { key: "reports.export", label: "Export reports & data", group: "Reports" },
   // Admin
   { key: "employees.manage", label: "Manage employees", group: "Admin" },
   { key: "employees.delete", label: "Delete employee accounts", group: "Admin" },
   { key: "employees.payroll", label: "Manage salaries & allowances", group: "Admin" },
   { key: "employees.attendance", label: "Record attendance", group: "Admin" },
+  { key: "users.invite", label: "Invite employees", group: "Admin" },
+  { key: "users.permissions", label: "Change user permissions", group: "Admin" },
+  { key: "users.delete", label: "Permanently delete users", group: "Admin" },
+  { key: "payroll.view", label: "View payroll & salaries", group: "Admin" },
+  { key: "payroll.run", label: "Edit salaries & run payroll", group: "Admin" },
+  { key: "attendance.view", label: "View attendance", group: "Admin" },
   { key: "settings.manage", label: "Access all settings", group: "Admin" },
   { key: "audit.view", label: "View audit log", group: "Admin" },
   { key: "password.approve", label: "Approve password resets", group: "Admin" },
@@ -293,6 +333,7 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "settings.discount", label: "Configure discount rules", group: "Settings" },
   { key: "settings.categories", label: "Manage POS categories", group: "Settings" },
   { key: "settings.export", label: "Export shop data", group: "Settings" },
+  { key: "settings.wipe", label: "Wipe app data", group: "Settings" },
 ];
 
 export const ALL_PERMISSION_KEYS: Permission[] = ALL_PERMISSIONS.map((p) => p.key);

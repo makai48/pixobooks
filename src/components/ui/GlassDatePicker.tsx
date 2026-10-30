@@ -28,9 +28,23 @@ const formatLabel = (iso: string) =>
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
+/** Short month names in the user's locale, built once. */
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) =>
+  new Date(2000, i, 1).toLocaleDateString(undefined, { month: "short" })
+);
+
+/** Guard rails for the year field. Wide enough for any real bookkeeping
+ *  period, narrow enough to reject typos like 20026. */
+const MIN_YEAR = 1900;
+const MAX_YEAR = 2200;
+
 /**
  * Frosted-glass calendar for `YYYY-MM-DD` values. The popover is portaled,
  * clamped to the viewport and flipped above the trigger when needed.
+ *
+ * The header exposes the month and the year as direct controls (a month
+ * dropdown and an editable year field) so jumping from e.g. March 2024 to
+ * August 2019 does not mean clicking through five years of months.
  */
 export default function GlassDatePicker({
   value,
@@ -38,23 +52,54 @@ export default function GlassDatePicker({
   ariaLabel,
   id,
   className,
+  fullWidth = false,
+  placeholder = "Select date",
+  allowClear = false,
 }: {
   value: string;
   onChange: (iso: string) => void;
   ariaLabel: string;
   id?: string;
   className?: string;
+  /** Fill the parent instead of shrinking to the label width. */
+  fullWidth?: boolean;
+  /** Shown on the trigger when `value` is empty (optional dates). */
+  placeholder?: string;
+  /** Offer a Clear button so an optional date can go back to empty. */
+  allowClear?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<Pos | null>(null);
   const [view, setView] = useState(() => {
-    const d = isoToDate(value);
+    const d = value ? isoToDate(value) : new Date();
     return { y: d.getFullYear(), m: d.getMonth() };
   });
+  /** Free-typed year. Kept as text so the field can be cleared while typing
+   *  and only committed when it is a usable year. */
+  const [yearText, setYearText] = useState(() =>
+    String((value ? isoToDate(value) : new Date()).getFullYear())
+  );
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
-  const label = formatLabel(value);
+  const label = value ? formatLabel(value) : placeholder;
   const fitWidth = useMemo(() => glassFitWidth([label, "Today"]), [label]);
+
+  // Arrows can cross a year boundary; keep the editable field in step.
+  useEffect(() => {
+    setYearText(String(view.y));
+  }, [view.y]);
+
+  const commitYear = useCallback(
+    (raw: string) => {
+      const n = Math.trunc(Number(raw));
+      if (Number.isFinite(n) && n >= MIN_YEAR && n <= MAX_YEAR) {
+        setView((v) => (v.y === n ? v : { ...v, y: n }));
+      } else {
+        setYearText(String(view.y));
+      }
+    },
+    [view.y]
+  );
 
   const place = useCallback(() => {
     const r = btnRef.current?.getBoundingClientRect();
@@ -119,8 +164,9 @@ export default function GlassDatePicker({
   const today = toISO(new Date());
 
   const expand = () => {
-    const d = isoToDate(value);
+    const d = value ? isoToDate(value) : new Date();
     setView({ y: d.getFullYear(), m: d.getMonth() });
+    setYearText(String(d.getFullYear()));
     setOpen(true);
   };
 
@@ -149,9 +195,10 @@ export default function GlassDatePicker({
         onClick={() => (open ? setOpen(false) : expand())}
         className={cn(
           "input select-glass flex items-center justify-between gap-1 text-left cursor-pointer max-w-full",
+          fullWidth && "w-full",
           className
         )}
-        style={fitWidth ? { width: fitWidth } : undefined}
+        style={fitWidth && !fullWidth ? { width: fitWidth } : undefined}
       >
         <span className="truncate">{label}</span>
         <CalendarDays className="w-3.5 h-3.5 shrink-0 opacity-60" />
@@ -182,7 +229,40 @@ export default function GlassDatePicker({
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div className="text-[12px] font-semibold text-ink">{monthLabel}</div>
+              <div className="flex items-center gap-1 min-w-0">
+                {/* Direct month + year controls: jumping years is one edit,
+                    not a dozen arrow clicks. */}
+                <select
+                  aria-label={`${ariaLabel} month`}
+                  value={view.m}
+                  onChange={(e) => setView((v) => ({ ...v, m: Number(e.target.value) }))}
+                  className="h-7 rounded-md border border-line bg-paper px-1 text-[12px] font-semibold text-ink"
+                >
+                  {MONTH_OPTIONS.map((name, i) => (
+                    <option key={name} value={i}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  aria-label={`${ariaLabel} year`}
+                  type="number"
+                  inputMode="numeric"
+                  min={MIN_YEAR}
+                  max={MAX_YEAR}
+                  step={1}
+                  value={yearText}
+                  onChange={(e) => setYearText(e.target.value)}
+                  onBlur={() => commitYear(yearText)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitYear(yearText);
+                    }
+                  }}
+                  className="h-7 w-16 rounded-md border border-line bg-paper px-1 text-[12px] font-semibold text-ink num text-center"
+                />
+              </div>
               <button
                 type="button"
                 aria-label="Next month"
@@ -227,17 +307,32 @@ export default function GlassDatePicker({
             </div>
             <div className="flex items-center justify-between gap-2 mt-1.5 px-0.5">
               <span className="text-[10px] text-ink-mute truncate">{label}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(today);
-                  setOpen(false);
-                  btnRef.current?.focus();
-                }}
-                className="text-[11px] font-semibold h-6 px-2 rounded-md text-ink hover:bg-ink/10 transition shrink-0"
-              >
-                Today
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                {allowClear && value && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange("");
+                      setOpen(false);
+                      btnRef.current?.focus();
+                    }}
+                    className="text-[11px] font-semibold h-6 px-2 rounded-md text-ink-mute hover:bg-ink/10 hover:text-ink transition"
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(today);
+                    setOpen(false);
+                    btnRef.current?.focus();
+                  }}
+                  className="text-[11px] font-semibold h-6 px-2 rounded-md text-ink hover:bg-ink/10 transition"
+                >
+                  Today
+                </button>
+              </div>
             </div>
           </div>,
           document.body

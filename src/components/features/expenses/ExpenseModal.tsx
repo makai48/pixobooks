@@ -12,6 +12,8 @@ import {
   computeEmployeeSalary,
 } from "@/types";
 import { todayISO, formatCurrency } from "@/lib/utils";
+import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import GlassMonthPicker from "@/components/ui/GlassMonthPicker";
 
 function currentMonthISO() {
   const d = new Date();
@@ -243,12 +245,12 @@ export default function ExpenseModal({
                   <label htmlFor="exp-salary-month" className="label inline-flex items-center gap-1">
                     <CalendarIcon className="w-3 h-3" /> Month
                   </label>
-                  <input
+                  <GlassMonthPicker
                     id="exp-salary-month"
-                    type="month"
                     value={salaryMonth}
-                    onChange={(e) => setSalaryMonth(e.target.value)}
-                    className="input mt-1"
+                    onChange={setSalaryMonth}
+                    ariaLabel="Salary month"
+                    className="mt-1"
                   />
                 </div>
               </div>
@@ -326,12 +328,13 @@ export default function ExpenseModal({
             </div>
             <div>
             <label htmlFor="exp-date" className="label">Payment date</label>
-            <input
+            <GlassDatePicker
               id="exp-date"
-              type="date"
               value={form.expenseDate}
-              onChange={(e) => setForm({ ...form, expenseDate: e.target.value })}
+              onChange={(v) => setForm({ ...form, expenseDate: v })}
+              ariaLabel="Payment date"
               className="input mt-1"
+              fullWidth
             />
             </div>
             <div className={isSalary || isDrawing ? "col-span-2" : ""}>

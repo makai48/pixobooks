@@ -1,5 +1,57 @@
 import { supabase } from "./supabase";
 import { MAX_FAILED_LOGINS, isShopOwner } from "@/types";
+import { isWrongPasswordError } from "./signInFlow";
+
+/**
+ * Create the signed-in user's own `user_profiles` row if it does not exist.
+ *
+ * WHY THIS EXISTS IN THE APP, NOT A TRIGGER
+ * ----------------------------------------
+ * `user_profiles` had no INSERT policy, so any insert not made by the service
+ * role was rejected. An earlier fix added an `on_auth_user_created` trigger,
+ * but GoTrue runs that trigger inside the user-creation transaction — any error
+ * in it aborts the whole signup with `500 "Database error saving new user"`.
+ * A trigger also cannot be made schema-agnostic from the app, so it is safer
+ * to let the app create the row, where we can read the real columns back
+ * first and only write the ones that exist.
+ *
+ * Idempotent: safe to call on every sign-in.
+ */
+export async function ensureOwnProfile(user: { id: string; email?: string | null }) {
+  if (!user?.id) return;
+
+  const { data: existing, error: readErr } = await supabase
+    .from("user_profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  // RLS or a transient failure — never block sign-in on this.
+  if (readErr || existing) return;
+
+  // Read one real row to learn the actual column set (the schema is not
+  // available to us at build time).
+  const { data: sample } = await supabase
+    .from("user_profiles")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+  const cols = sample ? Object.keys(sample) : ["id", "email", "username", "role"];
+
+  const row: Record<string, unknown> = { id: user.id };
+  if (cols.includes("email")) row.email = user.email || "";
+  if (cols.includes("username")) row.username = (user.email || "user").split("@")[0];
+  if (cols.includes("role")) row.role = "Staff";
+  if (cols.includes("active")) row.active = true;
+  if (cols.includes("approval_status")) row.approval_status = "approved";
+
+  const { error } = await supabase.from("user_profiles").insert(row);
+  if (error) {
+    // Not fatal: the account exists, only the profile row is missing. The
+    // owner's invite flow will create it.
+    console.warn("[auth] could not create own profile:", error.message);
+  }
+}
 
 export const authService = {
   /** data = onboarding metadata attached to the auth user (fanned out to profile + shop by trigger). */
@@ -86,8 +138,9 @@ export const authService = {
     });
 
     if (error) {
-      // Bump failed count (unless owner)
-      if (profile && !isOwner) {
+      // Only real credential failures count towards the lockout. A schema or
+      // network fault must never lock an employee out of a fresh account.
+      if (profile && !isOwner && isWrongPasswordError(error)) {
         const next = (profile.failed_login_count || 0) + 1;
         const payload: Record<string, unknown> = { failed_login_count: next };
         if (next >= MAX_FAILED_LOGINS) {
@@ -108,12 +161,19 @@ export const authService = {
       throw error;
     }
 
-    // Success — clear failed counter
+    // Success — clear failed counter, and make sure a profile row exists.
     if (data.user) {
       await supabase
         .from("user_profiles")
         .update({ failed_login_count: 0, locked_until: null })
         .eq("id", data.user.id);
+
+      // Best-effort: a self-registered account has no invite to create its
+      // profile row, so create it here. Never blocks sign-in on failure.
+      await ensureOwnProfile({
+        id: data.user.id,
+        email: data.user.email ?? null,
+      });
     }
     return data.user;
   },
