@@ -487,6 +487,7 @@ async function resolveNumberCollisions(
   }
 }
 
+
 /**
  * Items carry two codes that must be settled before the write.
  *
@@ -696,11 +697,13 @@ async function importTable(
     );
   }
 
+
   // Items have their own unique key — `(business_id, sku)` — plus barcodes
   // that must stay unambiguous. Same failure mode, different columns.
   if (businessId && table === "items") {
     await resolveItemCodeCollisions([...withId, ...withoutId], businessId, result);
   }
+
 
   const batches: { batch: Record<string, unknown>[]; upsert: boolean }[] = [
     ...chunk(withId, BATCH_SIZE).map((batch) => ({ batch, upsert: true })),
