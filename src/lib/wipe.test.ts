@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Wipe engine coverage.
@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * order, the business scoping, the missing-table fallback and the cache reset.
  */
 
-type MockFn = ReturnType<typeof vi.fn>;
+type MockFn = ReturnType<typeof vi.fn<(...args: any[]) => any>>;
 
 let bizId: string | null = "biz-1";
 

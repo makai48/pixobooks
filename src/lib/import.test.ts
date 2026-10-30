@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
 
 /**
  * The import engine used to issue one upsert per row. A 1000-row sales
  * export therefore cost 1000 sequential HTTP round-trips, which is why the
- * UI looked frozen — and why this file exists: it pins the request count so
+ * UI looked frozen â€” and why this file exists: it pins the request count so
  * the batching cannot silently regress.
  */
 
-type MockFn = ReturnType<typeof vi.fn>;
+type MockFn = ReturnType<typeof vi.fn<(...args: any[]) => any>>;
 
 const upsert: MockFn = vi.fn();
 const insert: MockFn = vi.fn();
@@ -41,7 +41,7 @@ function lookupChain(table: string): LookupBuilder {
     },
     then: (resolve: (value: unknown) => unknown) => {
       // Filter on whichever column the resolver queried (id, number, sku,
-      // barcode, …) so the same mock serves every collision resolver.
+      // barcode, â€¦) so the same mock serves every collision resolver.
       const rows = (existingByTable[table] ?? []).filter((r) =>
         values.includes(String(r[column] ?? ""))
       );
@@ -478,8 +478,8 @@ describe("sales import resolves duplicate document numbers", () => {
 describe("inventory import resolves duplicate item codes", () => {
   /**
    * Regression: `items` has `items_biz_sku_key`, a unique index on
-   * (business_id, sku). An export containing a repeated SKU — or a SKU the
-   * target shop already uses — failed the whole batch with
+   * (business_id, sku). An export containing a repeated SKU â€” or a SKU the
+   * target shop already uses â€” failed the whole batch with
    *   "duplicate key value violates unique constraint \"items_biz_sku_key\"".
    * The item itself must still import; only the code changes.
    */
