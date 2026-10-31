@@ -29,7 +29,7 @@ type Tab = {
 // Suppliers, Held Tickets, Payroll History and Password Requests are
 // reached from within their parent tab's sub-navigation.
 const ALL_TABS: Tab[] = [
-  { to: "/", label: "Sales POS", icon: LayoutDashboard, perm: "pos.sell", end: true },
+  { to: "/", label: "POS", icon: LayoutDashboard, perm: "pos.sell", end: true },
   { to: "/inventory", label: "Inventory", icon: Boxes, perm: "inventory.view" },
   { to: "/sales-report", label: "Sales", icon: Receipt, perm: "sales.view" },
   { to: "/expenses", label: "Expenses", icon: Wallet, perm: "expenses.view" },

@@ -31,6 +31,7 @@ import PrintablePortal from "@/components/features/receipts/PrintablePortal";
 import ReceiptActions from "@/components/features/receipts/ReceiptActions";
 import GlassSelect from "@/components/ui/GlassSelect";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import MoneyText from "@/components/ui/MoneyText";
 
 export default function SalesReport() {
   const { can, canViewCosts, profile } = useAuth();
@@ -57,20 +58,49 @@ export default function SalesReport() {
   const [cashier, setCashier] = useState<string>("all");
   const [viewSale, setViewSale] = useState<Sale | null>(null);
 
+  // Canonical cashier identity: sales rows carry free-text cashier names, so
+  // "Sheillah K", "sheillah  k" or a renamed profile would otherwise spawn
+  // duplicate filter entries (SK1/SK2). Group by trimmed, single-spaced,
+  // case-insensitive key and display the employee-register spelling when the
+  // name matches a known employee, else the first-seen sales spelling.
+  const cashierDisplay = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const s of sales) {
+      const k = canonCashierKey(s.cashierName);
+      if (!k || byKey.has(k)) continue;
+      byKey.set(k, canonCashierName(s.cashierName));
+    }
+    for (const e of employees) {
+      const k = canonCashierKey(e.name);
+      if (k && byKey.has(k)) byKey.set(k, e.name.trim());
+    }
+    return byKey;
+  }, [sales, employees]);
+
   const cashiers = useMemo(
-    () => ["all", ...Array.from(new Set(sales.map((s) => s.cashierName)))],
-    [sales]
+    () => ["all", ...Array.from(cashierDisplay.values())],
+    [cashierDisplay]
   );
 
   const initialsByCashier = useMemo(() => {
-    const names = Array.from(new Set(sales.map((s) => s.cashierName)));
-    const firstSale = new Map<string, string>();
+    // Keyed by canonical cashier key so name variants share one identity.
+    const seen = new Map<string, { display: string; firstSale: string }>();
     for (const s of sales) {
-      const prev = firstSale.get(s.cashierName);
-      if (!prev || s.createdAt < prev) firstSale.set(s.cashierName, s.createdAt);
+      const k = canonCashierKey(s.cashierName);
+      if (!k) continue;
+      const prev = seen.get(k);
+      if (!prev) {
+        seen.set(k, {
+          display: cashierDisplay.get(k) || canonCashierName(s.cashierName),
+          firstSale: s.createdAt,
+        });
+      } else if (s.createdAt < prev.firstSale) {
+        prev.firstSale = s.createdAt;
+      }
     }
+    const names = Array.from(seen.values());
     const registeredAt = new Map(
-      employees.map((e) => [e.name.trim().toLowerCase(), e.createdAt])
+      employees.map((e) => [canonCashierKey(e.name), e.createdAt])
     );
     const baseInitials = (name: string) => {
       const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -81,27 +111,32 @@ export default function SalesReport() {
     };
 
     const ordered = names
-      .map((name) => ({
-        name,
-        initials: baseInitials(name),
-        order: registeredAt.get(name.trim().toLowerCase()) || firstSale.get(name) || "",
+      .map((c) => ({
+        ...c,
+        initials: baseInitials(c.display),
+        order: registeredAt.get(canonCashierKey(c.display)) || c.firstSale || "",
       }))
-      .sort((a, b) => a.order.localeCompare(b.order) || a.name.localeCompare(b.name));
+      .sort((a, b) => a.order.localeCompare(b.order) || a.display.localeCompare(b.display));
 
     const groups = new Map<string, string[]>();
     for (const c of ordered) {
       const list = groups.get(c.initials) || [];
-      list.push(c.name);
+      list.push(c.display);
       groups.set(c.initials, list);
     }
 
     const out = new Map<string, string>();
     for (const c of ordered) {
       const list = groups.get(c.initials) || [];
-      out.set(c.name, list.length > 1 ? `${c.initials}${list.indexOf(c.name) + 1}` : c.initials);
+      out.set(
+        canonCashierKey(c.display),
+        list.length > 1
+          ? `${c.initials}${list.indexOf(c.display) + 1}`
+          : c.initials
+      );
     }
     return out;
-  }, [sales, employees]);
+  }, [sales, employees, cashierDisplay]);
 
   /** Quick range presets — Today is the default. */
   const applyPreset = (preset: "today" | "7d" | "month" | "all") => {
@@ -135,7 +170,7 @@ export default function SalesReport() {
       if (!inDayRange(s.createdAt, { from, to })) return false;
       if (method !== "all" && s.paymentMethod !== method) return false;
       if (status !== "all" && s.paymentStatus !== status) return false;
-      if (cashier !== "all" && s.cashierName !== cashier) return false;
+      if (cashier !== "all" && canonCashierKey(s.cashierName) !== canonCashierKey(cashier)) return false;
       if (q) {
         const query = q.toLowerCase();
         return (
@@ -280,9 +315,21 @@ export default function SalesReport() {
       </div>
 
       <div className="paper-card p-2.5 md:p-4 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center md:items-end gap-x-1.5 gap-y-1.5 md:grid-cols-6 md:gap-3">
-        <div className="relative col-span-4 md:col-span-2">
-          <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Number, customer, cashier" className="input input-sm pl-7 md:pl-9" />
+        <div className="relative col-span-4 md:col-span-2 flex items-center gap-1.5 md:gap-3 min-w-0">
+          <div className="relative max-md:w-[140px] max-md:flex-none max-md:shrink-0 md:flex-1 md:min-w-0">
+            <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Number, customer, cashier" className="input input-sm pl-7 md:pl-9" />
+          </div>
+          <GlassSelect
+            value={cashier}
+            onChange={setCashier}
+            ariaLabel="Cashier"
+            options={cashiers.map((c) => ({
+              value: c,
+              label: c === "all" ? "All cashiers" : c,
+            }))}
+            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:hidden flex-1"
+          />
         </div>
         <div className="max-md:contents">
           <label htmlFor="sr-from" className="label max-md:text-[9px] max-md:whitespace-nowrap">From</label>
@@ -336,16 +383,18 @@ export default function SalesReport() {
           <span className="hidden md:inline">transactions · tap any row to view receipt / invoice</span>
         </div>
         <div className="flex gap-1 md:gap-2 flex-wrap max-md:flex-1 max-md:justify-end">
-          <GlassSelect
-            value={cashier}
-            onChange={setCashier}
-            ariaLabel="Cashier"
-            options={cashiers.map((c) => ({
-              value: c,
-              label: c === "all" ? "All cashiers" : c,
-            }))}
-            className="input input-sm select-glass"
-          />
+          <div className="hidden md:block">
+            <GlassSelect
+              value={cashier}
+              onChange={setCashier}
+              ariaLabel="Cashier"
+              options={cashiers.map((c) => ({
+                value: c,
+                label: c === "all" ? "All cashiers" : c,
+              }))}
+              className="input input-sm select-glass"
+            />
+          </div>
           <button
             onClick={() => {
               setQ("");
@@ -379,7 +428,7 @@ export default function SalesReport() {
                 key={s.id}
                 sale={s}
                 currency={currency}
-                initials={initialsByCashier.get(s.cashierName) || s.cashierName.slice(0, 2).toUpperCase()}
+                initials={initialsByCashier.get(canonCashierKey(s.cashierName)) || canonCashierName(s.cashierName).slice(0, 2).toUpperCase()}
                 canViewCosts={canViewCosts}
                 canVoid={can("sales.void")}
                 onClick={() => setViewSale(s)}
@@ -492,7 +541,7 @@ function TransactionRow({
           {sale.cashierName}
         </span>
         <span
-          className="shrink-0 md:hidden inline-flex items-center justify-start text-[11px] font-bold text-ink max-md:leading-none"
+          className="shrink-0 md:hidden inline-flex items-center justify-start text-[11px] font-bold text-ink max-md:leading-none max-md:mr-1"
           title={sale.cashierName}
         >
           {initials}
@@ -642,15 +691,17 @@ function TransactionViewer({
           {addOpen && sale.amountDue > 0 && (
             <div className="border-t bg-white p-3 sm:p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <select
+                <GlassSelect
                   value={payMethod}
-                  onChange={(e) => setPayMethod(e.target.value as PaymentMethod)}
-                  className="input h-10 w-auto text-gray-900 border-gray-300"
-                >
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="transfer">Wire</option>
-                </select>
+                  onChange={(v) => setPayMethod(v as PaymentMethod)}
+                  ariaLabel="Payment method"
+                  options={[
+                    { value: "cash", label: "Cash" },
+                    { value: "card", label: "Card" },
+                    { value: "transfer", label: "Wire" },
+                  ]}
+                  className="input select-glass h-10"
+                />
                 <input
                   autoFocus
                   type="number"
@@ -678,6 +729,16 @@ function TransactionViewer({
       </PrintablePortal>
     </>
   );
+}
+
+/** Collapse whitespace variants of a cashier name to one display spelling. */
+function canonCashierName(n: string): string {
+  return (n || "").trim().replace(/\s+/g, " ");
+}
+
+/** Grouping key for a cashier name — case-insensitive, whitespace-insensitive. */
+function canonCashierKey(n: string): string {
+  return canonCashierName(n).toLowerCase();
 }
 
 function Stat({
@@ -713,7 +774,7 @@ function Stat({
           tone === "danger" && "text-danger"
         )}
       >
-        {showFull ? fullValue : value}
+        {showFull && fullValue ? <MoneyText value={fullValue} /> : <MoneyText value={value} />}
       </div>
     </div>
   );

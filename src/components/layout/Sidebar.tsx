@@ -75,13 +75,13 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
     {
       title: "Point of Sale",
       items: [
-        { to: "/", label: "Sales POS", icon: LayoutDashboard, perm: "pos.sell", end: true, badge: posBadge },
+        { to: "/", label: "POS", icon: LayoutDashboard, perm: "pos.sell", end: true, badge: posBadge },
       ],
     },
     {
       title: "Inventory & Ops",
       items: [
-        { to: "/inventory", label: "Inventory & BOM", icon: Boxes, perm: "inventory.view" },
+        { to: "/inventory", label: "Inventory", icon: Boxes, perm: "inventory.view" },
       ],
     },
     {

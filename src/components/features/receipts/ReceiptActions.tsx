@@ -5,6 +5,7 @@ import type { DocKind, Sale, SalePayment, Settings } from "@/types";
 import { downloadReceiptPdf, quickSizes, corporateSizes } from "@/lib/receiptPdf";
 import { describePrintError, printSaleReceipt } from "@/lib/printing";
 import { cn } from "@/lib/utils";
+import GlassSelect from "@/components/ui/GlassSelect";
 
 /**
  * Uniform receipt footer: output options + Print + PDF download + Done.
@@ -143,19 +144,16 @@ export default function ReceiptActions({
             </button>
           ))}
         </div>
-        <select
+        <GlassSelect
           value={sizeId}
-          onChange={(e) => setSizeId(e.target.value)}
-          className="h-7 rounded-md border border-gray-300 bg-white px-1.5 text-[11px] font-semibold"
-          aria-label="Paper size"
-        >
-          {sizes.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-          <option value="custom">Custom…</option>
-        </select>
+          onChange={setSizeId}
+          ariaLabel="Paper size"
+          options={[
+            ...sizes.map((s) => ({ value: s.id, label: s.label })),
+            { value: "custom", label: "Custom…" },
+          ]}
+          className="input select-glass h-7 text-[11px] font-semibold"
+        />
         {kind === "corporate" && (
           <div className="flex rounded-md border border-gray-300 overflow-hidden">
             {(

@@ -4,7 +4,6 @@ import {
   ArrowLeftRight,
   Boxes,
   Check,
-  ChevronDown,
   CircleAlert,
   Loader2,
   Pencil,
@@ -18,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import GlassSelect from "@/components/ui/GlassSelect";
 import { useAuth } from "@/hooks/useAuth";
 import { useUoms, useUpsertUom, useDeleteUom } from "@/hooks/useUoms";
 import { useUomCategories } from "@/hooks/useUomCategories";
@@ -425,21 +425,19 @@ export default function UomManagerModal({ onClose }: { onClose: () => void }) {
                     aria-label="Search conversions"
                   />
                 </label>
-                <label className="uom-select-wrap">
-                  <select
-                    value={conversionCategory}
-                    onChange={(event) => setConversionCategory(event.target.value)}
-                    aria-label="Filter conversions by category"
-                  >
-                    <option value="all">All families</option>
-                    {conversionCategories.map((category) => (
-                      <option key={category} value={category}>
-                        {titleCase(category)}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="uom-icon uom-select-chevron" />
-                </label>
+                <GlassSelect
+                  value={conversionCategory}
+                  onChange={setConversionCategory}
+                  ariaLabel="Filter conversions by category"
+                  options={[
+                    { value: "all", label: "All families" },
+                    ...conversionCategories.map((category) => ({
+                      value: category,
+                      label: titleCase(category),
+                    })),
+                  ]}
+                  className="input select-glass h-8 text-xs"
+                />
               </div>
 
               <div className="uom-panel-body">
@@ -687,18 +685,19 @@ function UnitEditor({
             />
           </UField>
           <UField label="Category" hint="Units only convert within their own family.">
-            <select
-              className="uom-input"
+            <GlassSelect
               value={categoryId}
-              onChange={(event) => setCategoryId(event.target.value)}
-            >
-              <option value="">Uncategorised</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+              onChange={setCategoryId}
+              ariaLabel="Category"
+              options={[
+                { value: "", label: "Uncategorised" },
+                ...categories.map((category) => ({
+                  value: category.id,
+                  label: category.name,
+                })),
+              ]}
+              className="input select-glass"
+            />
           </UField>
           <div className="uom-field uom-field-full">
             <span className="uom-label">Transaction behavior</span>
@@ -901,31 +900,37 @@ function ConversionEditor({
         <div className="uom-form-grid">
           <UField label="From unit">
             <SelectWrap>
-              <select
-                className="uom-input"
+              <GlassSelect
                 value={fromUnit}
-                onChange={(event) => onFromChange(event.target.value)}
+                onChange={onFromChange}
+                ariaLabel="From unit"
+                options={[
+                  { value: "", label: "Choose a unit" },
+                  ...codeOptions.map(([code, name]) => ({
+                    value: code,
+                    label: `${code} — ${name}`,
+                  })),
+                ]}
+                className="input select-glass"
                 autoFocus
-              >
-                <option value="">Choose a unit</option>
-                {codeOptions.map(([code, name]) => (
-                  <option key={code} value={code}>
-                    {code} — {name}
-                  </option>
-                ))}
-              </select>
+              />
             </SelectWrap>
           </UField>
           <UField label="To unit">
             <SelectWrap>
-              <select className="uom-input" value={toUnit} onChange={(event) => setToUnit(event.target.value)}>
-                <option value="">Choose a unit</option>
-                {codeOptions.map(([code, name]) => (
-                  <option key={code} value={code}>
-                    {code} — {name}
-                  </option>
-                ))}
-              </select>
+              <GlassSelect
+                value={toUnit}
+                onChange={setToUnit}
+                ariaLabel="To unit"
+                options={[
+                  { value: "", label: "Choose a unit" },
+                  ...codeOptions.map(([code, name]) => ({
+                    value: code,
+                    label: `${code} — ${name}`,
+                  })),
+                ]}
+                className="input select-glass"
+              />
             </SelectWrap>
           </UField>
           <UField label="Factor" hint="1 From unit equals this many To units.">
@@ -939,13 +944,16 @@ function ConversionEditor({
           </UField>
           <UField label="Family" hint="Used for grouping the table.">
             <SelectWrap>
-              <select className="uom-input" value={category} onChange={(event) => setCategory(event.target.value)}>
-                {families.map((family) => (
-                  <option key={family} value={family}>
-                    {titleCase(family)}
-                  </option>
-                ))}
-              </select>
+              <GlassSelect
+                value={category}
+                onChange={setCategory}
+                ariaLabel="Family"
+                options={families.map((family) => ({
+                  value: family,
+                  label: titleCase(family),
+                }))}
+                className="input select-glass"
+              />
             </SelectWrap>
           </UField>
           <UField label="Notes" hint="Optional context for this relationship.">
@@ -1220,24 +1228,30 @@ function DeleteUnitDialog({
 
                 <UField label="Replacement unit">
                   <SelectWrap>
-                    <select
-                      className="uom-input"
+                    <GlassSelect
                       value={replacement}
-                      onChange={(event) => setReplacement(event.target.value)}
-                    >
-                      <option value="">Choose a replacement</option>
-                      {replacementOptions.map((candidate) => (
-                        <option key={candidate.id} value={candidate.code}>
-                          {candidate.code} — {candidate.name}
-                        </option>
-                      ))}
-                      {createdReplacement &&
-                        !replacementOptions.some((candidate) => candidate.code === createdReplacement.code) && (
-                          <option value={createdReplacement.code}>
-                            {createdReplacement.code} — {createdReplacement.name}
-                          </option>
-                        )}
-                    </select>
+                      onChange={setReplacement}
+                      ariaLabel="Replacement unit"
+                      options={[
+                        { value: "", label: "Choose a replacement" },
+                        ...replacementOptions.map((candidate) => ({
+                          value: candidate.code,
+                          label: `${candidate.code} — ${candidate.name}`,
+                        })),
+                        ...(createdReplacement &&
+                        !replacementOptions.some(
+                          (candidate) => candidate.code === createdReplacement.code
+                        )
+                          ? [
+                              {
+                                value: createdReplacement.code,
+                                label: `${createdReplacement.code} — ${createdReplacement.name}`,
+                              },
+                            ]
+                          : []),
+                      ]}
+                      className="input select-glass"
+                    />
                   </SelectWrap>
                 </UField>
 
@@ -1435,7 +1449,6 @@ function SelectWrap({ children }: { children: ReactNode }) {
   return (
     <span className="uom-select-wrap uom-select-field">
       {children}
-      <ChevronDown className="uom-icon uom-select-chevron" />
     </span>
   );
 }

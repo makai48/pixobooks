@@ -25,9 +25,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCompleteSale } from "@/hooks/useSales";
 import { useItems } from "@/hooks/useItems";
 import QuoteModal from "@/components/features/quotes/QuoteModal";
+import GlassSelect from "@/components/ui/GlassSelect";
 import ProformaPreviewModal from "@/components/features/quotes/ProformaPreviewModal";
 import type { Quote, QuoteStatus } from "@/types";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import MoneyText from "@/components/ui/MoneyText";
 
 const STATUS_COLORS: Record<QuoteStatus, string> = {
   draft: "bg-ink/5 text-ink-soft",
@@ -117,7 +119,7 @@ export default function Quotes() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
       <SubNav
         items={[
           { to: "/", label: "POS", icon: LayoutDashboard, end: true },
@@ -126,7 +128,7 @@ export default function Quotes() {
           { to: "/quotes", label: "Quotes", icon: FileText },
         ]}
       />
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 md:gap-3">
         <Stat label="Drafts" value={String(summary.draft)} />
         <Stat label="Sent" value={String(summary.sent)} />
         <Stat label="Accepted" value={String(summary.accepted)} tone="success" />
@@ -134,21 +136,39 @@ export default function Quotes() {
         <Stat
           label="Pipeline value"
           value={formatCurrency(summary.pipeline, settings?.currency)}
+          fullValue={formatCurrency(summary.pipeline, settings?.currency)}
           tone="magenta"
         />
       </div>
 
-      <div className="paper-card p-4 flex flex-col md:flex-row md:items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
+      <div className="paper-card p-2.5 md:p-4 flex flex-wrap items-center gap-x-1.5 gap-y-1.5 md:gap-3">
+        <div className="relative flex-1 min-w-[130px]">
+          <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search number, customer or notes"
-            className="input pl-9"
+            className="input input-sm pl-7 md:pl-9"
           />
         </div>
-        <div className="flex bg-paper border rounded-md p-0.5 overflow-auto">
+        <GlassSelect
+          id="quote-status-filter"
+          value={status}
+          onChange={(v) => setStatus(v as typeof status)}
+          ariaLabel="Filter by status"
+          options={[
+            { value: "all", label: "All statuses" },
+            { value: "draft", label: "Draft" },
+            { value: "sent", label: "Sent" },
+            { value: "accepted", label: "Accepted" },
+            { value: "rejected", label: "Rejected" },
+            { value: "proforma", label: "Proforma" },
+            { value: "ordered", label: "Ordered" },
+            { value: "converted", label: "Converted" },
+          ]}
+          className="input input-sm select-glass min-w-0 max-md:px-1.5 md:hidden"
+        />
+        <div className="hidden md:flex bg-paper border rounded-md p-0.5 overflow-auto">
           {(
             [
               "all",
@@ -173,76 +193,94 @@ export default function Quotes() {
             </button>
           ))}
         </div>
+        <div className="hidden sm:flex items-center gap-1 text-[10px] md:text-xs text-ink-mute shrink-0">
+          <FileText className="w-3 h-3 md:w-3.5 md:h-3.5" />
+          {filtered.length} of {quotes.length}
+        </div>
         {can("quotes.manage") && (
           <button
             onClick={() => {
               setEdit(null);
               setOpen(true);
             }}
-            className="btn btn-primary"
+            className="btn btn-primary btn-sm shrink-0"
           >
-            <Plus className="w-4 h-4" /> New quote
+            <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">New quote</span>
+            <span className="sm:hidden">New</span>
           </button>
         )}
       </div>
 
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="text-[10px] md:text-xs text-ink-mute inline-flex items-center gap-1.5 md:gap-2">
+          <FileText className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+          {filtered.length} of {quotes.length}{" "}
+          <span className="md:hidden">quotes · tap for details</span>
+          <span className="hidden md:inline">
+            quotes · tap any card to manage
+          </span>
+        </div>
+      </div>
+
       {isLoading ? (
-        <div className="paper-card p-10 text-center text-ink-mute">Loading...</div>
+        <div className="paper-card p-6 md:p-10 text-center text-ink-mute text-sm">Loading...</div>
       ) : filtered.length === 0 ? (
-        <div className="paper-card p-12 text-center">
-          <FileText className="w-10 h-10 text-ink-mute mx-auto" />
-          <div className="font-display font-bold text-lg mt-3">No quotes</div>
-          <div className="text-ink-mute text-sm mt-1">
+        <div className="paper-card p-8 md:p-12 text-center">
+          <FileText className="w-8 h-8 md:w-10 md:h-10 text-ink-mute mx-auto" />
+          <div className="font-display font-bold text-base md:text-lg mt-2 md:mt-3">No quotes</div>
+          <div className="text-ink-mute text-[11px] md:text-sm mt-1">
             Create quotes for large print jobs and convert accepted ones into
             proforma invoices or sales.
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <>
+        <div className="hidden md:grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((qu) => (
-            <div key={qu.id} className="paper-card p-4">
+            <div key={qu.id} className="paper-card p-2.5 md:p-4 flex flex-col">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+                  <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">
                     {formatDate(qu.createdAt)} · {qu.createdByName}
                   </div>
-                  <div className="font-display text-lg font-bold">{qu.number}</div>
-                  <div className="text-sm text-ink-mute truncate">
+                  <div className="font-display text-sm md:text-lg font-bold leading-tight truncate">{qu.number}</div>
+                  <div className="text-[10px] md:text-sm text-ink-mute truncate">
                     {qu.customerName || "Walk-in"}
                   </div>
                 </div>
-                <span className={cn("chip", STATUS_COLORS[qu.status])}>
+                <span className={cn("chip text-[8px] md:text-[10px] px-1.5 md:px-2 py-px shrink-0", STATUS_COLORS[qu.status])}>
                   {qu.status}
                 </span>
               </div>
 
-              <div className="dashed-divider my-3" />
-              <div className="text-sm space-y-1 max-h-24 overflow-auto">
+              <div className="dashed-divider my-1.5 md:my-3" />
+              <div className="text-[10px] md:text-sm space-y-0.5 md:space-y-1 max-h-16 md:max-h-24 overflow-auto">
                 {qu.lines.slice(0, 3).map((l) => (
-                  <div key={l.itemId} className="flex justify-between">
+                  <div key={l.itemId} className="flex justify-between gap-2">
                     <span className="truncate pr-2">
                       {l.qty}× {l.name}
                     </span>
-                    <span className="num text-ink-mute">
-                      {formatCurrency(l.qty * l.unitPrice, settings?.currency)}
+                    <span className="num text-ink-mute shrink-0">
+                      <MoneyText value={formatCurrency(l.qty * l.unitPrice, settings?.currency)} />
                     </span>
                   </div>
                 ))}
                 {qu.lines.length > 3 && (
-                  <div className="text-xs text-ink-mute">
+                  <div className="text-[10px] text-ink-mute">
                     + {qu.lines.length - 3} more
                   </div>
                 )}
               </div>
-              <div className="dashed-divider my-3" />
+              <div className="dashed-divider my-1.5 md:my-3" />
               <div className="flex items-baseline justify-between">
-                <span className="text-xs text-ink-mute">Total</span>
-                <span className="num font-bold text-lg">
-                  {formatCurrency(qu.total, settings?.currency)}
+                <span className="text-[10px] md:text-xs text-ink-mute">Total</span>
+                <span className="num font-bold text-sm md:text-lg">
+                  <MoneyText value={formatCurrency(qu.total, settings?.currency)} />
                 </span>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-auto pt-2 flex flex-wrap gap-1">
                 {can("quotes.manage") &&
                   qu.status !== "converted" &&
                   qu.status !== "ordered" && (
@@ -252,7 +290,7 @@ export default function Quotes() {
                           setEdit(qu);
                           setOpen(true);
                         }}
-                        className="btn btn-outline h-9"
+                        className="btn btn-outline btn-sm flex-1"
                       >
                         <Edit3 className="w-3.5 h-3.5" /> Edit
                       </button>
@@ -264,7 +302,7 @@ export default function Quotes() {
                               { onSuccess: () => toast.success("Marked sent") }
                             )
                           }
-                          className="btn btn-outline h-9"
+                          className="btn btn-outline btn-sm flex-1"
                         >
                           Send
                         </button>
@@ -277,14 +315,14 @@ export default function Quotes() {
                               { onSuccess: () => toast.success("Accepted") }
                             )
                           }
-                          className="btn btn-outline h-9"
+                          className="btn btn-outline btn-sm flex-1"
                         >
                           <Check className="w-3.5 h-3.5" /> Accept
                         </button>
                       )}
                       <button
                         onClick={() => setProforma(qu)}
-                        className="btn btn-outline h-9"
+                        className="btn btn-outline btn-sm flex-1"
                         title="Preview, print or download as Proforma Invoice"
                       >
                         <ClipboardList className="w-3.5 h-3.5" /> Proforma
@@ -292,9 +330,9 @@ export default function Quotes() {
                       {["accepted", "sent", "proforma"].includes(qu.status) && (
                         <button
                           onClick={() => markOrdered(qu)}
-                          className="btn btn-primary flex-1 h-9"
+                          className="btn btn-primary btn-sm flex-1"
                           disabled={completeSale.isPending}
-                          title="Mark as ordered \u2014 creates credit invoice"
+                          title="Mark as ordered — creates credit invoice"
                         >
                           <ShoppingCart className="w-3.5 h-3.5" /> Order
                         </button>
@@ -337,7 +375,7 @@ export default function Quotes() {
                               }
                             );
                           }}
-                          className="btn btn-ghost h-9"
+                          className="btn btn-ghost btn-sm flex-1"
                           disabled={completeSale.isPending}
                         >
                           <ArrowRight className="w-3.5 h-3.5" /> Cash sale
@@ -360,10 +398,10 @@ export default function Quotes() {
                                 ),
                             })
                           }
-                          className="btn btn-ghost h-9 w-9 p-0 text-danger"
+                          className="btn btn-ghost btn-sm w-7 md:w-9 px-0 md:p-0 text-danger shrink-0"
                           title="Delete quote (Admin only)"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </>
@@ -388,16 +426,52 @@ export default function Quotes() {
                             ),
                         })
                       }
-                      className="btn btn-ghost h-9 w-9 p-0 text-danger ml-auto"
+                      className="btn btn-ghost btn-sm w-7 md:w-9 px-0 md:p-0 text-danger ml-auto"
                       title="Delete (Admin only)"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
               </div>
             </div>
           ))}
         </div>
+
+        {/* Mobile ledger — one dense row per quote, pinned height */}
+        <div className="md:hidden paper-card overflow-hidden">
+          <div className="divide-y">
+            {filtered.map((qu) => (
+              <div key={qu.id} className="flex items-center h-[30px] text-[11px] leading-tight">
+                <button
+                  onClick={() => {
+                    if (!can("quotes.manage")) return;
+                    setEdit(qu);
+                    setOpen(true);
+                  }}
+                  className="flex-1 h-full flex items-center gap-1.5 px-2 min-w-0 text-left hover:bg-paper/50 transition"
+                  title={`${qu.number} · ${qu.customerName || "Walk-in"}`}
+                >
+                  <span
+                    className={cn(
+                      "shrink-0 w-[42px] text-center rounded-full border px-1 py-px text-[8px] uppercase tracking-wide font-bold leading-none truncate",
+                      STATUS_COLORS[qu.status]
+                    )}
+                  >
+                    {qu.status}
+                  </span>
+                  <span className="flex-1 min-w-0 truncate">
+                    <span className="font-semibold">{qu.number}</span>
+                    <span className="text-ink-mute"> · {qu.customerName || "Walk-in"}</span>
+                  </span>
+                  <span className="num font-bold shrink-0">
+                    <MoneyText value={formatCurrency(qu.total, settings?.currency)} />
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+        </>
       )}
 
       {open && <QuoteModal quote={edit} onClose={() => setOpen(false)} />}
@@ -414,26 +488,38 @@ export default function Quotes() {
 function Stat({
   label,
   value,
+  fullValue,
   tone,
 }: {
   label: string;
   value: string;
+  fullValue?: string;
   tone?: "success" | "magenta" | "warning";
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const showFull = expanded && !!fullValue;
+
   return (
-    <div className="paper-card p-4">
-      <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+    <div
+      className="paper-card p-2 md:p-4 min-w-0 cursor-pointer select-none"
+      onDoubleClick={() => setExpanded((e) => !e)}
+    >
+      <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest leading-none text-ink-mute truncate">
         {label}
       </div>
       <div
+        title={fullValue ?? value}
         className={cn(
-          "font-display text-2xl font-bold num mt-1",
+          "font-display font-bold num mt-0.5 md:mt-1 leading-tight break-words",
+          showFull
+            ? "text-[7px] md:text-[clamp(0.65rem,3vw,0.95rem)]"
+            : "text-[12px] md:text-2xl",
           tone === "success" && "text-success",
           tone === "magenta" && "text-magenta-reg",
           tone === "warning" && "text-warning"
         )}
       >
-        {value}
+        {showFull && fullValue ? <MoneyText value={fullValue} /> : <MoneyText value={value} />}
       </div>
     </div>
   );

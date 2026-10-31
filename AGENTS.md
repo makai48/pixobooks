@@ -40,6 +40,7 @@ Run typecheck, lint, build, and tests before calling a non-trivial change done.
 - Page CSS should copy/reuse the shared component styles under the scope (`.st .btn`, `.st .input`, `.st .opt-card`, etc.) and avoid importing `pixobooks-shared.css` globally.
 - Settings/design reference: `C:\Users\Pixo\Downloads\stitch_item_modal_design_system (26)\code.html` and `DESIGN.md`. The rendered `code.html` is the visual authority; `DESIGN.md` supplies typography/spacing culture.
 - `docs/traditional-design.md` freezes the Sales Report page's **Traditional design** baseline: tokens, page rhythm, pinned metrics and the glass-popover recipe. Measure changes to that page against it; do not drift the palette or the row heights.
+- `docs/stock-design.md` freezes the STOCK page's mobile **Stock Ledger** culture: single-line search+filter+action filter card, ≤15% fit-width glass dropdowns with type-to-search, sticky above-table header, pinned ledger rows, grey-symbol full figures, bottom-sheet modals. Apply it to every dense list page on mobile; restore desktop with `md:` overrides.
 - Use lucide icons with `className="icon"`; scoped CSS controls size/stroke.
 - Do not add comments unless the surrounding code already relies on them.
 

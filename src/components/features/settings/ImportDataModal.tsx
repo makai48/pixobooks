@@ -25,6 +25,7 @@ import {
   useImportJob,
 } from "@/lib/importJob";
 import { EXPORT_CATEGORIES, downloadExport, type ExportCategory } from "@/lib/export";
+import GlassSelect from "@/components/ui/GlassSelect";
 
 export type ImportBackupActor = { id: string; name: string; role?: string };
 
@@ -143,8 +144,7 @@ export default function ImportBackupScreen({
     document.getElementById("import-file-input")?.click();
   };
 
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const next = e.target.value as ImportCategory;
+  const handleCategoryChange = (next: ImportCategory) => {
     setCategory(next);
     // The file names its own category; a manual change means the user wants a
     // different slice of the same bundle.
@@ -203,18 +203,14 @@ export default function ImportBackupScreen({
                 <label className="field-label" htmlFor="import-category-select">
                   Data category
                 </label>
-                <select
+                <GlassSelect
                   id="import-category-select"
-                  className="input"
                   value={category}
-                  onChange={handleCategoryChange}
-                >
-                  {IMPORT_CATEGORIES.map((c) => (
-                    <option key={c.key} value={c.key}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => handleCategoryChange(v as ImportCategory)}
+                  ariaLabel="Data category"
+                  options={IMPORT_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))}
+                  className="input select-glass"
+                />
                 <div className="field-hint">
                   Pick the dataset this file should be written into.
                 </div>
@@ -476,18 +472,14 @@ export default function ImportBackupScreen({
             <label className="field-label" htmlFor="export-category-select">
               Data category
             </label>
-            <select
+            <GlassSelect
               id="export-category-select"
-              className="input"
               value={exportCategory}
-              onChange={(e) => setExportCategory(e.target.value as ExportCategory)}
-            >
-              {EXPORT_CATEGORIES.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setExportCategory(v as ExportCategory)}
+              ariaLabel="Data category"
+              options={EXPORT_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))}
+              className="input select-glass"
+            />
             <div className="field-hint">Pick the dataset you want to download.</div>
           </div>
 

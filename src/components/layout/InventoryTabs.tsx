@@ -17,9 +17,9 @@ export default function InventoryTabs() {
   const canUnits = can("settings.units") || can("settings.manage");
 
   const items: SubNavItem[] = [
-    { to: "/inventory", label: "Inventory & BOM", icon: Boxes },
-    { to: "/stock-taking", label: "Stock Taking", icon: ClipboardList },
-    { to: "/purchase-orders", label: "Purchase Orders", icon: ShoppingBag },
+    { to: "/inventory", label: "Stock", icon: Boxes },
+    { to: "/stock-taking", label: "Stock Take", icon: ClipboardList },
+    { to: "/purchase-orders", label: "PO", icon: ShoppingBag },
     { to: "/suppliers", label: "Suppliers", icon: Truck },
   ];
 

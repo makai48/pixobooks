@@ -37,6 +37,8 @@ import { useUnitConversions } from "@/hooks/useUnitConversions";
 import { isUomDiscrete } from "@/lib/uom";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useShopSettings, useUpdateShopSettings } from "@/hooks/useShopSettings";
+import { useEmployees } from "@/hooks/useEmployees";
+import { evaluateTxnPolicyForCashier } from "@/hooks/useStaffAllowances";
 import { useCompleteSale, useSalePayments } from "@/hooks/useSales";
 import type { CheckoutInput } from "@/hooks/useSales";
 import {
@@ -55,7 +57,8 @@ import {
   type POSViewMode,
   type PaymentMethod,
 } from "@/types";
-import { cn, formatCurrency, formatNumber, formatIntegerWithCommas, wrapByWords, toErrorMessage } from "@/lib/utils";
+import { cn, formatCurrency, formatNumber, formatIntegerWithCommas, formatAmountInput, wrapByWords, toErrorMessage } from "@/lib/utils";
+import { currencyByCode } from "@/lib/referenceData";
 import { computeTotals, producibleFromBOM } from "@/lib/pos";
 import {
   clearPosDraft,
@@ -68,6 +71,8 @@ import DocumentView from "@/components/features/receipts/DocumentView";
 import PrintablePortal from "@/components/features/receipts/PrintablePortal";
 import ReceiptActions from "@/components/features/receipts/ReceiptActions";
 import CustomerCombobox from "@/components/features/customers/CustomerCombobox";
+import GlassSelect from "@/components/ui/GlassSelect";
+import MoneyText from "@/components/ui/MoneyText";
 import CustomerModal from "@/components/features/customers/CustomerModal";
 import OnboardingChecklist from "@/components/onboarding/OnboardingChecklist";
 import type { AppOutletContext } from "@/components/layout/AppLayout";
@@ -87,6 +92,8 @@ export default function Dashboard() {
   const { data: customers = [] } = useCustomers();
   const { data: settings } = useShopSettings();
   const { data: heldTickets = [] } = useHeldTickets();
+  const { data: employees = [] } = useEmployees();
+  const updateSettings = useUpdateShopSettings();
   const completeSale = useCompleteSale();
   const holdTicket = useHoldTicket();
   const deleteHeld = useDeleteHeldTicket();
@@ -123,6 +130,9 @@ export default function Dashboard() {
   const [cart, setCart] = useState<CartLine[]>(() => initialDraft.lines.map((line) => ({ ...line })));
   const [orderDiscountPct, setOrderDiscountPct] = useState(initialDraft.orderDiscountPct);
   const [orderDiscountAmount, setOrderDiscountAmount] = useState(initialDraft.orderDiscountAmount);
+  // Raw grouped text while the cashier types the order-discount amount, so
+  // the comma separators survive re-renders without fighting the number state.
+  const [orderDiscountRaw, setOrderDiscountRaw] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<string>(initialDraft.customerId);
   const [loyaltyRedeem, setLoyaltyRedeem] = useState(initialDraft.loyaltyRedeem);
   const [holdDialogOpen, setHoldDialogOpen] = useState(false);
@@ -154,6 +164,13 @@ export default function Dashboard() {
   });
 
   const searchRef = useRef<HTMLInputElement>(null);
+  // Focus the scanner box only where a physical keyboard exists. On mobile
+  // an auto-focused text field forces the on-screen keyboard up on load.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(min-width: 768px)").matches) return;
+    searchRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(VIEW_MODE_KEY, viewMode);
@@ -356,6 +373,34 @@ export default function Dashboard() {
       setPartialOpen(false);
       clearPosDraft(draftStorage);
       toast.success(`Sale ${sale.number} · ${formatCurrency(sale.total, settings.currency)}`);
+      // Transaction-allowance policy (Item 7): evaluate the cashier's
+      // period count in the background — never blocks the receipt.
+      if (settings?.transactionAllowancePolicy?.enabled && actor.id) {
+        const policy = settings.transactionAllowancePolicy;
+        const pending = settings.pendingTxnAllowances || [];
+        evaluateTxnPolicyForCashier({
+          cashierId: actor.id,
+          employees,
+          policy,
+          pending,
+          actor: { id: actor.id, name: actor.name },
+          persistPending: (next) =>
+            updateSettings.mutateAsync({ pendingTxnAllowances: next }),
+          onAward: (outcome) => {
+            if (outcome.status === "pending") {
+              toast.info(
+                `Allowance auto-considered for ${outcome.award.employeeName} — awaiting ${policy.approverRole === "accountant" ? "accounting" : "manager"} approval`
+              );
+            } else {
+              toast.success(
+                `Transaction allowance posted: ${formatCurrency(outcome.amount, settings.currency)}`
+              );
+            }
+          },
+        }).catch(() => {
+          /* policy engine must never break checkout */
+        });
+      }
     } catch (err) {
       const { isOfflineQueuedError } = await import("@/hooks/useOfflineQueue");
       const queueId = isOfflineQueuedError(err);
@@ -478,6 +523,10 @@ export default function Dashboard() {
   const cartCount = cart.reduce((s, l) => s + l.qty, 0);
   const canCredit = can("pos.credit") || can("pos.sell");
   const canManageCategories = can("settings.categories") || can("settings.manage");
+  // Preset currency symbol from Settings → Base Operating Currency, shown
+  // inside each ticket discount box.
+  const currencySymbol =
+    currencyByCode(settings?.currency || "USD")?.symbol || settings?.currency || "";
 
   // Ticket panel widens by 15% (330 -> 380) whenever the sidebar is collapsed.
   // Expanding the sidebar automatically snaps it back to 330.
@@ -487,7 +536,7 @@ export default function Dashboard() {
     <div className="h-full flex flex-col md:flex-row relative">
       <section
         className={cn(
-          "flex-1 min-w-0 p-3 md:p-6 flex flex-col gap-3 md:gap-4 overflow-hidden",
+          "flex-1 min-w-0 p-2.5 md:p-6 flex flex-col gap-2 md:gap-4 overflow-hidden",
           // Mobile view switch: hide the catalog when the user has
           // toggled into the Ticket view. Desktop always shows both.
           showCartMobile && "hidden md:flex"
@@ -506,11 +555,11 @@ export default function Dashboard() {
         {/* Mobile-only Products ↔ Ticket switch. State (cart, customer,
             qtys, discounts) is fully preserved across switches because
             it lives entirely in React state above. */}
-        <div className="md:hidden paper-card p-1 flex items-center gap-1">
+        <div className="md:hidden paper-card p-0.5 flex items-center gap-0.5">
           <button
             onClick={() => setShowCartMobile(false)}
             className={cn(
-              "flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-xs font-semibold uppercase tracking-widest transition",
+              "flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-md text-[10px] font-semibold uppercase tracking-widest transition",
               !showCartMobile ? "bg-ink text-paper" : "text-ink-mute"
             )}
           >
@@ -519,19 +568,18 @@ export default function Dashboard() {
           <button
             onClick={() => setShowCartMobile(true)}
             className={cn(
-              "flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-xs font-semibold uppercase tracking-widest transition",
+              "flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-md text-[10px] font-semibold uppercase tracking-widest transition",
               showCartMobile ? "bg-ink text-paper" : "text-ink-mute"
             )}
           >
             <Receipt className="w-3.5 h-3.5" /> Ticket ({cart.reduce((s, l) => s + l.qty, 0)})
           </button>
         </div>
-        <div className="paper-card p-3 md:p-4 space-y-3">
+        <div className="paper-card p-2 md:p-4 space-y-1.5 md:space-y-3">
           <div className="relative">
             <ScanLine className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-mute" />
             <input
               ref={searchRef}
-              autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleSearchKeydown}
@@ -541,7 +589,45 @@ export default function Dashboard() {
             <Search className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-mute" />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 md:gap-2 md:hidden">
+            <GlassSelect
+              value={category}
+              onChange={setCategory}
+              ariaLabel="Product category"
+              options={categories.map((c) => ({
+                value: c,
+                label: c === "All" ? "All categories" : c,
+              }))}
+              className="input input-sm select-glass flex-1 min-w-0"
+            />
+            {canManageCategories && (
+              <button onClick={() => setCategoryManagerOpen(true)} className="btn btn-outline btn-sm shrink-0" title="Manage categories">
+                <SettingsIcon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden md:inline text-xs">Manage</span>
+              </button>
+            )}
+            {/* Compact layout cycler on mobile keeps the filter card to one
+                line; desktop keeps the full three-button group below. */}
+            <button
+              onClick={() =>
+                setViewMode(
+                  viewMode === "thumbnails" ? "tiles" : viewMode === "tiles" ? "list" : "thumbnails"
+                )
+              }
+              className="btn btn-outline btn-sm shrink-0 md:hidden"
+              title={`Layout: ${viewMode}`}
+              aria-label={`Change layout (currently ${viewMode})`}
+            >
+              {viewMode === "thumbnails" ? (
+                <ImageIcon className="w-3.5 h-3.5" />
+              ) : viewMode === "tiles" ? (
+                <LayoutGrid className="w-3.5 h-3.5" />
+              ) : (
+                <ListIcon className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+          <div className="hidden md:flex items-center gap-2">
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none flex-1 -mx-1 px-1">
               {categories.map((c) => (
                 <button
@@ -564,12 +650,17 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="flex items-center justify-end">
+          <div className="hidden md:flex items-center justify-end">
             <div className="flex items-center gap-1 border rounded-md p-1">
               <ViewButton active={viewMode === "thumbnails"} onClick={() => setViewMode("thumbnails")} icon={ImageIcon} label="Thumbs" />
               <ViewButton active={viewMode === "tiles"} onClick={() => setViewMode("tiles")} icon={LayoutGrid} label="Tiles" />
               <ViewButton active={viewMode === "list"} onClick={() => setViewMode("list")} icon={ListIcon} label="List" />
             </div>
+          </div>
+          {/* Mobile context line: result count + ticket cue, no extra card. */}
+          <div className="md:hidden flex items-center justify-between text-[9px] leading-none text-ink-mute pt-0.5">
+            <span>{filtered.length} of {sellable.length} products</span>
+            <span>{cartCount > 0 ? `${cartCount} in ticket` : "Tap a product to add"}</span>
           </div>
         </div>
 
@@ -611,7 +702,7 @@ export default function Dashboard() {
                     </div>
                     <div className="pos-tile__body">
                       <div className="pos-tile__name">{item.name}</div>
-                      <div className="pos-tile__price">{formatCurrency(item.price, settings?.currency)}</div>
+                      <div className="pos-tile__price"><MoneyText value={formatCurrency(item.price, settings?.currency)} /></div>
                       <div className="pos-tile__stock">{stockLabelFor(item)}</div>
                     </div>
                   </button>
@@ -632,7 +723,7 @@ export default function Dashboard() {
                       <div className="text-[11px] text-ink-mute truncate">{item.category} · {item.sku}</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="num font-bold">{formatCurrency(item.price, settings?.currency)}</div>
+                      <div className="num font-bold"><MoneyText value={formatCurrency(item.price, settings?.currency)} /></div>
                       <div className="text-[10px] text-ink-mute uppercase tracking-wider">{stockLabelFor(item)}</div>
                     </div>
                     {inCart && (
@@ -667,7 +758,7 @@ export default function Dashboard() {
                     </div>
                     <div className="pos-thumb__ribbon">
                       <div className="pos-thumb__name">{item.name}</div>
-                      <div className="pos-thumb__price">{formatCurrency(item.price, settings?.currency)}</div>
+                      <div className="pos-thumb__price"><MoneyText value={formatCurrency(item.price, settings?.currency)} /></div>
                       <div className="pos-thumb__stock">{stockLabel}</div>
                     </div>
                     {inCart && (
@@ -702,7 +793,7 @@ export default function Dashboard() {
           className="md:hidden fixed bottom-20 right-4 z-30 rounded-full bg-magenta-reg text-white shadow-lg px-4 py-3 flex items-center gap-2 font-bold animate-fade-in"
         >
           <Receipt className="w-4 h-4" />
-          <span className="num">{formatCurrency(totals.total, settings?.currency)}</span>
+          <span className="num"><MoneyText value={formatCurrency(totals.total, settings?.currency)} /></span>
           <span className="chip bg-white/20 text-white text-[10px] px-2 num">{cartCount}</span>
         </button>
       )}
@@ -716,15 +807,24 @@ export default function Dashboard() {
           showCartMobile ? "translate-x-0" : "translate-x-full md:translate-x-0"
         )}
       >
-        <div className="p-3 md:p-4 border-b">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-ink-mute">Current ticket</div>
-              <div className="font-display text-base md:text-lg font-bold" title="Receipt/invoice number is assigned automatically at checkout (R/I + timestamp)">
+        <div className="p-2.5 md:p-4 border-b">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCartMobile(false)}
+              aria-label="Back to products"
+              title="Back to products — your ticket is kept"
+              className="md:hidden inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-full border border-magenta-reg bg-magenta-reg text-white shadow-sm transition active:scale-95 hover:brightness-105"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-ink-mute leading-none">Current ticket</div>
+              <div className="font-display text-sm md:text-lg font-bold truncate" title="Receipt/invoice number is assigned automatically at checkout (R/I + timestamp)">
                 {settings?.invoice.prefix}Auto
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 shrink-0">
               {can("pos.hold") && (
                 <button onClick={() => setShowHeldPanel((s) => !s)} className="btn btn-outline relative h-8 px-2">
                   <PauseCircle className="w-3.5 h-3.5" />
@@ -734,22 +834,10 @@ export default function Dashboard() {
                   )}
                 </button>
               )}
-              <button onClick={() => setShowCartMobile(false)} className="md:hidden btn btn-ghost h-8 w-8 p-0">
-                <X className="w-4 h-4" />
-              </button>
             </div>
           </div>
 
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowCartMobile(false)}
-              aria-label="Back to products"
-              title="Back to products — your ticket is kept"
-              className="md:hidden inline-flex items-center justify-center h-10 w-10 shrink-0 rounded-full border border-magenta-reg bg-magenta-reg text-white shadow-sm transition active:scale-95 hover:brightness-105"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
+          <div className="mt-1.5 md:mt-2 flex items-center gap-2">
             <CustomerCombobox
               customers={customers}
               value={customerId}
@@ -813,6 +901,18 @@ export default function Dashboard() {
                   // matches what the cashier just keyed in — total discount
                   // for the line = perUnitDiscountAmount * qty.
                   const perUnitDiscountAmount = l.unitPrice * (l.discountPct / 100);
+                  // Grouped discount text for this line. Long amounts drop the
+                  // currency symbol and take the width it frees, so the figure
+                  // is never clipped inside the narrow row chip.
+                  const discValue =
+                    rawDiscountMap[l.itemId] !== undefined
+                      ? rawDiscountMap[l.itemId]
+                      : perUnitDiscountAmount === 0
+                      ? ""
+                      : formatAmountInput(
+                          String(Math.round(perUnitDiscountAmount * 100) / 100)
+                        );
+                  const discLong = discValue.replace(/[^\d]/g, "").length > 4;
                   return (
                     <tr key={l.itemId} className="border-b hover:bg-paper/30">
                       <td className="pl-3 py-1 pr-1">
@@ -826,12 +926,11 @@ export default function Dashboard() {
                             {allowLineDiscount && (
                               <div className="flex items-center gap-1 mt-0.5">
                                 {discountType === "percentage" ? (
-                                  <>
-                                    <Percent className="w-2.5 h-2.5 text-ink-mute" />
+                                  <div className="flex items-center h-5 rounded border bg-transparent px-1">
                                     <input
                                       type="text"
                                       inputMode="decimal"
-                                      placeholder="0"
+                                      placeholder="disc."
                                       value={
                                         rawDiscountMap[l.itemId] !== undefined
                                           ? rawDiscountMap[l.itemId]
@@ -856,32 +955,27 @@ export default function Dashboard() {
                                           return n;
                                         })
                                       }
-                                      className="w-12 h-5 text-[10px] bg-transparent border rounded outline-none num text-right px-1"
+                                      className="w-12 h-full text-[8px] md:text-[10px] bg-transparent outline-none num text-right px-0 placeholder:text-ink-mute/70 placeholder:text-left"
                                     />
-                                  </>
+                                    <Percent className="w-2.5 h-2.5 ml-0.5 shrink-0 text-ink-mute" />
+                                  </div>
                                 ) : (
-                                  <>
-                                    <DollarSign className="w-2.5 h-2.5 text-ink-mute" />
+                                  <div className="flex items-center h-5 rounded border bg-transparent pl-1 pr-1">
+                                    {!discLong && (
+                                      <span className="text-[7.2px] md:text-[9px] leading-none text-ink-mute whitespace-nowrap mr-0.5 shrink-0">
+                                        {currencySymbol}
+                                      </span>
+                                    )}
                                     <input
                                       type="text"
                                       inputMode="decimal"
-                                      placeholder="0"
-                                      title="Discount per unit"
-                                      value={
-                                        rawDiscountMap[l.itemId] !== undefined
-                                          ? rawDiscountMap[l.itemId]
-                                          : perUnitDiscountAmount === 0
-                                          ? ""
-                                          : String(Math.round(perUnitDiscountAmount * 100) / 100)
-                                      }
+                                      placeholder="disc."
+                                      title={`Discount per unit (${settings?.currency})`}
+                                      value={discValue}
                                       onChange={(e) => {
-                                        let v = e.target.value.replace(/[^\d.]/g, "");
-                                        const parts = v.split(".");
-                                        if (parts.length > 2)
-                                          v = parts[0] + "." + parts.slice(1).join("");
-                                        v = v.replace(/^0+(?=\d)/, "");
-                                        setRawDiscountMap((m) => ({ ...m, [l.itemId]: v }));
-                                        const num = v === "" || v === "." ? 0 : parseFloat(v);
+                                        const formatted = formatAmountInput(e.target.value);
+                                        setRawDiscountMap((m) => ({ ...m, [l.itemId]: formatted }));
+                                        const num = parseFloat(formatted.replace(/,/g, ""));
                                         setLineDiscount(l.itemId, isFinite(num) ? num : 0);
                                       }}
                                       onBlur={() =>
@@ -891,9 +985,12 @@ export default function Dashboard() {
                                           return n;
                                         })
                                       }
-                                      className="w-14 h-5 text-[10px] bg-transparent border rounded outline-none num text-right px-1"
+                                      className={cn(
+                                        "h-full text-[8px] md:text-[10px] bg-transparent outline-none num text-right px-0 placeholder:text-ink-mute/70 placeholder:text-left",
+                                        discLong ? "w-16" : "w-12"
+                                      )}
                                     />
-                                  </>
+                                  </div>
                                 )}
                                 <button onClick={() => removeLine(l.itemId)} className="text-ink-mute hover:text-danger ml-0.5">
                                   <Trash2 className="w-2.5 h-2.5" />
@@ -1028,11 +1125,25 @@ export default function Dashboard() {
                 {discountType === "amount" ? (<DollarSign className="w-3 h-3 text-ink-mute" />) : (<Percent className="w-3 h-3 text-ink-mute" />)}
                 <input
                   id="pos-discount-input"
-                  type="number" min={0}
-                  max={discountType === "amount" ? preDiscountTotal : 100}
-                  step={1}
-                  value={discountType === "amount" ? orderDiscountAmount : orderDiscountPct}
-                  onChange={(e) => { if (discountType === "amount") setOrderDiscountAmount(Number(e.target.value)); else setOrderDiscountPct(Number(e.target.value)); }}
+                  type="text"
+                  inputMode="decimal"
+                  value={
+                    discountType === "amount"
+                      ? orderDiscountRaw ??
+                        (orderDiscountAmount === 0 ? "" : formatAmountInput(String(orderDiscountAmount)))
+                      : String(orderDiscountPct)
+                  }
+                  onChange={(e) => {
+                    if (discountType === "amount") {
+                      const formatted = formatAmountInput(e.target.value);
+                      setOrderDiscountRaw(formatted);
+                      const n = parseFloat(formatted.replace(/,/g, ""));
+                      setOrderDiscountAmount(Math.min(preDiscountTotal, isFinite(n) ? n : 0));
+                    } else {
+                      setOrderDiscountPct(Number(e.target.value.replace(/[^\d.]/g, "")) || 0);
+                    }
+                  }}
+                  onBlur={() => setOrderDiscountRaw(null)}
                   className="w-16 h-full text-xs bg-transparent outline-none num text-right pr-1"
                 />
               </div>
@@ -1066,7 +1177,7 @@ export default function Dashboard() {
 
           <div className="flex items-baseline justify-between pt-1">
             <div className="font-display text-base font-semibold">Total</div>
-            <div className="num text-xl font-bold">{formatCurrency(totals.total, settings?.currency)}</div>
+            <div className="num text-xl font-bold"><MoneyText value={formatCurrency(totals.total, settings?.currency)} /></div>
           </div>
 
           {canViewCosts && cart.length > 0 && (
@@ -1121,19 +1232,25 @@ export default function Dashboard() {
       )}
 
       {holdDialogOpen && (
-        <div className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4">
-          <div className="paper-card p-6 w-full max-w-sm animate-fade-in">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-[11px] uppercase tracking-widest text-ink-mute">Hold ticket</div>
-                <h3 className="font-display text-xl font-bold">Give it a label</h3>
+        <div className="fixed inset-0 z-50 bg-ink/40 flex items-end md:items-center justify-center p-2 md:p-4 animate-fade-in">
+          <div className="paper-card glass-sheet p-2.5 md:p-5 w-full max-w-sm max-h-[94dvh] overflow-auto animate-fade-in">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">Hold ticket</div>
+                <h3 className="font-display text-base md:text-xl font-bold leading-tight">Give it a label</h3>
               </div>
-              <button onClick={() => setHoldDialogOpen(false)} className="btn btn-ghost">
+              <button
+                type="button"
+                onClick={() => setHoldDialogOpen(false)}
+                className="btn btn-ghost btn-sm max-md:w-7 max-md:px-0 shrink-0"
+                aria-label="Close hold ticket"
+                title="Close"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <input autoFocus value={holdLabel} onChange={(e) => setHoldLabel(e.target.value)} placeholder="e.g. Amy's business cards" className="input mt-4" onKeyDown={(e) => e.key === "Enter" && hold()} />
-            <div className="mt-4 flex justify-end gap-2">
+            <input autoFocus value={holdLabel} onChange={(e) => setHoldLabel(e.target.value)} placeholder="e.g. Amy's business cards" className="input mt-2 md:mt-4" onKeyDown={(e) => e.key === "Enter" && hold()} />
+            <div className="mt-2 md:mt-4 flex justify-end gap-1.5 md:gap-2">
               <button onClick={() => setHoldDialogOpen(false)} className="btn btn-outline">Cancel</button>
               <button onClick={hold} disabled={holdTicket.isPending} className="btn btn-primary">Hold ticket</button>
             </div>
@@ -1196,30 +1313,38 @@ function PartialPaymentModal({ total, currency, onClose, onConfirm, pending }: {
   const [amount, setAmount] = useState(Math.round(total / 2));
   const due = Math.max(0, total - amount);
   return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-sm overflow-hidden">
-        <div className="p-5 border-b flex items-center justify-between">
-          <div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">Cash + Credit</div>
-            <h2 className="font-display text-xl font-bold">Split payment</h2>
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-end md:items-center justify-center p-2 md:p-4 animate-fade-in">
+      <div className="paper-card glass-sheet w-full max-w-sm overflow-hidden max-h-[94dvh] md:max-h-[92vh] flex flex-col">
+        <div className="px-2.5 md:px-5 py-2 md:py-4 border-b flex items-center justify-between gap-2 shrink-0">
+          <div className="min-w-0">
+            <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">Cash + Credit</div>
+            <h2 className="font-display text-base md:text-xl font-bold leading-tight">Split payment</h2>
           </div>
-          <button onClick={onClose} className="btn btn-ghost"><X className="w-4 h-4" /></button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-ghost btn-sm max-md:w-7 max-md:px-0 shrink-0"
+            aria-label="Close split payment"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-auto p-2.5 md:p-5 space-y-2 md:space-y-4">
           <p className="text-xs text-ink-mute">
             Fill in the exact cash amount received. That amount is added to the receipt now, and the remainder becomes a credit invoice tracked in Sales Report. A final receipt is issued when the balance is cleared.
           </p>
           <div>
-            <span className="label">Total due</span>
-            <div className="num text-2xl font-bold">{formatCurrency(total, currency)}</div>
+            <span className="label text-[9px] md:text-xs">Total due</span>
+            <div className="num text-2xl font-bold"><MoneyText value={formatCurrency(total, currency)} /></div>
           </div>
           <div>
-            <label htmlFor="partial-cash-input" className="label">Cash paid now</label>
+            <label htmlFor="partial-cash-input" className="label text-[9px] md:text-xs">Cash paid now</label>
             <input id="partial-cash-input" autoFocus type="number" min={0} max={total} step={1} value={amount} onChange={(e) => setAmount(Math.max(0, Math.min(total, Number(e.target.value))))} className="input mt-1 num text-right" />
           </div>
           <div className="flex items-baseline justify-between border-t pt-3">
-            <span className="label">Remaining as credit</span>
-            <span className="num text-lg font-bold text-magenta-reg">{formatCurrency(due, currency)}</span>
+            <span className="label text-[9px] md:text-xs">Remaining as credit</span>
+            <span className="num text-lg font-bold text-magenta-reg"><MoneyText value={formatCurrency(due, currency)} /></span>
           </div>
           <button onClick={() => onConfirm(amount)} disabled={pending || amount <= 0 || amount >= total} className="btn btn-primary w-full h-11">
             <Landmark className="w-4 h-4" />
@@ -1352,7 +1477,7 @@ function CategoryManagerModal({ existingItemCategories, customCategories, onClos
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden">
+      <div className="paper-card glass-sheet w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden">
         <div className="p-4 border-b flex items-center justify-between shrink-0">
           <div>
             <div className="text-[11px] uppercase tracking-widest text-ink-mute">POS categories</div>

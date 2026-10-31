@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   ClipboardList, Download, Plus, Printer, Upload,
-  X, ChevronLeft, ChevronRight, Edit3,
+  X, ChevronLeft, ChevronRight, ChevronDown, Edit3, SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useItems } from "@/hooks/useItems";
@@ -59,6 +59,9 @@ export default function StockTaking() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [rangeMode, setRangeMode] = useState<"month" | "custom">("month");
+  // Mobile filter drawer: period + category filters collapse by default
+  // so the table gets maximum room. Desktop always shows everything.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState(todayISO());
   const [customTo, setCustomTo] = useState(todayISO());
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
@@ -305,7 +308,7 @@ export default function StockTaking() {
         `stock-taking-${from}-to-${to}.csv`,
         rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n")
       );
-      toast.success("Stock taking summary exported");
+      toast.success("Stock take summary exported");
     } else {
       const rows: string[][] = [
         [
@@ -358,8 +361,24 @@ export default function StockTaking() {
 
   return (
     <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
+      {/* Sticky mobile header (Stock Ledger culture): period control +
+          stats + filters stay pinned while the table scrolls beneath.
+          Desktop keeps the normal flow. */}
+      <div className="space-y-2 md:space-y-4 max-md:sticky max-md:top-0 max-md:z-20 max-md:-mx-2.5 max-md:-mt-2.5 max-md:px-2.5 max-md:pt-2.5 max-md:pb-2.5 max-md:bg-paper max-md:border-b max-md:border-line">
+      {/* Mobile filter drawer toggle — collapsed by default for table room. */}
+      <button
+        onClick={() => setFiltersOpen((o) => !o)}
+        aria-expanded={filtersOpen}
+        className="md:hidden btn btn-outline btn-sm w-full"
+      >
+        <SlidersHorizontal className="w-3.5 h-3.5" />
+        Period & filters
+        <ChevronDown
+          className={cn("w-3.5 h-3.5 transition", filtersOpen && "rotate-180")}
+        />
+      </button>
       {/* Period control */}
-      <div className="paper-card p-2.5 md:p-4 flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3">
+      <div className={cn("paper-card p-2.5 md:p-4 flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3", !filtersOpen && "max-md:hidden")}>
         <div className="flex items-center gap-1.5 text-ink-mute min-w-0">
           <ClipboardList className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
           <div className="min-w-0">
@@ -367,7 +386,110 @@ export default function StockTaking() {
             <div className="font-display font-bold text-ink text-xs md:text-sm truncate">{periodLabel}</div>
           </div>
         </div>
-        <div className="flex items-center gap-1 border rounded-md p-0.5 shrink-0">
+        {/* Mobile-only control row (Stock Ledger): period toggle and the
+            actions dropdown share the first line; the date filter wraps
+            as one block directly beneath so nothing hides off-screen. */}
+        <div className="md:hidden flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
+          <div className="flex items-center gap-1 border rounded-md p-0.5 shrink-0">
+            <button
+              onClick={() => setRangeMode("month")}
+              className={cn(
+                "h-6 px-2 rounded text-[9px] font-semibold whitespace-nowrap",
+                rangeMode === "month" ? "bg-ink text-paper" : "text-ink-mute"
+              )}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setRangeMode("custom")}
+              className={cn(
+                "h-6 px-2 rounded text-[9px] font-semibold whitespace-nowrap",
+                rangeMode === "custom" ? "bg-ink text-paper" : "text-ink-mute"
+              )}
+            >
+              Custom
+            </button>
+          </div>
+          {rangeMode === "month" ? (
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-[200px]">
+              <button
+                onClick={() => {
+                  const d = new Date(year, month - 1, 1);
+                  setYear(d.getFullYear());
+                  setMonth(d.getMonth());
+                }}
+                className="btn btn-outline btn-sm w-7 p-0 shrink-0"
+                aria-label="Previous month"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <GlassSelect
+                value={String(month)}
+                onChange={(v) => setMonth(Number(v))}
+                ariaLabel="Month"
+                options={MONTH_NAMES.map((m, i) => ({ value: String(i), label: m }))}
+                className="input input-sm select-glass max-md:px-1.5 shrink-0"
+              />
+              <GlassSelect
+                value={String(year)}
+                onChange={(v) => setYear(Number(v))}
+                ariaLabel="Year"
+                options={years.map((y) => ({ value: String(y), label: String(y) }))}
+                className="input input-sm select-glass max-md:px-1.5 shrink-0"
+              />
+              <button
+                onClick={() => {
+                  const d = new Date(year, month + 1, 1);
+                  setYear(d.getFullYear());
+                  setMonth(d.getMonth());
+                }}
+                className="btn btn-outline btn-sm w-7 p-0 shrink-0"
+                aria-label="Next month"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-[200px]">
+              <span className="text-ink-mute text-[9px] shrink-0">From</span>
+              <GlassDatePicker
+                value={customFrom}
+                onChange={setCustomFrom}
+                ariaLabel="From date"
+                className="input input-sm select-glass max-md:px-1.5 shrink-0"
+              />
+              <span className="text-ink-mute text-[9px] shrink-0">To</span>
+              <GlassDatePicker
+                value={customTo}
+                onChange={setCustomTo}
+                ariaLabel="To date"
+                className="input input-sm select-glass max-md:px-1.5 shrink-0"
+              />
+            </div>
+          )}
+          <GlassSelect
+            value=""
+            onChange={(v) => {
+              if (!v) return;
+              if (v === "summary") exportCsv("summary");
+              else if (v === "adjustments") exportCsv("adjustments");
+              else if (v === "worksheet") downloadWorksheet();
+              else if (v === "print") setPrintSheet(true);
+              else if (v === "upload") setUploadOpen(true);
+            }}
+            ariaLabel="Report actions"
+            options={[
+              { value: "", label: "Actions…" },
+              { value: "summary", label: "Summary CSV" },
+              { value: "adjustments", label: "Adjustments CSV" },
+              { value: "worksheet", label: "Count sheet" },
+              { value: "print", label: "Print sheet" },
+              ...(canAdjust ? [{ value: "upload", label: "Upload counts" }] : []),
+            ]}
+            className="input input-sm select-glass max-md:px-1.5 shrink-0"
+          />
+        </div>
+        <div className="max-md:hidden flex items-center gap-1 border rounded-md p-0.5 shrink-0">
           <button
             onClick={() => setRangeMode("month")}
             className={cn(
@@ -388,7 +510,7 @@ export default function StockTaking() {
           </button>
         </div>
         {rangeMode === "month" ? (
-          <div className="flex items-center gap-1 md:gap-2 md:flex-1">
+          <div className="max-md:hidden flex items-center gap-1 md:gap-2 md:flex-1">
             <button
               onClick={() => {
                 const d = new Date(year, month - 1, 1);
@@ -425,7 +547,7 @@ export default function StockTaking() {
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1 md:gap-2 md:flex-1">
+          <div className="max-md:hidden flex items-center gap-1 md:gap-2 md:flex-1">
             <span className="text-ink-mute text-[9px] md:text-xs shrink-0">From</span>
             <GlassDatePicker
               value={customFrom}
@@ -442,7 +564,7 @@ export default function StockTaking() {
             />
           </div>
         )}
-        <div className="flex gap-1 md:gap-2 flex-wrap">
+        <div className="hidden md:flex gap-1 md:gap-2 flex-wrap">
           <button onClick={() => exportCsv("summary")} className="btn btn-outline btn-sm">
             <Download className="w-3.5 h-3.5 md:w-4 md:h-4" /> Summary CSV
           </button>
@@ -502,7 +624,7 @@ export default function StockTaking() {
       </div>
 
       {/* Filters */}
-      <div className="paper-card p-2.5 md:p-3 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:grid-cols-3 items-center md:items-end gap-x-1.5 gap-y-1.5 md:gap-3">
+      <div className={cn("paper-card p-2.5 md:p-3 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:grid-cols-3 items-center md:items-end gap-x-1.5 gap-y-1.5 md:gap-3", !filtersOpen && "max-md:hidden")}>
         <div className="max-md:contents">
           <label htmlFor="st-category" className="label max-md:text-[9px] max-md:whitespace-nowrap">Category</label>
           <GlassSelect
@@ -537,13 +659,14 @@ export default function StockTaking() {
           {filteredRows.length} of {stocked.length} stocked items · {adjustments.length} adjustments in range
         </div>
       </div>
+      </div>
 
       {/* Table */}
       <div className="paper-card overflow-hidden">
         <div className="overflow-auto max-h-[60vh]">
           <table className="w-full text-[10px] md:text-sm">
             <thead>
-              <tr className="text-left text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute bg-paper/60 sticky top-0">
+              <tr className="text-left text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute bg-paper sticky top-0">
                 <th className="p-1.5 pl-2 md:p-2 md:pl-3">Item</th>
                 <th className="p-1.5 hidden md:table-cell">Type</th>
                 <th className="p-1.5 text-right hidden md:table-cell">Opening</th>

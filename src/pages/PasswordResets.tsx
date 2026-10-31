@@ -17,6 +17,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import SubNav from "@/components/layout/SubNav";
+import GlassSelect from "@/components/ui/GlassSelect";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -122,7 +123,7 @@ export default function PasswordResetsPage() {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-3 md:space-y-4">
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
       <SubNav
         items={[
           { to: "/employees", label: "Team", icon: UserCog },
@@ -134,17 +135,15 @@ export default function PasswordResetsPage() {
       />
 
       {/* Header + filter chips (responsive) */}
-      <div className="paper-card p-3 md:p-4 flex flex-col md:flex-row md:items-center gap-3">
-        <div className="flex items-start gap-2 flex-1 min-w-0">
-          <ShieldQuestion className="w-5 h-5 text-magenta-reg shrink-0 mt-0.5" />
+      <div className="paper-card p-2.5 md:p-4 flex flex-wrap items-center gap-x-1.5 gap-y-1.5 md:gap-3">
+        <div className="flex items-center gap-1.5 md:gap-2 flex-1 min-w-[140px]">
+          <ShieldQuestion className="w-4 h-4 md:w-5 md:h-5 text-magenta-reg shrink-0" />
           <div className="min-w-0">
-            <h1 className="font-display text-lg md:text-xl font-bold leading-tight">
+            <h1 className="font-display text-sm md:text-xl font-bold leading-tight truncate">
               Password reset requests
             </h1>
-            <p className="text-[11px] md:text-xs text-ink-mute mt-0.5">
-              Approvals actually reset the employee's login password and unlock
-              the account. The temporary password is displayed in a secure
-              modal only visible to you — share it directly with the employee.
+            <p className="hidden md:block text-[11px] md:text-xs text-ink-mute mt-0.5">
+              Approvals reset the login and unlock the account. The temp password shows once — share it directly.
               {isFetching && (
                 <span className="ml-1.5 inline-flex items-center gap-1 text-magenta-reg">
                   <span className="w-1.5 h-1.5 rounded-full bg-magenta-reg animate-pulse" />
@@ -154,30 +153,27 @@ export default function PasswordResetsPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex items-center gap-1">
-            <label htmlFor="pr-temp-expires" className="label text-[10px]">Temp expires</label>
-            <select
-              id="pr-temp-expires"
-              value={expirationHours}
-              onChange={(e) => setExpirationHours(Number(e.target.value))}
-              className="input h-8 py-0 text-xs"
-              title="Temporary-password validity window"
-            >
-              {TEMP_PASSWORD_HOUR_PRESETS.map((h) => (
-                <option key={h} value={h}>
-                  {h < 48 ? `${h}h` : `${Math.round(h / 24)}d`}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-1 flex-wrap">
-            {(["pending", "approved", "rejected", "all"] as const).map((k) => (
+        <div className="flex items-center gap-1 shrink-0">
+          <label htmlFor="pr-temp-expires" className="label text-[9px] md:text-[10px] whitespace-nowrap">Temp expires</label>
+          <GlassSelect
+            id="pr-temp-expires"
+            value={String(expirationHours)}
+            onChange={(v) => setExpirationHours(Number(v))}
+            ariaLabel="Temp expires"
+            options={TEMP_PASSWORD_HOUR_PRESETS.map((h) => ({
+              value: String(h),
+              label: h < 48 ? `${h}h` : `${Math.round(h / 24)}d`,
+            }))}
+            className="input input-sm select-glass max-md:px-1.5"
+          />
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {(["pending", "approved", "rejected", "all"] as const).map((k) => (
               <button
                 key={k}
                 onClick={() => setFilter(k)}
                 className={cn(
-                  "chip border px-2.5 h-8 text-[10px] md:text-xs uppercase tracking-widest inline-flex items-center gap-1.5",
+                  "chip border px-2 h-6 md:h-8 text-[9px] md:text-xs uppercase tracking-widest inline-flex items-center gap-1 shrink-0 transition",
                   filter === k
                     ? "bg-ink text-paper border-ink"
                     : "border-line hover:border-ink"
@@ -194,7 +190,6 @@ export default function PasswordResetsPage() {
                 </span>
               </button>
             ))}
-          </div>
         </div>
       </div>
 

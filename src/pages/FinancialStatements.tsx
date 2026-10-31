@@ -42,6 +42,7 @@ import { cn, formatCurrency, formatDate, formatDateTime, formatMoney, todayISO, 
 import GlassSelect from "@/components/ui/GlassSelect";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import StatCard from "@/components/ui/StatCard";
+import MoneyText from "@/components/ui/MoneyText";
 import type { StandingOrder, StandingOrderKind, StandingOrderFrequency, BankDeposit } from "@/types";
 import { MONTH_NAMES } from "@/types";
 import { EMPTY_DAY_FLOW, effectiveBankedToday } from "@/lib/cashLedger";
@@ -1148,7 +1149,7 @@ function DailyBalancingModal({ onClose, currency, actor }: {
               "text-xl md:text-4xl",
               closingBalance >= 0 ? "text-ink" : "text-danger"
             )}>
-              {formatCurrency(closingBalance, currency)}
+              <MoneyText value={formatCurrency(closingBalance, currency)} />
             </div>
             <div className="td-hint mt-0.5 md:mt-1">
               = Current till {formatCurrency(currentTillCash, currency)}
@@ -1231,7 +1232,7 @@ function ReadOnlyFlowRow({ label, value, currency, positive, negative, bold, loa
         !bold && positive && "text-success",
         !bold && negative && "text-danger"
       )}>
-        {loading ? "…" : formatCurrency(value, currency)}
+        {loading ? "…" : <MoneyText value={formatCurrency(value, currency)} />}
       </span>
     </div>
   );

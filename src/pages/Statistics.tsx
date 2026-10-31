@@ -48,6 +48,7 @@ import {
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassSelect from "@/components/ui/GlassSelect";
 import StatCard from "@/components/ui/StatCard";
+import MoneyText from "@/components/ui/MoneyText";
 import BarChart from "@/components/charts/BarChart";
 import LineChart from "@/components/charts/LineChart";
 import PieChart from "@/components/charts/PieChart";
@@ -826,7 +827,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="num text-[11px] md:text-sm font-bold mt-0.5 md:mt-1 leading-tight truncate" title={value}>
-        {value}
+        <MoneyText value={value} />
       </div>
     </div>
   );

@@ -40,6 +40,11 @@ import type {
   ClientBillingPeriodStatus,
   ClientInvoiceMode,
 } from "@/types";
+import {
+  DEFAULT_TXN_ALLOWANCE_POLICY,
+  type PendingTxnAllowance,
+  type TransactionAllowancePolicy,
+} from "@/types";
 
 const n = (v: unknown, d = 0) => (v == null ? d : Number(v));
 
@@ -418,6 +423,31 @@ export function mapSettings(r: DbRow): Settings {
       stripeCustomerId: r.stripe_customer_id ?? r.billing?.stripeCustomerId ?? null,
       stripeSubscriptionId: r.stripe_subscription_id ?? r.billing?.stripeSubscriptionId ?? null,
     },
+    transactionAllowancePolicy: parseTxnAllowancePolicy(r.transaction_allowance_policy),
+    pendingTxnAllowances: Array.isArray(r.pending_txn_allowances)
+      ? (r.pending_txn_allowances as PendingTxnAllowance[])
+      : [],
+  };
+}
+
+/** Merge a stored policy blob with defaults (older rows store `{}`). */
+function parseTxnAllowancePolicy(raw: unknown): TransactionAllowancePolicy {
+  const p = (raw && typeof raw === "object" ? raw : {}) as Partial<TransactionAllowancePolicy>;
+  const threshold = Math.max(1, Math.trunc(Number(p.threshold) || 0) || DEFAULT_TXN_ALLOWANCE_POLICY.threshold);
+  const amount = Math.max(0, Number(p.amount) || 0);
+  return {
+    enabled: p.enabled === true,
+    threshold,
+    period: p.period === "weekly" || p.period === "monthly" ? p.period : "daily",
+    allowanceName:
+      typeof p.allowanceName === "string" && p.allowanceName.trim()
+        ? p.allowanceName.trim()
+        : DEFAULT_TXN_ALLOWANCE_POLICY.allowanceName,
+    amount,
+    amountType: p.amountType === "percentage" ? "percentage" : "fixed",
+    requireApproval: p.requireApproval !== false,
+    approverRole: p.approverRole === "accountant" ? "accountant" : "manager",
+    dismissed: Array.isArray(p.dismissed) ? p.dismissed.filter((d): d is string => typeof d === "string") : [],
   };
 }
 

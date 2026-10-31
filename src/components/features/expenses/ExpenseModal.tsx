@@ -12,8 +12,11 @@ import {
   computeEmployeeSalary,
 } from "@/types";
 import { todayISO, formatCurrency } from "@/lib/utils";
+import MoneyText from "@/components/ui/MoneyText";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassMonthPicker from "@/components/ui/GlassMonthPicker";
+import GlassSelect from "@/components/ui/GlassSelect";
+import VendorSelect from "@/components/features/suppliers/VendorSelect";
 
 function currentMonthISO() {
   const d = new Date();
@@ -138,8 +141,10 @@ export default function ExpenseModal({
         description: form.description.trim(),
         amount: Number(form.amount),
         expenseDate: form.expenseDate,
-        // Drawings are always cash-out of the till by definition.
-        paymentMethod: isDrawing ? "cash" : form.paymentMethod,
+        // Drawings use the same selectable payment method as expenses.
+        // Only cash drawings leave the physical till (see cashLedger);
+        // transfer/card drawings are recorded without touching the till.
+        paymentMethod: form.paymentMethod,
         // Salary payments do not have a vendor
         vendor: isSalary ? null : form.vendor.trim() || null,
         notes: form.notes.trim() || null,
@@ -158,14 +163,14 @@ export default function ExpenseModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-md overflow-hidden max-h-[95dvh] flex flex-col">
-        <div className="p-5 border-b flex items-center justify-between shrink-0">
-          <div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
-              {expense ? "Edit expense" : "Record expense"}
+    <div className="fixed inset-0 z-50 bg-ink/40 flex items-end md:items-center justify-center p-2 md:p-4 animate-fade-in">
+      <div className="paper-card w-full max-w-md max-h-[94dvh] md:max-h-[92vh] overflow-hidden flex flex-col">
+        <div className="px-2.5 md:px-5 py-2 md:py-4 border-b flex items-center justify-between gap-2 shrink-0">
+          <div className="min-w-0">
+            <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">
+              {expense ? "Edit expense" : isDrawing ? "New drawing" : "Record expense"}
             </div>
-            <h2 className="font-display text-xl font-bold">
+            <h2 className="font-display text-base md:text-xl font-bold leading-tight">
               {isSalary
                 ? "Payroll payment"
                 : isDrawing
@@ -173,76 +178,79 @@ export default function ExpenseModal({
                 : "Track shop spend"}
             </h2>
           </div>
-          <button onClick={onClose} className="btn btn-ghost">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-ghost btn-sm max-md:w-7 max-md:px-0 shrink-0"
+            aria-label="Close expense"
+            title="Close"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
-        <form onSubmit={submit} className="p-5 space-y-4 overflow-auto">
+        <form
+          id="expense-form"
+          onSubmit={submit}
+          className="flex-1 overflow-auto p-2.5 md:p-5 space-y-2 md:space-y-4"
+        >
           <div>
-            <label htmlFor="exp-category" className="label">Category</label>
-            <select
+            <label htmlFor="exp-category" className="label text-[9px] md:text-xs">Category</label>
+            <GlassSelect
               id="exp-category"
               value={form.category}
-              onChange={(e) => {
-                const category = e.target.value;
+              onChange={(category) => {
                 setForm((f) => ({ ...f, category }));
                 // Reset salary-specific fields when switching away
                 if (category !== "Salary") {
                   setEmployeeId("");
                 }
               }}
-              className="input mt-1"
-            >
-              {displayCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+              ariaLabel="Category"
+              options={displayCategories.map((c) => ({ value: c, label: c }))}
+              className="input select-glass mt-1"
+            />
           </div>
 
           {isDrawing && (
-            <div className="rounded-lg border border-danger/30 bg-danger/5 p-3 space-y-1">
-              <div className="text-[11px] uppercase tracking-widest text-danger font-semibold">
-                Owner drawing · cash out of till
+            <div className="rounded-lg border border-danger/30 bg-danger/5 p-2.5 md:p-3 space-y-0.5 md:space-y-1">
+              <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-danger font-semibold">
+                Owner drawing
               </div>
-              <p className="text-[11px] text-ink-mute">
-                Drawings are recorded as cash-outs in the Cashbook and
-                automatically feed today&apos;s total into the Daily Balancing &amp;
-                Banking form. Payment method is fixed to cash.
+              <p className="text-[10px] md:text-[11px] text-ink-mute">
+                Drawings feed today&apos;s total into the Daily Balancing &amp;
+                Banking form. Cash drawings leave the till immediately;
+                transfer or card drawings are recorded without affecting the
+                till count.
               </p>
             </div>
           )}
 
           {isSalary && (
-            <div className="rounded-lg border border-magenta-reg/30 bg-magenta-reg/5 p-3 space-y-3">
-              <div className="text-[11px] uppercase tracking-widest text-magenta-reg font-semibold">
+            <div className="rounded-lg border border-magenta-reg/30 bg-magenta-reg/5 p-2.5 md:p-3 space-y-2 md:space-y-3">
+              <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-magenta-reg font-semibold">
                 Salary payment
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-1.5 md:gap-3">
                 <div>
-                  <label htmlFor="exp-salary-employee" className="label inline-flex items-center gap-1">
+                  <label htmlFor="exp-salary-employee" className="label text-[9px] md:text-xs inline-flex items-center gap-1">
                     <UserIcon className="w-3 h-3" /> Employee
                   </label>
-                  <select
+                  <GlassSelect
                     id="exp-salary-employee"
-                    required
                     value={employeeId}
-                    onChange={(e) => setEmployeeId(e.target.value)}
-                    className="input mt-1"
-                  >
-                    <option value="">Choose employee...</option>
-                    {employees
-                      .filter((e) => e.active !== false)
-                      .map((e) => (
-                        <option key={e.id} value={e.id}>
-                          {e.name} · {e.role}
-                        </option>
-                      ))}
-                  </select>
+                    onChange={setEmployeeId}
+                    ariaLabel="Employee"
+                    options={[
+                      { value: "", label: "Choose employee..." },
+                      ...employees
+                        .filter((e) => e.active !== false)
+                        .map((e) => ({ value: e.id, label: `${e.name} · ${e.role}` })),
+                    ]}
+                    className="input select-glass mt-1"
+                  />
                 </div>
                 <div>
-                  <label htmlFor="exp-salary-month" className="label inline-flex items-center gap-1">
+                  <label htmlFor="exp-salary-month" className="label text-[9px] md:text-xs inline-flex items-center gap-1">
                     <CalendarIcon className="w-3 h-3" /> Month
                   </label>
                   <GlassMonthPicker
@@ -283,7 +291,7 @@ export default function ExpenseModal({
                   <div className="flex justify-between font-semibold pt-1 border-t border-magenta-reg/20">
                     <span>Total payable</span>
                     <span className="num text-magenta-reg">
-                      {formatCurrency(form.amount, settings?.currency)}
+                      <MoneyText value={formatCurrency(form.amount, settings?.currency)} />
                     </span>
                   </div>
                 </div>
@@ -292,7 +300,7 @@ export default function ExpenseModal({
           )}
 
           <div>
-            <label htmlFor="exp-description" className="label">Description</label>
+            <label htmlFor="exp-description" className="label text-[9px] md:text-xs">Description</label>
             <input
               id="exp-description"
               required
@@ -307,9 +315,9 @@ export default function ExpenseModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-1.5 md:gap-3">
             <div>
-            <label htmlFor="exp-amount" className="label">Amount</label>
+              <label htmlFor="exp-amount" className="label text-[9px] md:text-xs">Amount</label>
             <input
               id="exp-amount"
               type="number"
@@ -327,50 +335,50 @@ export default function ExpenseModal({
               )}
             </div>
             <div>
-            <label htmlFor="exp-date" className="label">Payment date</label>
-            <GlassDatePicker
-              id="exp-date"
-              value={form.expenseDate}
-              onChange={(v) => setForm({ ...form, expenseDate: v })}
-              ariaLabel="Payment date"
-              className="input mt-1"
-              fullWidth
-            />
-            </div>
-            <div className={isSalary || isDrawing ? "col-span-2" : ""}>
-            <label htmlFor="exp-method" className="label">Payment method</label>
-            <select
-              id="exp-method"
-              value={isDrawing ? "cash" : form.paymentMethod}
-                onChange={(e) =>
-                  setForm({ ...form, paymentMethod: e.target.value as PaymentMethod })
-                }
+              <label htmlFor="exp-date" className="label text-[9px] md:text-xs">Payment date</label>
+              <GlassDatePicker
+                id="exp-date"
+                value={form.expenseDate}
+                onChange={(v) => setForm({ ...form, expenseDate: v })}
+                ariaLabel="Payment date"
                 className="input mt-1"
-                disabled={isDrawing}
-              >
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="transfer">Wire</option>
-              </select>
+              />
+            </div>
+            <div className={isSalary ? "col-span-2" : ""}>
+              <label htmlFor="exp-method" className="label text-[9px] md:text-xs">Payment method</label>
+              <GlassSelect
+                id="exp-method"
+                value={form.paymentMethod}
+                onChange={(v) =>
+                  setForm({ ...form, paymentMethod: v as PaymentMethod })
+                }
+                ariaLabel="Payment method"
+                options={[
+                  { value: "cash", label: "Cash" },
+                  { value: "card", label: "Card" },
+                  { value: "transfer", label: "Wire" },
+                ]}
+                className="input select-glass mt-1"
+              />
             </div>
           </div>
 
           {!isSalary && !isDrawing && (
             <div>
-            <label htmlFor="exp-vendor" className="label">Vendor</label>
-            <input
+              <label htmlFor="exp-vendor" className="label text-[9px] md:text-xs">Vendor</label>
+            <VendorSelect
               id="exp-vendor"
               value={form.vendor}
-              onChange={(e) => setForm({ ...form, vendor: e.target.value })}
-              className="input mt-1"
-              placeholder="Supplier or provider"
+              onChange={(vendor) => setForm({ ...form, vendor })}
+              placeholder="Select supplier..."
+              allowEmpty
             />
             </div>
           )}
 
           {isDrawing && (
             <div>
-            <label htmlFor="exp-payee" className="label">Payee (optional)</label>
+              <label htmlFor="exp-payee" className="label text-[9px] md:text-xs">Payee (optional)</label>
             <input
               id="exp-payee"
               value={form.vendor}
@@ -382,22 +390,23 @@ export default function ExpenseModal({
           )}
 
           <div>
-            <label htmlFor="exp-notes" className="label">Notes</label>
+            <label htmlFor="exp-notes" className="label text-[9px] md:text-xs">Notes</label>
             <textarea
               id="exp-notes"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="input mt-1 h-20"
+              className="input mt-1 h-14 md:h-20 text-[13px] md:text-sm"
             />
           </div>
         </form>
-        <div className="flex justify-end gap-2 p-4 border-t shrink-0 bg-card">
+        {/* Pinned footer — actions stay reachable while the form scrolls */}
+        <div className="shrink-0 flex items-center justify-end gap-1.5 md:gap-2 px-2.5 md:px-5 py-2 md:p-4 border-t md:bg-card">
           <button type="button" onClick={onClose} className="btn btn-outline">
             Cancel
           </button>
           <button
-            type="button"
-            onClick={submit}
+            type="submit"
+            form="expense-form"
             disabled={upsert.isPending}
             className="btn btn-primary"
           >

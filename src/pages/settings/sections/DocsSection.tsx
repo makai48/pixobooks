@@ -1,4 +1,5 @@
 import type { ReceiptWidthMm } from "@/types";
+import GlassSelect from "@/components/ui/GlassSelect";
 import { safeNum } from "../constants";
 import { CheckboxRow, Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
@@ -52,24 +53,26 @@ export default function DocsSection() {
               >
                 {canReceipt && (
                   <SField label="Thermal Width" htmlFor="set-receipt-width">
-                    <select
+                    <GlassSelect
                       id="set-receipt-width"
-                      className="input"
-                      value={form.receipt.paperWidthMm}
-                      onChange={(e) =>
+                      value={String(form.receipt.paperWidthMm)}
+                      onChange={(v) =>
                         setForm({
                           ...form,
                           receipt: {
                             ...form.receipt,
-                            paperWidthMm: Number(e.target.value) as ReceiptWidthMm,
+                            paperWidthMm: Number(v) as ReceiptWidthMm,
                           },
                         })
                       }
-                    >
-                      <option value={58}>58 mm (Compact Mobile)</option>
-                      <option value={80}>80 mm (Standard POS Desk)</option>
-                      <option value={99}>99 mm (Full Slip)</option>
-                    </select>
+                      ariaLabel="Thermal width"
+                      options={[
+                        { value: "58", label: "58 mm (Compact Mobile)" },
+                        { value: "80", label: "80 mm (Standard POS Desk)" },
+                        { value: "99", label: "99 mm (Full Slip)" },
+                      ]}
+                      className="input select-glass"
+                    />
                   </SField>
                 )}
                 {canInvoice && (

@@ -9,6 +9,7 @@ import {
   Usb,
 } from "lucide-react";
 import PrinterDevicePicker from "@/components/features/settings/PrinterDevicePicker";
+import GlassSelect from "@/components/ui/GlassSelect";
 import { composeIpTarget } from "@/lib/printing";
 import { cn } from "@/lib/utils";
 import type { PaperSize, Settings } from "@/types";
@@ -162,46 +163,42 @@ export default function HardwareSection() {
                     />
                   </SField>
                   <SField label="Paper size" htmlFor="set-paper-size">
-                    <select
+                    <GlassSelect
                       id="set-paper-size"
-                      className="input"
                       value={form.printer.paperSize}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setForm({
                           ...form,
-                          printer: { ...form.printer, paperSize: e.target.value as PaperSize },
+                          printer: { ...form.printer, paperSize: v as PaperSize },
                         })
                       }
-                    >
-                      {PAPER_SIZES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                      ariaLabel="Paper size"
+                      options={PAPER_SIZES.map((s) => ({ value: s, label: s }))}
+                      className="input select-glass"
+                    />
                   </SField>
                   <SField
                     label="Character codepage"
                     htmlFor="set-printer-codepage"
                     hint="Must match the printer firmware for accented text."
                   >
-                    <select
+                    <GlassSelect
                       id="set-printer-codepage"
-                      className="input"
                       value={form.printer.codepage ?? "cp1252"}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setForm({
                           ...form,
                           printer: {
                             ...form.printer,
                             codepage:
-                              e.target.value as NonNullable<Settings["printer"]["codepage"]>,
+                              v as NonNullable<Settings["printer"]["codepage"]>,
                           },
                         })
                       }
-                    >
-                      {CODEPAGES.map((c) => (
-                        <option key={c} value={c}>{c.toUpperCase()}</option>
-                      ))}
-                    </select>
+                      ariaLabel="Character codepage"
+                      options={CODEPAGES.map((c) => ({ value: c, label: c.toUpperCase() }))}
+                      className="input select-glass"
+                    />
                   </SField>
                 </div>
               </div>
@@ -478,24 +475,22 @@ export default function HardwareSection() {
                         htmlFor="set-printer-baud"
                         hint="Used only when the printer connects through Web Serial."
                       >
-                        <select
+                        <GlassSelect
                           id="set-printer-baud"
-                          className="input"
-                          value={form.printer.serialBaudRate ?? 9600}
-                          onChange={(e) =>
+                          value={String(form.printer.serialBaudRate ?? 9600)}
+                          onChange={(v) =>
                             setForm({
                               ...form,
                               printer: {
                                 ...form.printer,
-                                serialBaudRate: safeNum(e.target.value, 9600),
+                                serialBaudRate: safeNum(v, 9600),
                               },
                             })
                           }
-                        >
-                          {BAUD_RATES.map((b) => (
-                            <option key={b} value={b}>{b}</option>
-                          ))}
-                        </select>
+                          ariaLabel="Serial baud rate"
+                          options={BAUD_RATES.map((b) => ({ value: String(b), label: String(b) }))}
+                          className="input select-glass"
+                        />
                       </SField>
                     </div>
                   </div>

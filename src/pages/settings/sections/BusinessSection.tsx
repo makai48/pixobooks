@@ -1,6 +1,7 @@
 import { Image as ImageIcon } from "lucide-react";
 import CountrySelect from "@/components/common/CountrySelect";
 import PhoneInput from "@/components/common/PhoneInput";
+import GlassSelect from "@/components/ui/GlassSelect";
 import { BUSINESS_TYPES, COUNTRIES, TIMEZONES } from "@/lib/referenceData";
 import { Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
@@ -28,20 +29,20 @@ export default function BusinessSection() {
                   />
                 </SField>
                 <SField label="Commercial Category" htmlFor="set-business-type" req>
-                  <select
+                  <GlassSelect
                     id="set-business-type"
-                    className="input"
                     value={form.businessType}
-                    onChange={(e) => setForm({ ...form, businessType: e.target.value })}
-                  >
-                    <option value="">— Select —</option>
-                    {form.businessType && !BUSINESS_TYPES.includes(form.businessType) && (
-                      <option value={form.businessType}>{form.businessType}</option>
-                    )}
-                    {BUSINESS_TYPES.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setForm({ ...form, businessType: v })}
+                    ariaLabel="Commercial category"
+                    options={[
+                      { value: "", label: "- Select -" },
+                      ...(form.businessType && !BUSINESS_TYPES.includes(form.businessType)
+                        ? [{ value: form.businessType, label: form.businessType }]
+                        : []),
+                      ...BUSINESS_TYPES.map((t) => ({ value: t, label: t })),
+                    ]}
+                    className="input select-glass"
+                  />
                 </SField>
               </div>
 
@@ -61,19 +62,19 @@ export default function BusinessSection() {
                   />
                 </SField>
                 <SField label="Operating Time Zone" htmlFor="set-timezone">
-                  <select
+                  <GlassSelect
                     id="set-timezone"
-                    className="input"
                     value={form.timezone}
-                    onChange={(e) => setForm({ ...form, timezone: e.target.value })}
-                  >
-                    {!TIMEZONES.includes(form.timezone) && (
-                      <option value={form.timezone}>{form.timezone}</option>
-                    )}
-                    {TIMEZONES.map((z) => (
-                      <option key={z} value={z}>{z}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setForm({ ...form, timezone: v })}
+                    ariaLabel="Operating time zone"
+                    options={[
+                      ...(!TIMEZONES.includes(form.timezone)
+                        ? [{ value: form.timezone, label: form.timezone }]
+                        : []),
+                      ...TIMEZONES.map((z) => ({ value: z, label: z })),
+                    ]}
+                    className="input select-glass"
+                  />
                 </SField>
                 <SField label="Support Email" htmlFor="set-email" req>
                   <input

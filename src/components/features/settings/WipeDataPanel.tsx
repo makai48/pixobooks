@@ -17,6 +17,7 @@ import {
   type WipeResult,
   type WipeScopeKey,
 } from "@/lib/wipe";
+import GlassSelect from "@/components/ui/GlassSelect";
 
 type Phase = "idle" | "running" | "done" | "error";
 
@@ -115,18 +116,14 @@ export default function WipeDataPanel({ actor }: { actor?: WipeActor }) {
           <label className="field-label" htmlFor="wipe-scope-select">
             Data to delete
           </label>
-          <select
+          <GlassSelect
             id="wipe-scope-select"
-            className="input"
             value={scope}
-            onChange={(e) => pickScope(e.target.value as WipeScopeKey)}
-          >
-            {WIPE_SCOPES.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => pickScope(v as WipeScopeKey)}
+            ariaLabel="Data to delete"
+            options={WIPE_SCOPES.map((s) => ({ value: s.key, label: s.label }))}
+            className="input select-glass"
+          />
           <div className="field-hint">{selected.description}</div>
         </div>
 

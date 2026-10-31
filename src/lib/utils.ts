@@ -267,6 +267,18 @@ export function formatIntegerWithCommas(n: number | string): string {
   return raw.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+/** Group thousands while typing a money amount, keeping at most one decimal
+ *  point and two decimal places. "12500.5" -> "12,500.5". */
+export function formatAmountInput(raw: string): string {
+  const cleaned = String(raw).replace(/[^\d.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  const intRaw = (firstDot === -1 ? cleaned : cleaned.slice(0, firstDot)).replace(/^0+(?=\d)/, "");
+  const decRaw = firstDot === -1 ? "" : cleaned.slice(firstDot + 1).replace(/\./g, "").slice(0, 2);
+  const grouped = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  if (firstDot === -1) return grouped;
+  return `${grouped || "0"}.${decRaw}`;
+}
+
 /** Human-readable "time ago" — 6min ago, abt 2hrs ago, 3d ago... */
 export function timeAgo(d: string | number | Date): string {
   const then = new Date(d).getTime();

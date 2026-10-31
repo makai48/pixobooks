@@ -2,6 +2,7 @@ import { X, PackageCheck, ShoppingBag, AlertCircle } from "lucide-react";
 import type { PurchaseOrder } from "@/types";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import MoneyText from "@/components/ui/MoneyText";
 
 /**
  * Read-only PO details modal — displays every ordered line side-by-side
@@ -232,7 +233,7 @@ function MiniStat({
           tone === "warning" && "text-warning"
         )}
       >
-        {value}
+        <MoneyText value={value} />
       </div>
     </div>
   );

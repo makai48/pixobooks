@@ -5,32 +5,38 @@ import {
   Edit3,
   Trash2,
   Copy,
-  Layers,
-  Wrench,
   AlertTriangle,
   Package,
-  Upload,
 } from "lucide-react";
 // Item image column removed from list views by design — images remain in ItemModal edit view.
 import { toast } from "sonner";
-import { useItems, useDeleteItem, useSeedSampleData, usePurgeDemoData } from "@/hooks/useItems";
+import { useItems, useDeleteItem, useSeedSampleData } from "@/hooks/useItems";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useAuth } from "@/hooks/useAuth";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatMoney } from "@/lib/utils";
 import { computeItemCost, producibleFromBOM } from "@/lib/pos";
 import { ITEM_TYPE_META, type Item, type ItemType } from "@/types";
 import ItemModal from "@/components/features/inventory/ItemModal";
-import ImportModal from "@/components/features/inventory/ImportModal";
+import GlassSelect from "@/components/ui/GlassSelect";
+import MoneyText from "@/components/ui/MoneyText";
+import StatCard from "@/components/ui/StatCard";
 
 type Tab = "all" | ItemType | "low";
 
+const TYPE_SHORT: Record<ItemType, string> = {
+  product: "PROD",
+  ready: "READY",
+  material: "MATL",
+  intermediate: "INTM",
+};
+
 export default function Inventory() {
-  const { can, profile } = useAuth();
+  const { can } = useAuth();
+  const canEdit = can("inventory.edit");
   const { data: items = [], isLoading } = useItems();
   const { data: settings } = useShopSettings();
   const del = useDeleteItem();
   const seed = useSeedSampleData();
-  const purge = usePurgeDemoData();
 
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<Tab>("all");
@@ -41,7 +47,6 @@ export default function Inventory() {
    *  the difference between edit vs clone and the save path treats it
    *  as a fresh insert. */
   const [cloneFrom, setCloneFrom] = useState<Item | null>(null);
-  const [importOpen, setImportOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
@@ -108,97 +113,118 @@ export default function Inventory() {
     });
   };
 
+  const money = (n: number) => formatMoney(n, settings?.currency);
+
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Products (BOM)" value={String(stats.products)} icon={Layers} />
-        <Stat label="Ready items" value={String(stats.ready)} />
-        <Stat label="Materials" value={String(stats.materials + stats.intermediate)} icon={Wrench} />
-        <Stat
-          label="Low stock alerts"
+    <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
+      {/* Sticky mobile header: stats + filters + count stay pinned while
+          the ledger scrolls beneath. Desktop keeps the normal flow. */}
+      <div className="space-y-2 md:space-y-4 max-md:sticky max-md:top-0 max-md:z-20 max-md:-mx-2.5 max-md:-mt-2.5 max-md:px-2.5 max-md:pt-2.5 max-md:pb-2.5 max-md:bg-paper max-md:border-b max-md:border-line">
+      <div className="grid grid-cols-4 gap-1.5 md:gap-3">
+        <StatCard label="Products" value={String(stats.products)} />
+        <StatCard label="Ready" value={String(stats.ready)} />
+        <StatCard label="Materials" value={String(stats.materials + stats.intermediate)} />
+        <StatCard
+          label="Low stock"
           value={String(stats.low)}
-          tone={stats.low > 0 ? "warn" : undefined}
+          tone={stats.low > 0 ? "danger" : undefined}
         />
-        <div className="col-span-2 md:col-span-4 paper-card p-4">
-          <div className="flex items-baseline justify-between">
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
-              Inventory value on hand
-            </div>
-            <div className="font-display text-3xl font-bold num">
-              {formatCurrency(stats.invValue, settings?.currency)}
-            </div>
-          </div>
+      </div>
+
+      <div className="paper-card px-2.5 md:px-4 py-1.5 md:py-2.5 hidden md:flex items-center justify-between gap-2 min-w-0">
+        <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest leading-none text-ink-mute min-w-0 truncate">
+          Inventory value on hand
+        </div>
+        <div
+          className="font-display font-bold num text-[12px] md:text-[clamp(1rem,5.5vw,1.5rem)] leading-tight shrink-0 text-right"
+          title={formatCurrency(stats.invValue, settings?.currency)}
+        >
+          {money(stats.invValue)}
         </div>
       </div>
 
-      <div className="paper-card p-4 flex flex-col gap-3">
-        <div className="flex flex-col md:flex-row md:items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search SKU, name, or barcode"
-              aria-label="Search inventory"
-              className="input pl-9"
-            />
-          </div>
-          {(can("inventory.import") || can("inventory.edit")) && (
-            <button onClick={() => setImportOpen(true)} className="btn btn-outline" title="Import inventory JSON from another shop">
-              <Upload className="w-4 h-4" /> Import
-            </button>
-          )}
-          {can("inventory.edit") && (
-            <>
-              <button
-                onClick={() => {
-                  if (!confirm("Remove bundled sample items and customers? Your own records are untouched.")) return;
-                  purge.mutate(undefined, {
-                    onSuccess: () => toast.success("Sample data removed"),
-                    onError: (e) => toast.error(e instanceof Error ? e.message : "Purge failed"),
-                  });
-                }}
-                disabled={purge.isPending}
-                className="btn btn-ghost"
-                title="Remove bundled sample items and customers"
-              >
-                <Trash2 className="w-4 h-4" /> Purge demo
-              </button>
-              <button onClick={openNew} className="btn btn-primary">
-                <Plus className="w-4 h-4" /> New item
-              </button>
-            </>
-          )}
+      <div className="hidden md:flex items-center gap-1 overflow-x-auto scrollbar-none">
+        <span className="label text-[8px] md:text-[9px] text-ink-mute mr-0.5 shrink-0">Type</span>
+        {(
+          [
+            ["all", "All"],
+            ["product", "Products"],
+            ["ready", "Ready"],
+            ["material", "Materials"],
+            ["intermediate", "Intermediate"],
+            ["low", "Low stock"],
+          ] as [Tab, string][]
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={cn(
+              "chip border px-2 h-6 text-[9px] md:text-[10px] whitespace-nowrap shrink-0 transition",
+              tab === k ? "bg-ink text-paper border-ink" : "border-line hover:border-ink"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="paper-card p-2.5 md:p-4 flex flex-wrap items-center gap-x-1.5 gap-y-1.5 md:gap-3">
+        <div className="relative flex-1 min-w-[100px] md:min-w-0">
+          <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search SKU, name, or barcode"
+            aria-label="Search inventory"
+            className="input input-sm pl-7 md:pl-9"
+          />
         </div>
-        <div className="flex bg-paper border rounded-md p-0.5 overflow-x-auto scrollbar-none">
-          {(
-            [
-              ["all", "All"],
-              ["product", "Products"],
-              ["ready", "Ready"],
-              ["material", "Materials"],
-              ["intermediate", "Intermediate"],
-              ["low", "Low stock"],
-            ] as [Tab, string][]
-          ).map(([k, label]) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={cn(
-                "px-3 h-8 text-xs uppercase tracking-widest rounded whitespace-nowrap",
-                tab === k ? "bg-ink text-paper" : "text-ink-mute"
-              )}
-            >
-              {label}
-            </button>
-          ))}
+        <GlassSelect
+          id="inv-type"
+          value={tab}
+          onChange={(v) => setTab(v as Tab)}
+          ariaLabel="Filter by stock type"
+          options={[
+            { value: "all", label: "All types" },
+            { value: "product", label: "Products" },
+            { value: "ready", label: "Ready" },
+            { value: "material", label: "Materials" },
+            { value: "intermediate", label: "Intermediate" },
+            { value: "low", label: "Low stock" },
+          ]}
+          className="input input-sm select-glass max-md:px-1.5 md:hidden"
+        />
+        {canEdit && (
+          <button onClick={openNew} className="btn btn-primary btn-sm shrink-0">
+            <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">New item</span>
+            <span className="sm:hidden">New</span>
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="text-[10px] md:text-xs text-ink-mute inline-flex items-center gap-1.5 md:gap-2">
+          <Package className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+          {filtered.length} of {items.length}{" "}
+          <span className="md:hidden">{canEdit ? "items · tap to edit" : "items"}</span>
+          <span className="hidden md:inline">
+            {canEdit ? "items · tap a row to edit" : "items"}
+          </span>
         </div>
+        <div
+          className="md:hidden num font-display font-bold text-[14.6px] leading-tight shrink-0 pr-2"
+          title={formatCurrency(stats.invValue, settings?.currency)}
+        >
+          <MoneyText value={formatCurrency(stats.invValue, settings?.currency)} />
+        </div>
+      </div>
       </div>
 
       {isLoading ? (
-        <div className="paper-card p-10 text-center text-ink-mute">Loading...</div>
+        <div className="paper-card p-6 md:p-10 text-center text-ink-mute">Loading...</div>
       ) : items.length === 0 ? (
-        <div className="paper-card p-10 text-center">
+        <div className="paper-card p-6 md:p-10 text-center">
           <div className="font-display font-bold text-lg">Empty catalog</div>
           <p className="text-ink-mute text-sm mt-1">
             Add items manually or load starter print-shop data.
@@ -379,90 +405,98 @@ export default function Inventory() {
             </div>
           </div>
 
-          {/* Mobile cards */}
-          <div className="md:hidden space-y-2">
+          {/* Mobile ledger — single dense row per item, pinned height */}
+          <div className="md:hidden">
             {filtered.length === 0 ? (
-              <div className="paper-card p-10 text-center text-ink-mute">No items match.</div>
+              <div className="paper-card p-6 text-center text-ink-mute text-[11px]">No items match.</div>
             ) : (
-              filtered.map((it) => {
-                const cost = computeItemCost(it, items);
-                const meta = ITEM_TYPE_META[it.itemType];
-                const stocked =
-                  it.itemType === "material" ||
-                  it.itemType === "intermediate" ||
-                  it.itemType === "ready";
-                const low = stocked && it.stock <= (it.lowStockThreshold ?? 10);
-                const isProductWithBom =
-                  it.itemType === "product" && !!it.bom && it.bom.length > 0;
-                const producible = isProductWithBom
-                  ? producibleFromBOM(it, items)
-                  : { qty: 0 };
-                return (
-                  <div key={it.id} className="paper-card p-3 flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-md overflow-hidden bg-paper border flex items-center justify-center shrink-0">
-                      {it.imageUrl ? (
-                        <img
-                          src={it.imageUrl}
-                          alt={it.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <Package className="w-5 h-5 text-ink-mute" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="font-semibold truncate">{it.name}</div>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className={cn("chip text-[10px] px-2 py-0", meta.color)}>
-                          {meta.short}
-                        </span>
-                        <div className="text-[11px] text-ink-mute truncate">{it.category}</div>
-                      </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <div className="text-[11px] text-ink-mute num">
-                          {stocked ? (
-                            <span className={cn(low && "text-danger font-semibold")}>
-                              {it.stock} {it.baseUnit}
-                            </span>
-                          ) : isProductWithBom ? (
-                            <span className={cn(producible.qty === 0 && "text-warning font-semibold")}>
-                              {producible.qty} {it.baseUnit}
-                            </span>
-                          ) : null}
-                          {" · cost "}{formatCurrency(cost, settings?.currency)}
-                        </div>
-                        {meta.sellable && (
-                          <div className="num font-bold">
-                            {formatCurrency(it.price, settings?.currency)}
-                          </div>
+              <div className="paper-card overflow-hidden divide-y">
+                {filtered.map((it) => {
+                  const cost = computeItemCost(it, items);
+                  const meta = ITEM_TYPE_META[it.itemType];
+                  const stocked =
+                    it.itemType === "material" ||
+                    it.itemType === "intermediate" ||
+                    it.itemType === "ready";
+                  const low = stocked && it.stock <= (it.lowStockThreshold ?? 10);
+                  const isProductWithBom =
+                    it.itemType === "product" && !!it.bom && it.bom.length > 0;
+                  const producible = isProductWithBom
+                    ? producibleFromBOM(it, items)
+                    : { qty: 0 };
+                  const stockText = stocked
+                    ? `${it.stock.toLocaleString()} ${it.baseUnit}`
+                    : isProductWithBom
+                    ? `${producible.qty.toLocaleString()} ${it.baseUnit}`
+                    : "—";
+                  const amount = meta.sellable ? it.price : cost;
+                  return (
+                    <div key={it.id} className="flex items-center h-[34px] text-[11px] leading-tight">
+                      <button
+                        onClick={canEdit ? () => openEdit(it) : undefined}
+                        className={cn(
+                          "flex-1 h-full min-w-0 px-2 flex flex-col justify-center gap-[3px] text-left transition",
+                          canEdit && "hover:bg-paper/50"
                         )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
+                        aria-label={canEdit ? `Edit ${it.name}` : it.name}
+                        title={`${it.name} · ${it.sku}`}
+                      >
+                        <span className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-full border px-1 py-px text-[8px] uppercase tracking-wide font-bold leading-none",
+                              meta.color
+                            )}
+                          >
+                            {TYPE_SHORT[it.itemType]}
+                          </span>
+                          <span className="flex-1 min-w-0 truncate font-medium">{it.name}</span>
+                          <span
+                            className="num font-bold shrink-0"
+                            title={meta.sellable ? "Selling price" : "Unit cost"}
+                          >
+                            {money(amount)}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-1 min-w-0 text-[9px] text-ink-mute leading-none">
+                          <span className="num shrink-0">{it.sku}</span>
+                          <span className="shrink-0">·</span>
+                          <span className="truncate">{it.category}</span>
+                          <span
+                            className={cn(
+                              "num ml-auto shrink-0",
+                              low && "text-danger font-bold",
+                              isProductWithBom && producible.qty === 0 && "text-warning font-bold"
+                            )}
+                          >
+                            {stockText}
+                          </span>
+                        </span>
+                      </button>
                       {can("inventory.edit") && (
-                        <button onClick={() => openEdit(it)} className="btn btn-ghost h-8 w-8 p-0" title="Edit">
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                      )}
-                      {can("inventory.edit") && (
-                        <button onClick={() => openClone(it)} className="btn btn-ghost h-8 w-8 p-0" title="Clone item">
-                          <Copy className="w-4 h-4" />
+                        <button
+                          onClick={() => openClone(it)}
+                          className="w-6 h-full inline-flex items-center justify-center text-ink-mute hover:bg-ink/5 transition shrink-0"
+                          title="Clone item"
+                          aria-label={`Clone ${it.name}`}
+                        >
+                          <Copy className="w-3 h-3" />
                         </button>
                       )}
                       {can("inventory.delete") && (
-                        <button onClick={() => remove(it)} className="btn btn-ghost h-8 w-8 p-0 text-danger" title="Delete">
-                          <Trash2 className="w-4 h-4" />
+                        <button
+                          onClick={() => remove(it)}
+                          className="w-6 h-full inline-flex items-center justify-center text-danger hover:bg-danger/10 transition shrink-0"
+                          title="Delete item"
+                          aria-label={`Delete ${it.name}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       )}
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
         </>
@@ -471,45 +505,6 @@ export default function Inventory() {
       {modalOpen && (
         <ItemModal item={editItem} cloneFrom={cloneFrom} onClose={closeModal} />
       )}
-      {importOpen && (
-        <ImportModal
-          open={importOpen}
-          onClose={() => setImportOpen(false)}
-          existing={items}
-          actor={{ id: profile?.id || "", name: profile?.name || "", role: profile?.role || "Staff" }}
-        />
-      )}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  tone?: "warn";
-}) {
-  return (
-    <div className="paper-card p-4">
-      <div className="flex items-center justify-between">
-        <div className="text-[10px] md:text-[11px] uppercase tracking-widest text-ink-mute">
-          {label}
-        </div>
-        {Icon && <Icon className="w-4 h-4 text-ink-mute" />}
-      </div>
-      <div
-        className={cn(
-          "font-display text-2xl font-bold num mt-1",
-          tone === "warn" && "text-warning"
-        )}
-      >
-        {value}
-      </div>
     </div>
   );
 }

@@ -57,7 +57,9 @@ import PhoneInput from "@/components/common/PhoneInput";
 import OfficerCombobox from "@/components/features/clientbilling/OfficerCombobox";
 
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import GlassSelect from "@/components/ui/GlassSelect";
 import GlassMonthPicker from "@/components/ui/GlassMonthPicker";
+import MoneyText from "@/components/ui/MoneyText";
 import {
   cn,
   formatCurrency,
@@ -282,34 +284,35 @@ export default function ClientBilling() {
 
         <div className="p-4">
           {(tab === "clients" || tab === "work" || tab === "invoices" || tab === "payments" || tab === "periods") && (
-            <div className="flex flex-wrap gap-2 mb-3 items-center">
-              <div className="flex-1 min-w-[160px]">
-                <select
+            <div className="flex items-center gap-1.5 md:gap-2 mb-3 flex-wrap">
+              <div className="flex-1 min-w-[110px]">
+                <GlassSelect
                   value={clientFilter}
-                  onChange={(e) => setClientFilter(e.target.value)}
-                  className="input h-8 w-full text-xs"
-                >
-                  <option value="">All clients</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setClientFilter}
+                  ariaLabel="Filter by client"
+                  options={[
+                    { value: "", label: "All clients" },
+                    ...clients.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                  className="input select-glass h-8 text-xs"
+                  fullWidth
+                />
               </div>
               {tab === "invoices" && (
-                <select
+                <GlassSelect
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="input h-8 text-xs w-32"
-                >
-                  <option value="all">All statuses</option>
-                  <option value="unpaid">Unpaid</option>
-                  <option value="partial">Partially Paid</option>
-                  <option value="paid">Paid</option>
-                  <option value="overdue">Overdue</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+                  onChange={setStatusFilter}
+                  ariaLabel="Filter by status"
+                  options={[
+                    { value: "all", label: "All statuses" },
+                    { value: "unpaid", label: "Unpaid" },
+                    { value: "partial", label: "Partially Paid" },
+                    { value: "paid", label: "Paid" },
+                    { value: "overdue", label: "Overdue" },
+                    { value: "cancelled", label: "Cancelled" },
+                  ]}
+                  className="input select-glass h-8 text-xs"
+                />
               )}
               {canManage && tab === "invoices" && (
                 <button
@@ -631,7 +634,6 @@ function RangeBar({
             onChange={setAnchor}
             ariaLabel="Report period"
             className="input h-7 text-[11px] w-32"
-            fullWidth
           />
           <button
             onClick={() => setAnchor(shiftAnchor(anchor, range, 1))}
@@ -658,7 +660,6 @@ function RangeBar({
             onChange={setCustomFrom}
             ariaLabel="Custom range from"
             className="input h-7 text-[11px] w-32"
-            fullWidth
           />
           <span className="text-ink-mute text-xs">→</span>
           <GlassDatePicker
@@ -666,7 +667,6 @@ function RangeBar({
             onChange={setCustomTo}
             ariaLabel="Custom range to"
             className="input h-7 text-[11px] w-32"
-            fullWidth
           />
         </>
       )}
@@ -693,7 +693,7 @@ function Kpi({
           tone === "danger" && "text-danger"
         )}
       >
-        {value}
+        <MoneyText value={value} />
       </div>
     </div>
   );
@@ -2050,17 +2050,19 @@ function ClientModal({
             </div>
             <div>
               <label htmlFor="cb-invoice-mode" className="label">Invoice mode</label>
-              <select
+              <GlassSelect
                 id="cb-invoice-mode"
                 value={form.invoiceGenerationMode}
-                onChange={(e) =>
-                  setForm({ ...form, invoiceGenerationMode: e.target.value as ClientInvoiceMode })
+                onChange={(v) =>
+                  setForm({ ...form, invoiceGenerationMode: v as ClientInvoiceMode })
                 }
-                className="input mt-1"
-              >
-                <option value="manual">Manual</option>
-                <option value="automatic">Automatic (month-end)</option>
-              </select>
+                ariaLabel="Invoice mode"
+                options={[
+                  { value: "manual", label: "Manual" },
+                  { value: "automatic", label: "Automatic (month-end)" },
+                ]}
+                className="input select-glass mt-1"
+              />
             </div>
             <div className="flex items-end">
               <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
@@ -2683,21 +2685,18 @@ function WorkEntryModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label htmlFor="cb-work-client" className="label">Client *</label>
-              <select
+              <GlassSelect
                 id="cb-work-client"
-                required
                 value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                className="input mt-1"
+                onChange={setClientId}
+                ariaLabel="Client"
+                options={[
+                  { value: "", label: "Select client..." },
+                  ...clients.map((c) => ({ value: c.id, label: c.name })),
+                ]}
+                className="input select-glass mt-1"
                 disabled={!!entry}
-              >
-                <option value="">Select client...</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label htmlFor="cb-work-date" className="label">Date *</label>
@@ -2707,7 +2706,6 @@ function WorkEntryModal({
                 onChange={(v) => setForm({ ...form, workDate: v })}
                 ariaLabel="Work date"
                 className="input mt-1"
-                fullWidth
               />
             </div>
             <div>
@@ -2727,35 +2725,25 @@ function WorkEntryModal({
             </div>
             <div className="col-span-2">
               <label htmlFor="cb-work-service" className="label">Product / Service *</label>
-              <select
+              <GlassSelect
                 id="cb-work-service"
-                required
                 value={form.serviceKey}
-                onChange={(e) => handleServiceChange(e.target.value)}
-                className="input mt-1"
-              >
-                <option value="">Select product or service...</option>
-                {services.length > 0 && (
-                  <optgroup label={`${client?.name || "Client"} services`}>
-                    {services.map((s) => (
-                      <option key={s.id} value={`service:${s.id}`}>
-                        {s.name} · {formatCurrency(s.unitPrice, currency)}/{s.unit}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                {sellableItems.length > 0 && (
-                  <optgroup label="Inventory products">
-                    {sellableItems.map((i) => (
-                      <option key={i.id} value={`item:${i.id}`}>
-                        {i.name} · {formatCurrency(i.price, currency)}/
-                        {i.saleUnit || i.baseUnit || "pc"}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                <option value="custom">＋ Custom product / service...</option>
-              </select>
+                onChange={handleServiceChange}
+                ariaLabel="Product or service"
+                options={[
+                  { value: "", label: "Select product or service..." },
+                  ...services.map((s) => ({
+                    value: `service:${s.id}`,
+                    label: `${s.name} · ${formatCurrency(s.unitPrice, currency)}/${s.unit}`,
+                  })),
+                  ...sellableItems.map((i) => ({
+                    value: `item:${i.id}`,
+                    label: `${i.name} · ${formatCurrency(i.price, currency)}/${i.saleUnit || i.baseUnit || "pc"}`,
+                  })),
+                  { value: "custom", label: "＋ Custom product / service..." },
+                ]}
+                className="input select-glass mt-1"
+              />
               {isCustomService && (
                 <input
                   autoFocus
@@ -3138,7 +3126,6 @@ function GenerateInvoiceModal({
                 onChange={setDueDate}
                 ariaLabel="Invoice due date"
                 className="input mt-1"
-                fullWidth
                 placeholder="No due date"
                 allowClear
               />
@@ -3727,21 +3714,22 @@ function PaymentModal({
                 onChange={setPaymentDate}
                 ariaLabel="Payment date"
                 className="input mt-1"
-                fullWidth
               />
             </div>
             <div>
               <label htmlFor="cb-pay-method" className="label">Method</label>
-              <select
+              <GlassSelect
                 id="cb-pay-method"
                 value={method}
-                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                className="input mt-1"
-              >
-                <option value="cash">Cash</option>
-                <option value="transfer">Bank transfer</option>
-                <option value="card">Card</option>
-              </select>
+                onChange={(v) => setMethod(v as PaymentMethod)}
+                ariaLabel="Payment method"
+                options={[
+                  { value: "cash", label: "Cash" },
+                  { value: "transfer", label: "Bank transfer" },
+                  { value: "card", label: "Card" },
+                ]}
+                className="input select-glass mt-1"
+              />
             </div>
             <div>
               <label htmlFor="cb-pay-ref" className="label">Reference</label>
@@ -3859,7 +3847,6 @@ function OutstandingInvoiceModal({
               onChange={setDueDate}
               ariaLabel="Outstanding due date"
               className="input mt-1"
-              fullWidth
               placeholder="No due date"
               allowClear
             />

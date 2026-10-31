@@ -701,6 +701,11 @@ export type Settings = {
    *  `EXPENSE_CATEGORIES` is used app-wide. Renaming/deleting an entry
    *  reassigns affected expenses to "General" so no orphan rows exist. */
   expenseCategories?: string[];
+  /** Transaction-count allowance policy (Item 7) + pending approval queue.
+   *  Stored as jsonb columns; absent on older deployments until the
+   *  migration runs — the mapper falls back to defaults. */
+  transactionAllowancePolicy?: TransactionAllowancePolicy;
+  pendingTxnAllowances?: PendingTxnAllowance[];
   country: string;
   timezone: string;
   businessType: string;
@@ -810,6 +815,56 @@ export const DRAWINGS_CATEGORY = "Drawings";
 /** Marker used in the `notes` column of auto-created staff-allowance
  *  expenses. Prevents duplicate creation when attendance is re-marked. */
 export const AUTO_ALLOWANCE_MARKER = "AUTO_ALLOWANCE";
+
+/** Marker prefix for transaction-count-based allowance awards. The full
+ *  marker is `AUTO_ALLOWANCE_TXN:<employeeId>:<periodKey>:<allowanceName>`. */
+export const TXN_ALLOWANCE_MARKER = "AUTO_ALLOWANCE_TXN";
+
+export type TxnAllowancePeriod = "daily" | "weekly" | "monthly";
+
+export type TransactionAllowancePolicy = {
+  /** Master switch — when off nothing is evaluated or awarded. */
+  enabled: boolean;
+  /** Transactions within one period that auto-consider the allowance. */
+  threshold: number;
+  period: TxnAllowancePeriod;
+  allowanceName: string;
+  amount: number;
+  amountType: "fixed" | "percentage";
+  /** When true the award waits in a pending queue for approval instead of
+   *  posting straight to the ledger. */
+  requireApproval: boolean;
+  /** Who may approve a pending award. */
+  approverRole: "manager" | "accountant";
+  /** `<employeeId>:<periodKey>` entries the owner has dismissed. */
+  dismissed: string[];
+};
+
+export type PendingTxnAllowance = {
+  /** `<employeeId>:<periodKey>` — doubles as the idempotency key. */
+  key: string;
+  employeeId: string;
+  employeeName: string;
+  period: TxnAllowancePeriod;
+  periodKey: string;
+  periodLabel: string;
+  count: number;
+  amount: number;
+  allowanceName: string;
+  createdAt: string;
+};
+
+export const DEFAULT_TXN_ALLOWANCE_POLICY: TransactionAllowancePolicy = {
+  enabled: false,
+  threshold: 20,
+  period: "daily",
+  allowanceName: "Transaction bonus",
+  amount: 0,
+  amountType: "fixed",
+  requireApproval: true,
+  approverRole: "manager",
+  dismissed: [],
+};
 
 /** Expense categories that cannot be deleted because they have
  *  hard-coded business logic (drawings feed, salary auto-fill,

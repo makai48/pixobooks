@@ -1,11 +1,16 @@
 import PhoneInput from "@/components/common/PhoneInput";
+import GlassSelect from "@/components/ui/GlassSelect";
 import { CURRENCIES, GROUPING_SYSTEMS, SEPARATOR_PRESETS } from "@/lib/referenceData";
+import { DEFAULT_TXN_ALLOWANCE_POLICY } from "@/types";
 import { safeNum } from "../constants";
-import { Section, SField } from "../fields";
+import { CheckboxRow, Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
 
 export default function MoneySection() {
   const { form, setForm, errors, canShop, canTaxes, moneyExample } = useSettings();
+  const policy = form.transactionAllowancePolicy ?? DEFAULT_TXN_ALLOWANCE_POLICY;
+  const setPolicy = (patch: Partial<typeof policy>) =>
+    setForm({ ...form, transactionAllowancePolicy: { ...policy, ...patch } });
 
   return (
     <>
@@ -18,18 +23,17 @@ export default function MoneySection() {
             >
               <div className="grid-3">
                 <SField label="Base Operating Currency" htmlFor="set-currency" req>
-                  <select
+                  <GlassSelect
                     id="set-currency"
-                    className="input"
                     value={form.currency}
-                    onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                  >
-                    {CURRENCIES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.symbol} — {c.code} · {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setForm({ ...form, currency: v })}
+                    ariaLabel="Base operating currency"
+                    options={CURRENCIES.map((c) => ({
+                      value: c.code,
+                      label: `${c.symbol} - ${c.code} · ${c.name}`,
+                    }))}
+                    className="input select-glass"
+                  />
                 </SField>
                 <SField label="Default VAT / Tax Rate (%)" htmlFor="set-tax" error={errors.taxRate}>
                   <input
@@ -46,35 +50,32 @@ export default function MoneySection() {
                   />
                 </SField>
                 <SField label="Decimal Precision" htmlFor="set-decimals">
-                  <select
+                  <GlassSelect
                     id="set-decimals"
-                    className="input"
-                    value={form.decimalPlaces}
-                    onChange={(e) => setForm({ ...form, decimalPlaces: Number(e.target.value) })}
-                  >
-                    {[0, 1, 2, 3, 4].map((n) => (
-                      <option key={n} value={n}>
-                        {n}{n === 0 ? " (Integer round)" : n === 2 ? " (Standard)" : ""}
-                      </option>
-                    ))}
-                  </select>
+                    value={String(form.decimalPlaces)}
+                    onChange={(v) => setForm({ ...form, decimalPlaces: Number(v) })}
+                    ariaLabel="Decimal precision"
+                    options={[0, 1, 2, 3, 4].map((n) => ({
+                      value: String(n),
+                      label: `${n}${n === 0 ? " (Integer round)" : n === 2 ? " (Standard)" : ""}`,
+                    }))}
+                    className="input select-glass"
+                  />
                 </SField>
               </div>
 
               <div className="grid-3" style={{ marginTop: 14 }}>
                 <SField label="Digit Grouping Standard" htmlFor="set-grouping">
-                  <select
+                  <GlassSelect
                     id="set-grouping"
-                    className="input"
                     value={form.digitGrouping}
-                    onChange={(e) =>
-                      setForm({ ...form, digitGrouping: e.target.value as "western" | "indian" })
+                    onChange={(v) =>
+                      setForm({ ...form, digitGrouping: v as "western" | "indian" })
                     }
-                  >
-                    {GROUPING_SYSTEMS.map((g) => (
-                      <option key={g.id} value={g.id}>{g.label}</option>
-                    ))}
-                  </select>
+                    ariaLabel="Digit grouping standard"
+                    options={GROUPING_SYSTEMS.map((g) => ({ value: g.id, label: g.label }))}
+                    className="input select-glass"
+                  />
                 </SField>
                 <SField label="Thousand Separator" htmlFor="set-thousand" error={errors.separators}>
                   <input
@@ -104,12 +105,11 @@ export default function MoneySection() {
 
               <div className="grid-2" style={{ marginTop: 14 }}>
                 <SField label="Separator Preset" htmlFor="set-separator-preset">
-                  <select
+                  <GlassSelect
                     id="set-separator-preset"
-                    className="input"
                     value=""
-                    onChange={(e) => {
-                      const p = SEPARATOR_PRESETS.find((s) => s.id === e.target.value);
+                    onChange={(v) => {
+                      const p = SEPARATOR_PRESETS.find((s) => s.id === v);
                       if (p) {
                         setForm({
                           ...form,
@@ -118,12 +118,13 @@ export default function MoneySection() {
                         });
                       }
                     }}
-                  >
-                    <option value="" disabled>Apply a preset…</option>
-                    {SEPARATOR_PRESETS.map((s) => (
-                      <option key={s.id} value={s.id}>{s.label}</option>
-                    ))}
-                  </select>
+                    ariaLabel="Separator preset"
+                    options={[
+                      { value: "", label: "Apply a preset…" },
+                      ...SEPARATOR_PRESETS.map((s) => ({ value: s.id, label: s.label })),
+                    ]}
+                    className="input select-glass"
+                  />
                 </SField>
                 <SField label="Legacy Till Line (printed on receipts)" htmlFor="set-phone">
                   <PhoneInput
@@ -169,6 +170,128 @@ export default function MoneySection() {
                 </div>
                 <div className="num" style={{ fontSize: 20, fontWeight: 700, color: "var(--apple-blue)" }}>
                   {moneyExample}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 18 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    color: "var(--ink-muted)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Transaction Allowance Policy
+                </div>
+                <div style={{ fontSize: 12, color: "var(--ink-secondary)", marginBottom: 10 }}>
+                  When an employee enters the target number of transactions in a
+                  day, week or month, their allowance is auto-considered — either
+                  posted straight to Staff Allowance or held for approval.
+                </div>
+                <CheckboxRow
+                  checked={policy.enabled}
+                  onChange={(v) => setPolicy({ enabled: v })}
+                  label="Enable transaction-based allowance"
+                />
+                <div className="grid-3" style={{ marginTop: 10 }}>
+                  <SField
+                    label="Transactions Required"
+                    htmlFor="set-txn-threshold"
+                    hint="Sales entered in one period that trigger the allowance."
+                  >
+                    <input
+                      id="set-txn-threshold"
+                      type="number"
+                      min={1}
+                      step={1}
+                      className="input num"
+                      style={{ textAlign: "right" }}
+                      value={policy.threshold}
+                      onChange={(e) =>
+                        setPolicy({ threshold: Math.max(1, Math.trunc(safeNum(e.target.value, 1))) })
+                      }
+                    />
+                  </SField>
+                  <SField label="Period" htmlFor="set-txn-period">
+                    <GlassSelect
+                      id="set-txn-period"
+                      value={policy.period}
+                      onChange={(v) =>
+                        setPolicy({ period: v as "daily" | "weekly" | "monthly" })
+                      }
+                      ariaLabel="Allowance period"
+                      options={[
+                        { value: "daily", label: "Daily" },
+                        { value: "weekly", label: "Weekly (Mon–Sun)" },
+                        { value: "monthly", label: "Monthly" },
+                      ]}
+                      className="input select-glass"
+                    />
+                  </SField>
+                  <SField label="Allowance Name" htmlFor="set-txn-name">
+                    <input
+                      id="set-txn-name"
+                      className="input"
+                      value={policy.allowanceName}
+                      onChange={(e) => setPolicy({ allowanceName: e.target.value })}
+                      placeholder="Transaction bonus"
+                      maxLength={60}
+                    />
+                  </SField>
+                </div>
+                <div className="grid-3" style={{ marginTop: 14 }}>
+                  <SField label="Amount" htmlFor="set-txn-amount">
+                    <input
+                      id="set-txn-amount"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className="input num"
+                      style={{ textAlign: "right" }}
+                      value={policy.amount}
+                      onChange={(e) => setPolicy({ amount: Math.max(0, safeNum(e.target.value, 0)) })}
+                    />
+                  </SField>
+                  <SField label="Amount Type" htmlFor="set-txn-amount-type">
+                    <GlassSelect
+                      id="set-txn-amount-type"
+                      value={policy.amountType}
+                      onChange={(v) =>
+                        setPolicy({ amountType: v as "fixed" | "percentage" })
+                      }
+                      ariaLabel="Allowance amount type"
+                      options={[
+                        { value: "fixed", label: `Fixed (${form.currency})` },
+                        { value: "percentage", label: "% of base salary" },
+                      ]}
+                      className="input select-glass"
+                    />
+                  </SField>
+                  <SField label="Approver" htmlFor="set-txn-approver">
+                    <GlassSelect
+                      id="set-txn-approver"
+                      value={policy.approverRole}
+                      onChange={(v) =>
+                        setPolicy({ approverRole: v as "manager" | "accountant" })
+                      }
+                      ariaLabel="Allowance approver"
+                      options={[
+                        { value: "manager", label: "Manager" },
+                        { value: "accountant", label: "Accounting party" },
+                      ]}
+                      className="input select-glass"
+                    />
+                  </SField>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <CheckboxRow
+                    checked={policy.requireApproval}
+                    onChange={(v) => setPolicy({ requireApproval: v })}
+                    label="Require approval — hold the award for a manager/accountant instead of posting it automatically"
+                  />
                 </div>
               </div>
             </Section>

@@ -43,7 +43,15 @@ import {
   type InviteDelivery,
 } from "@/hooks/useEmployees";
 import { useAuth } from "@/hooks/useAuth";
-import { useShopSettings } from "@/hooks/useShopSettings";
+import { useShopSettings, useUpdateShopSettings } from "@/hooks/useShopSettings";
+import { supabase } from "@/lib/supabase";
+import { currentBusinessId } from "@/lib/tenant";
+import {
+  evaluateTxnAllowance,
+  postTxnAllowanceExpense,
+  txnPeriodInfo,
+} from "@/hooks/useStaffAllowances";
+import { TXN_ALLOWANCE_MARKER } from "@/types";
 import {
   useAttendance,
   useUpsertAttendance,
@@ -70,6 +78,7 @@ import { processImageFile } from "@/lib/imageUpload";
 import PhoneInput from "@/components/common/PhoneInput";
 import GlassSelect from "@/components/ui/GlassSelect";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import MoneyText from "@/components/ui/MoneyText";
 import SubNav from "@/components/layout/SubNav";
 import SharedField from "@/components/common/Field";
 import { canAddUser, getPlanLimits } from "@/lib/billing";
@@ -91,6 +100,172 @@ export default function Employees() {
   const canInvite = can("employees.manage") || can("users.invite");
   const canDelete =
     can("employees.delete") || can("users.delete") || isAppOwner;
+
+  // Imported staff cleanup (Report cashier duplicates): profiles that arrived
+  // via file import carry no invite trail (`invitedAt`/`invitedBy` are only
+  // set by the invite flow). The owner account, the current user and invited
+  // employees are never candidates.
+  const importedStaff = useMemo(
+    () =>
+      employees.filter(
+        (e) =>
+          !e.invitedAt &&
+          !e.invitedBy &&
+          e.id !== profile?.id &&
+          e.role.trim().toLowerCase() !== "owner" &&
+          !isShopOwner(e.email, e.role)
+      ),
+    [employees, profile?.id]
+  );
+  const [cleaning, setCleaning] = useState(false);
+
+  const cleanImported = async () => {
+    if (importedStaff.length === 0 || cleaning) return;
+    const names = importedStaff.map((e) => `• ${e.name} (${e.role})`).join("\n");
+    if (
+      !confirm(
+        `Permanently remove ${importedStaff.length} imported profile(s)?\n\n${names}\n\nThe shop owner and all invited employees are kept. Historical sales keep their recorded cashier names.`
+      )
+    )
+      return;
+    setCleaning(true);
+    let ok = 0;
+    const failed: string[] = [];
+    for (const e of importedStaff) {
+      try {
+        await del.mutateAsync({
+          id: e.id,
+          name: e.name,
+          actor: profile
+            ? { id: profile.id, name: profile.name, role: profile.role }
+            : undefined,
+        });
+        ok++;
+      } catch {
+        failed.push(e.name);
+      }
+    }
+    setCleaning(false);
+    if (ok > 0) toast.success(`Removed ${ok} imported profile(s) — owner and invited staff kept`);
+    if (failed.length > 0) toast.error(`Could not remove: ${failed.join(", ")}`);
+  };
+
+  // Transaction-allowance policy queue (Item 7): awards auto-considered
+  // when an employee hits the period transaction target wait here when the
+  // policy requires approval.
+  const txnPolicy = settings?.transactionAllowancePolicy;
+  const txnPending = useMemo(
+    () => settings?.pendingTxnAllowances || [],
+    [settings?.pendingTxnAllowances]
+  );
+  const canApproveTxn =
+    txnPolicy?.approverRole === "accountant"
+      ? can("finance.manage") || can("employees.manage")
+      : can("employees.manage");
+  const canViewTxn =
+    can("employees.payroll") || can("employees.manage");
+  const [evaluatingTxn, setEvaluatingTxn] = useState(false);
+  const updateSettings = useUpdateShopSettings();
+
+  const approveTxnAward = async (award: {
+    key: string;
+    employeeId: string;
+    employeeName: string;
+    periodLabel: string;
+    periodKey: string;
+    count: number;
+    amount: number;
+    allowanceName: string;
+  }) => {
+    try {
+      await postTxnAllowanceExpense({
+        employeeId: award.employeeId,
+        employeeName: award.employeeName,
+        periodLabel: award.periodLabel,
+        count: award.count,
+        amount: award.amount,
+        allowanceName: award.allowanceName,
+        marker: `${TXN_ALLOWANCE_MARKER}:${award.employeeId}:${award.periodKey}:${award.allowanceName}`,
+        actor: profile ? { id: profile.id, name: profile.name } : undefined,
+      });
+      await updateSettings.mutateAsync({
+        pendingTxnAllowances: txnPending.filter((p) => p.key !== award.key),
+      });
+      toast.success(`Allowance posted for ${award.employeeName}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Approve failed");
+    }
+  };
+
+  const dismissTxnAward = async (award: { key: string }) => {
+    if (!txnPolicy) return;
+    try {
+      await updateSettings.mutateAsync({
+        pendingTxnAllowances: txnPending.filter((p) => p.key !== award.key),
+        transactionAllowancePolicy: {
+          ...txnPolicy,
+          dismissed: [...txnPolicy.dismissed, award.key],
+        },
+      });
+      toast.success("Dismissed — will not be suggested again for this period");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Dismiss failed");
+    }
+  };
+
+  const evaluateTxnNow = async () => {
+    if (!txnPolicy?.enabled) return toast.error("Policy is disabled in Settings");
+    if (evaluatingTxn) return;
+    setEvaluatingTxn(true);
+    try {
+      const info = txnPeriodInfo(txnPolicy.period);
+      const bid = currentBusinessId();
+      let q = supabase
+        .from("sales")
+        .select("cashier_id")
+        .gte("created_at", `${info.startISO}T00:00:00`)
+        .lt("created_at", `${info.endISO}T00:00:00`);
+      if (bid) q = q.eq("business_id", bid);
+      const { data, error } = await q;
+      if (error) throw error;
+      const counts = new Map<string, number>();
+      for (const r of (data || []) as { cashier_id: string | null }[]) {
+        if (r.cashier_id) counts.set(r.cashier_id, (counts.get(r.cashier_id) || 0) + 1);
+      }
+      let fresh = txnPending;
+      let created = 0;
+      let queued = 0;
+      for (const e of employees.filter((x) => x.active !== false)) {
+        const count = counts.get(e.id) || 0;
+        if (count < txnPolicy.threshold) continue;
+        const outcome = await evaluateTxnAllowance({
+          employee: e,
+          policy: txnPolicy,
+          count,
+          period: txnPolicy.period,
+          periodKey: info.key,
+          periodLabel: info.label,
+          actor: profile ? { id: profile.id, name: profile.name } : undefined,
+          currentPending: fresh,
+          persistPending: async (next) => {
+            fresh = next;
+          },
+        });
+        if (outcome.status === "created") created++;
+        if (outcome.status === "pending") queued++;
+      }
+      if (fresh !== txnPending) {
+        await updateSettings.mutateAsync({ pendingTxnAllowances: fresh });
+      }
+      toast.success(
+        `Evaluated ${info.label}: ${created} posted, ${queued} awaiting approval`
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Evaluation failed");
+    } finally {
+      setEvaluatingTxn(false);
+    }
+  };
 
   const handleDelete = (e: Employee) => {
     if (isShopOwner(e.email, e.role)) {
@@ -134,6 +309,78 @@ export default function Employees() {
           { to: "/audit-log", label: "Audit Log", icon: Shield },
         ]}
       />
+      {txnPolicy?.enabled && canViewTxn && (
+        <div className="paper-card p-2.5 md:p-4">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 md:gap-3">
+            <div className="flex-1 min-w-[160px] text-[10px] md:text-xs text-ink-mute leading-snug">
+              <span className="font-semibold text-ink">Transaction allowance</span>
+              {" · "}
+              {txnPolicy.threshold} txns /{" "}
+              {txnPolicy.period === "daily"
+                ? "day"
+                : txnPolicy.period === "weekly"
+                ? "week"
+                : "month"}{" "}
+              → {txnPolicy.allowanceName} (
+              {txnPolicy.amountType === "percentage"
+                ? `${txnPolicy.amount}% of base`
+                : formatCurrency(txnPolicy.amount, settings?.currency)}
+              ){txnPolicy.requireApproval ? ` · awaiting ${txnPolicy.approverRole === "accountant" ? "accounting" : "manager"}` : " · auto-post"}
+            </div>
+            <button
+              onClick={evaluateTxnNow}
+              disabled={evaluatingTxn}
+              className="btn btn-outline btn-sm shrink-0"
+              title="Count this period's transactions for every active employee now"
+            >
+              <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">{evaluatingTxn ? "Checking..." : "Evaluate now"}</span>
+            </button>
+          </div>
+          {txnPending.length > 0 && (
+            <div className="mt-1.5 md:mt-2 divide-y border-t">
+              {txnPending.map((p) => (
+                <div key={p.key} className="flex items-center gap-1.5 md:gap-3 py-1.5 md:py-2 text-[11px] md:text-sm">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">
+                      {p.employeeName}
+                      <span className="font-normal text-ink-mute"> · {p.periodLabel} · {p.count} txns</span>
+                    </div>
+                    <div className="text-[9px] md:text-[10px] text-ink-mute uppercase tracking-wide">
+                      {p.allowanceName}
+                    </div>
+                  </div>
+                  <span className="num font-bold shrink-0">
+                    <MoneyText value={formatCurrency(p.amount, settings?.currency)} />
+                  </span>
+                  {canApproveTxn ? (
+                    <>
+                      <button
+                        onClick={() => approveTxnAward(p)}
+                        className="btn btn-primary btn-sm shrink-0"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        <span className="hidden sm:inline">Approve</span>
+                      </button>
+                      <button
+                        onClick={() => dismissTxnAward(p)}
+                        className="btn btn-ghost btn-sm shrink-0 text-danger"
+                        title="Dismiss — will not be suggested again for this period"
+                      >
+                        <X className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <span className="chip bg-yellow-reg/10 text-yellow-reg border border-yellow-reg/30 text-[9px] md:text-[10px] shrink-0">
+                      Awaiting {txnPolicy.approverRole === "accountant" ? "accounting" : "manager"}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-2 md:gap-4 flex-1 min-h-0">
       <div className="paper-card overflow-hidden flex flex-col">
         <div className="p-2.5 md:p-4 border-b flex items-start justify-between gap-2">
@@ -151,6 +398,19 @@ export default function Employees() {
               <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Invites</span>
             </button>
+            {canDelete && importedStaff.length > 0 && (
+              <button
+                onClick={cleanImported}
+                disabled={cleaning}
+                className="btn btn-outline btn-sm text-danger border-danger/40"
+                title="Remove profiles that arrived via file import (no invite trail). Owner and invited employees are kept."
+              >
+                <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">
+                  {cleaning ? "Cleaning..." : `Clean imported (${importedStaff.length})`}
+                </span>
+              </button>
+            )}
             {canInvite && (
               <button
                 onClick={() => {
@@ -1195,7 +1455,19 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
         emergencyContactPhone: form.emergencyContactPhone,
         notes: form.notes,
       },
-      { onSuccess: () => toast.success("Profile saved") }
+      {
+        onSuccess: (res) => {
+          if (res?.roleSyncWarning) {
+            toast.warning(
+              `Profile saved, but tenant role sync needs an owner: ${res.roleSyncWarning}`
+            );
+          } else {
+            toast.success("Profile saved");
+          }
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Save failed"),
+      }
     );
   };
 
@@ -1328,7 +1600,22 @@ function PayrollTab({ employee }: { employee: Employee }) {
   const grossMonthly = salary.base + totalAllowancesMonthly;
 
   const save = () => {
-    update.mutate({ id: employee.id, salary }, { onSuccess: () => toast.success("Payroll saved") });
+    update.mutate(
+      { id: employee.id, salary },
+      {
+        onSuccess: (res) => {
+          if (res?.roleSyncWarning) {
+            toast.warning(
+              `Payroll saved, but tenant role sync needs an owner: ${res.roleSyncWarning}`
+            );
+          } else {
+            toast.success("Payroll saved");
+          }
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Save failed"),
+      }
+    );
   };
 
   return (
@@ -1619,8 +1906,35 @@ function PermissionsTab({ employee }: { employee: Employee }) {
   };
 
   const save = () => {
-    setPerms.mutate({ id: employee.id, permissions: perms }, { onSuccess: () => toast.success("Permissions saved") });
-    if (role !== employee.role) update.mutate({ id: employee.id, role });
+    setPerms.mutate(
+      { id: employee.id, permissions: perms },
+      {
+        onSuccess: () => {
+          if (role === employee.role) {
+            toast.success("Permissions saved");
+            return;
+          }
+          update.mutate(
+            { id: employee.id, role },
+            {
+              onSuccess: (res) => {
+                if (res?.roleSyncWarning) {
+                  toast.warning(
+                    `Permissions saved, but tenant role sync needs an owner: ${res.roleSyncWarning}`
+                  );
+                } else {
+                  toast.success("Permissions saved");
+                }
+              },
+              onError: (err) =>
+                toast.error(err instanceof Error ? err.message : "Role save failed"),
+            }
+          );
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Save failed"),
+      }
+    );
   };
 
   return (
@@ -1682,7 +1996,7 @@ function PermissionsTab({ employee }: { employee: Employee }) {
 
         <div className="flex justify-end sticky bottom-0 bg-card pt-3">
           {canEdit ? (
-            <button onClick={save} disabled={setPerms.isPending} className="btn btn-primary">
+            <button onClick={save} disabled={setPerms.isPending || update.isPending} className="btn btn-primary">
               <UserCog className="w-4 h-4" /> Save permissions
             </button>
           ) : (
@@ -1729,7 +2043,7 @@ function SalaryStat({
         )}
         title={value}
       >
-        {value}
+        <MoneyText value={value} />
       </div>
     </div>
   );
@@ -1743,7 +2057,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "su
         "font-display text-[12px] md:text-lg font-bold num mt-0.5 leading-tight break-words",
         tone === "success" && "text-success",
         tone === "danger" && "text-danger"
-      )}>{value}</div>
+      )}><MoneyText value={value} /></div>
     </div>
   );
 }

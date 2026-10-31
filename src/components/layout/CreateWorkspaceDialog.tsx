@@ -12,6 +12,7 @@ import {
 import { setActiveBranch, useBranches, useCreateBranch } from "@/hooks/useBranches";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { canAddBranch, getPlanLimits } from "@/lib/billing";
+import GlassSelect from "@/components/ui/GlassSelect";
 import { upgradeToast } from "@/components/billing/UpgradePrompt";
 import { cn } from "@/lib/utils";
 
@@ -180,18 +181,17 @@ export default function CreateWorkspaceDialog({
 
             <div>
               <label htmlFor="ws-legacy" className="label">Legacy owner access</label>
-              <select
+              <GlassSelect
                 id="ws-legacy"
                 value={access}
-                onChange={(e) => setAccess(e.target.value as LegacyOwnerAccess)}
-                className="input mt-1"
-              >
-                {(Object.keys(ACCESS_LABELS) as LegacyOwnerAccess[]).map((key) => (
-                  <option key={key} value={key}>
-                    {ACCESS_LABELS[key]}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setAccess(v as LegacyOwnerAccess)}
+                ariaLabel="Legacy owner access"
+                options={(Object.keys(ACCESS_LABELS) as LegacyOwnerAccess[]).map((key) => ({
+                  value: key,
+                  label: ACCESS_LABELS[key],
+                }))}
+                className="input select-glass mt-1"
+              />
               <p className="mt-1 text-xs text-ink-mute flex items-start gap-1">
                 <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 Controls whether the existing shop owner can reach this business.

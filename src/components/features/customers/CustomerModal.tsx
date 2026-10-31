@@ -71,7 +71,7 @@ export default function CustomerModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-md overflow-hidden">
+      <div className="paper-card glass-sheet w-full max-w-md overflow-hidden">
         <div className="p-5 border-b flex items-center justify-between">
           <div>
             <div className="text-[11px] uppercase tracking-widest text-ink-mute">

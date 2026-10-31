@@ -15,7 +15,7 @@ const ITEM_CLASS =
 
 /**
  * Compact horizontal sub-navigation used at the top of "merged" parent
- * pages (Inventory & BOM, Team & Payroll, Account Approvals, Sales POS).
+ * pages (STOCK, Team & Payroll, Account Approvals, POS).
  * Preserves route + functionality of merged tabs while presenting them
  * as a single logical section in the sidebar.
  */

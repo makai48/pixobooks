@@ -40,11 +40,18 @@ export function useEmployees() {
   });
 }
 
+export type UpdateEmployeeResult = {
+  /** Set when the profile saved but the tenant role sync was refused
+   *  (e.g. the editor lacks membership-write rights). The edit itself
+   *  is persisted — only the RLS role mirror needs an owner re-save. */
+  roleSyncWarning: string | null;
+};
+
 export function useUpdateEmployee() {
   const qc = useQueryClient();
   const active = useActiveBusiness();
-  return useMutation({
-    mutationFn: async (e: Partial<Employee> & { id: string }) => {
+  return useMutation<UpdateEmployeeResult, Error, Partial<Employee> & { id: string }>({
+    mutationFn: async (e) => {
       const payload: Record<string, unknown> = {};
       if (e.name !== undefined) payload.username = e.name;
       if (e.role !== undefined) payload.role = e.role;
@@ -69,14 +76,19 @@ export function useUpdateEmployee() {
 
       // Keep tenant privileges in sync with the profile role so a promoted
       // manager actually gains owner/manager RLS rights in this business.
+      // Best-effort AFTER the profile save: the edit above already
+      // succeeded, and editors without membership-write rights must still
+      // be able to save. A refusal is returned as a warning, never thrown.
+      let roleSyncWarning: string | null = null;
       if (e.role !== undefined && active !== "none") {
         const { error: memErr } = await supabase
           .from("business_members")
           .update({ role: membershipRole(e.role) })
           .eq("business_id", active)
           .eq("user_id", e.id);
-        if (memErr) throw memErr;
+        if (memErr) roleSyncWarning = memErr.message;
       }
+      return { roleSyncWarning };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["employees"] }),
   });

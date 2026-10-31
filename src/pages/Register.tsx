@@ -27,6 +27,7 @@ import { useAppOwnerStatus } from "@/hooks/useAuth";
 import { TERMS_TEXT, PRIVACY_TEXT, TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal";
 import PhoneInput from "@/components/common/PhoneInput";
 import CountrySelect from "@/components/common/CountrySelect";
+import GlassSelect from "@/components/ui/GlassSelect";
 import {
   CURRENCIES,
   BUSINESS_TYPES,
@@ -440,11 +441,14 @@ export default function Register() {
                   <label htmlFor="reg-biz-type" className="label">Business type</label>
                   <div className="mt-1 relative">
                     <Briefcase className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                    <select id="reg-biz-type" value={businessType} onChange={(e) => setBusinessType(e.target.value)} className="input pl-9">
-                      {BUSINESS_TYPES.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
+                    <GlassSelect
+                      id="reg-biz-type"
+                      value={businessType}
+                      onChange={setBusinessType}
+                      options={BUSINESS_TYPES.map((t) => ({ value: t, label: t }))}
+                      ariaLabel="Business type"
+                      className="input select-glass pl-9"
+                    />
                   </div>
                 </div>
               </div>
@@ -453,55 +457,71 @@ export default function Register() {
                   <label htmlFor="reg-tz" className="label">Time zone</label>
                   <div className="mt-1 relative">
                     <Clock3 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                    <select id="reg-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} className="input pl-9">
-                      {TIMEZONES.map((z) => (
-                        <option key={z} value={z}>{z}</option>
-                      ))}
-                    </select>
+                    <GlassSelect
+                      id="reg-tz"
+                      value={timezone}
+                      onChange={setTimezone}
+                      options={TIMEZONES.map((z) => ({ value: z, label: z }))}
+                      ariaLabel="Time zone"
+                      className="input select-glass pl-9"
+                    />
                   </div>
                 </div>
                 <div>
                   <label htmlFor="reg-currency" className="label">Currency</label>
                   <div className="mt-1 relative">
                     <Coins className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                    <select id="reg-currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className="input pl-9">
-                      {CURRENCIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.code} {c.symbol} — {c.name}
-                        </option>
-                      ))}
-                    </select>
+                    <GlassSelect
+                      id="reg-currency"
+                      value={currency}
+                      onChange={setCurrency}
+                      options={CURRENCIES.map((c) => ({
+                        value: c.code,
+                        label: `${c.code} ${c.symbol} - ${c.name}`,
+                      }))}
+                      ariaLabel="Currency"
+                      className="input select-glass pl-9"
+                    />
                   </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="reg-grouping" className="label">Digit grouping</label>
-                  <select id="reg-grouping" value={grouping} onChange={(e) => setGrouping(e.target.value as "western" | "indian")} className="input mt-1">
-                    {GROUPING_SYSTEMS.map((g) => (
-                      <option key={g.id} value={g.id}>{g.label}</option>
-                    ))}
-                  </select>
+                  <GlassSelect
+                    id="reg-grouping"
+                    value={grouping}
+                    onChange={(v) => setGrouping(v as "western" | "indian")}
+                    options={GROUPING_SYSTEMS.map((g) => ({ value: g.id, label: g.label }))}
+                    ariaLabel="Digit grouping"
+                    className="input select-glass mt-1"
+                  />
                 </div>
                 <div>
                   <label htmlFor="reg-decimals" className="label">Decimal places</label>
                   <div className="mt-1 relative">
                     <Hash className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                    <select id="reg-decimals" value={decimalPlaces} onChange={(e) => setDecimalPlaces(Number(e.target.value))} className="input pl-9">
-                      {[0, 1, 2, 3, 4].map((n) => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
-                    </select>
+                    <GlassSelect
+                      id="reg-decimals"
+                      value={String(decimalPlaces)}
+                      onChange={(v) => setDecimalPlaces(Number(v))}
+                      options={[0, 1, 2, 3, 4].map((n) => ({ value: String(n), label: String(n) }))}
+                      ariaLabel="Decimal places"
+                      className="input select-glass pl-9"
+                    />
                   </div>
                 </div>
               </div>
               <div>
                 <label htmlFor="reg-separator" className="label">Separator format</label>
-                <select id="reg-separator" value={separatorId} onChange={(e) => setSeparatorId(e.target.value)} className="input mt-1">
-                  {SEPARATOR_PRESETS.map((s) => (
-                    <option key={s.id} value={s.id}>{s.label}</option>
-                  ))}
-                </select>
+                <GlassSelect
+                  id="reg-separator"
+                  value={separatorId}
+                  onChange={setSeparatorId}
+                  options={SEPARATOR_PRESETS.map((s) => ({ value: s.id, label: s.label }))}
+                  ariaLabel="Separator format"
+                  className="input select-glass mt-1"
+                />
               </div>
               <PhoneRow label="Mobile" dial={mobileDial} setDial={setMobileDial}
                 number={mobileNumber} setNumber={setMobileNumber} required />

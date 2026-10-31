@@ -7,6 +7,7 @@ import { useItems } from "@/hooks/useItems";
 import { useUnitConversions } from "@/hooks/useUnitConversions";
 import { useUoms } from "@/hooks/useUoms";
 import { formatCurrency } from "@/lib/utils";
+import GlassSelect from "@/components/ui/GlassSelect";
 import { convertQuantity, relatedUoms, validateTransactionQty } from "@/lib/uom";
 import type { POLine, PurchaseOrder } from "@/types";
 
@@ -179,18 +180,13 @@ export default function ReceivePOModal({ po, onClose }: Props) {
                           onChange={(e) => setReceived(idx, Number(e.target.value))}
                           className="input h-8 num text-right w-24 ml-auto"
                         />
-                        <select
+                        <GlassSelect
                           value={l.unit || ""}
-                          onChange={(e) => setUnit(idx, e.target.value)}
-                          className="input h-7 text-[11px] w-24 ml-auto mt-1"
-                          title="Receiving unit — converted to base on save"
-                        >
-                          {unitOptionsFor(l).map((u) => (
-                            <option key={u} value={u}>
-                              {u}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(v) => setUnit(idx, v)}
+                          ariaLabel="Receiving unit"
+                          options={unitOptionsFor(l).map((u) => ({ value: u, label: u }))}
+                          className="input select-glass h-7 text-[11px] w-24 ml-auto mt-1"
+                        />
                       </td>
                       <td className="p-2 text-right num text-ink-mute">
                         {formatCurrency(l.unitCost, settings?.currency)}

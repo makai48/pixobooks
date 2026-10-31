@@ -72,9 +72,8 @@ describe("WipeDataPanel", () => {
   it("disables the button for a derived dataset with nothing stored", () => {
     render(<WipeDataPanel />);
 
-    fireEvent.change(screen.getByLabelText("Data to delete"), {
-      target: { value: "statistics" },
-    });
+    fireEvent.click(screen.getByLabelText("Data to delete"));
+    fireEvent.click(screen.getByRole("option", { name: "Statistics" }));
 
     const button = screen.getByRole("button", {
       name: /delete statistics/i,

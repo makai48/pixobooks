@@ -9,6 +9,9 @@ import { useUoms } from "@/hooks/useUoms";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
+import GlassSelect from "@/components/ui/GlassSelect";
+import MoneyText from "@/components/ui/MoneyText";
+import VendorSelect from "@/components/features/suppliers/VendorSelect";
 import { relatedUoms, validateCompatibility, validateTransactionQty } from "@/lib/uom";
 import type { POLine, POStatus, PurchaseOrder } from "@/types";
 
@@ -130,144 +133,219 @@ export default function POModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col">
-        <div className="p-5 border-b flex items-center justify-between">
-          <div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+    <div className="fixed inset-0 z-50 bg-ink/40 flex items-end md:items-center justify-center p-2 md:p-4 animate-fade-in">
+      <div className="paper-card w-full max-w-2xl max-h-[94dvh] md:max-h-[92vh] overflow-hidden flex flex-col">
+        <div className="px-2.5 md:px-5 py-2 md:py-4 border-b flex items-center justify-between gap-2 shrink-0">
+          <div className="min-w-0">
+            <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">
               {po ? `Edit ${po.number}` : "New purchase order"}
             </div>
-            <h2 className="font-display text-xl font-bold">Order materials</h2>
+            <h2 className="font-display text-base md:text-xl font-bold leading-tight">
+              Order materials
+            </h2>
           </div>
-          <button onClick={onClose} className="btn btn-ghost">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-ghost btn-sm max-md:w-7 max-md:px-0 shrink-0"
+            aria-label="Close purchase order"
+            title="Close"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={save} className="flex-1 overflow-auto p-5 space-y-5">
-          <div className="grid grid-cols-3 gap-3">
+        <form
+          id="po-form"
+          onSubmit={save}
+          className="flex-1 overflow-auto p-2.5 md:p-5 space-y-2 md:space-y-5"
+        >
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-3">
             <div className="col-span-2">
-              <label htmlFor="po-vendor" className="label">Vendor</label>
-              <input
+              <label htmlFor="po-vendor" className="label text-[9px] md:text-xs">Vendor</label>
+              <VendorSelect
                 id="po-vendor"
-                required
-                autoFocus
                 value={vendor}
-                onChange={(e) => setVendor(e.target.value)}
-                className="input mt-1"
-                placeholder="Ink Supplies Ltd."
+                onChange={setVendor}
+                placeholder="Select supplier..."
+                autoFocus
               />
             </div>
             <div>
-              <label htmlFor="po-status" className="label">Status</label>
-              <select
+              <label htmlFor="po-status" className="label text-[9px] md:text-xs">Status</label>
+              <GlassSelect
                 id="po-status"
                 value={status}
-                onChange={(e) => setStatus(e.target.value as POStatus)}
-                className="input mt-1"
-              >
-                <option value="draft">Draft</option>
-                <option value="ordered">Ordered</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+                onChange={(v) => setStatus(v as POStatus)}
+                ariaLabel="Status"
+                options={[
+                  { value: "draft", label: "Draft" },
+                  { value: "ordered", label: "Ordered" },
+                  { value: "cancelled", label: "Cancelled" },
+                ]}
+                className="input select-glass mt-1"
+                fullWidth
+              />
             </div>
             <div>
-              <label htmlFor="po-expected" className="label">Expected delivery</label>
+              <label htmlFor="po-expected" className="label text-[9px] md:text-xs">
+                Expected delivery
+              </label>
               <GlassDatePicker
                 id="po-expected"
                 value={expected}
                 onChange={setExpected}
                 ariaLabel="Expected delivery"
                 className="input mt-1"
-                fullWidth
                 placeholder="Not set"
                 allowClear
+                fullWidth
               />
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">
                 Materials
+                {lines.length > 0 && (
+                  <span className="num normal-case tracking-normal"> · {lines.length} line{lines.length === 1 ? "" : "s"}</span>
+                )}
               </div>
               <button
                 type="button"
                 onClick={addLine}
                 disabled={materials.length === 0}
-                className="btn btn-outline h-9"
+                className="btn btn-outline btn-sm shrink-0"
               >
-                <Plus className="w-4 h-4" /> Add line
+                <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" /> Add line
               </button>
             </div>
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-1.5 md:mt-3 space-y-1 md:space-y-2">
               {lines.length === 0 ? (
-                <div className="p-4 border border-dashed rounded-md text-sm text-ink-mute text-center">
+                <div className="p-3 md:p-4 border border-dashed rounded-md text-[11px] md:text-sm text-ink-mute text-center">
                   Add materials to this order.
                 </div>
               ) : (
                 lines.map((l, idx) => {
                   const mat = materials.find((m) => m.id === l.materialId);
+                  const unit = l.unit || mat?.purchaseUnit || mat?.baseUnit || "pc";
                   return (
-                    <div
-                      key={idx}
-                      className="grid grid-cols-12 gap-2 items-center p-2 border rounded-md bg-white"
-                    >
-                      <select
-                        value={l.materialId}
-                        onChange={(e) => selectMat(idx, e.target.value)}
-                        className="input col-span-4"
-                        aria-label="Material"
-                      >
-                        {materials.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="col-span-2 flex items-center gap-1">
+                    <div key={idx} className="p-1.5 md:p-2 border rounded-md bg-card">
+                      {/* Mobile: two pinned lines — material+remove, then qty · unit · cost · line total */}
+                      <div className="md:hidden space-y-1">
+                        <div className="flex items-center gap-1">
+                          <GlassSelect
+                            value={l.materialId}
+                            onChange={(v) => selectMat(idx, v)}
+                            ariaLabel="Material"
+                            options={materials.map((m) => ({ value: m.id, label: m.name }))}
+                            className="input select-glass input-sm flex-1 min-w-0"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setLines(lines.filter((_, i) => i !== idx))}
+                            className="btn btn-ghost btn-sm w-7 shrink-0 px-0 text-danger"
+                            aria-label={`Remove ${l.name}`}
+                            title="Remove line"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1 px-0.5 text-[7px] uppercase tracking-wide text-ink-mute leading-none">
+                          <span className="w-14 shrink-0 text-right">Qty</span>
+                          <span className="w-[52px] shrink-0 text-center">Unit</span>
+                          <span className="flex-1 text-right">Cost</span>
+                          <span className="w-16 shrink-0 text-right">Line</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            step="any"
+                            value={l.qty}
+                            onChange={(e) => updateLine(idx, { qty: Number(e.target.value) })}
+                            className="input input-sm num w-14 shrink-0 text-right"
+                            aria-label={`Quantity for ${l.name}`}
+                          />
+                          <GlassSelect
+                            value={unit}
+                            onChange={(v) => updateLine(idx, { unit: v })}
+                            ariaLabel={`Order unit for ${l.name} (cost applies per this unit)`}
+                            options={unitOptions(l.materialId).map((u) => ({ value: u, label: u }))}
+                            className="input select-glass input-sm w-[52px] shrink-0 px-1 text-[11px]"
+                          />
+                          <input
+                            type="number"
+                            step="0.001"
+                            min={0}
+                            value={l.unitCost}
+                            onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
+                            className="input input-sm num flex-1 min-w-0 text-right"
+                            aria-label={`Unit cost for ${l.name} (per ${unit})`}
+                          />
+                          <span
+                            className="num w-16 shrink-0 truncate text-right text-[11px] font-semibold"
+                            title={formatCurrency(l.qty * l.unitCost, settings?.currency)}
+                          >
+                            <MoneyText value={formatCurrency(l.qty * l.unitCost, settings?.currency)} />
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Desktop: one ledger row per order line */}
+                      <div className="hidden md:grid grid-cols-12 gap-2 items-center">
+                        <GlassSelect
+                          value={l.materialId}
+                          onChange={(v) => selectMat(idx, v)}
+                          ariaLabel="Material"
+                          options={materials.map((m) => ({ value: m.id, label: m.name }))}
+                          className="input select-glass col-span-3"
+                        />
+                        <div className="col-span-2 flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            step="any"
+                            value={l.qty}
+                            onChange={(e) => updateLine(idx, { qty: Number(e.target.value) })}
+                            className="input num text-right"
+                            aria-label={`Quantity for ${l.name}`}
+                          />
+                        </div>
+                        <GlassSelect
+                          value={unit}
+                          onChange={(v) => updateLine(idx, { unit: v })}
+                          ariaLabel={`Order unit for ${l.name} (cost applies per this unit)`}
+                          options={unitOptions(l.materialId).map((u) => ({ value: u, label: u }))}
+                          className="input select-glass col-span-2 text-xs"
+                        />
                         <input
                           type="number"
-                          min={1}
-                          value={l.qty}
-                          onChange={(e) => updateLine(idx, { qty: Number(e.target.value) })}
-                          className="input num text-right"
-                          aria-label={`Quantity for ${l.name}`}
+                          step="0.001"
+                          min={0}
+                          value={l.unitCost}
+                          onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
+                          className="input col-span-2 num text-right"
+                          aria-label={`Unit cost for ${l.name} (per ${unit})`}
                         />
+                        <div
+                          className="col-span-2 text-right num text-sm font-semibold truncate"
+                          title={formatCurrency(l.qty * l.unitCost, settings?.currency)}
+                        >
+                          <MoneyText value={formatCurrency(l.qty * l.unitCost, settings?.currency)} />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setLines(lines.filter((_, i) => i !== idx))}
+                          className="col-span-1 btn btn-ghost text-danger h-8 w-8 p-0 justify-self-end"
+                          aria-label={`Remove ${l.name}`}
+                          title="Remove line"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                      <select
-                        value={l.unit || mat?.purchaseUnit || mat?.baseUnit || "pc"}
-                        onChange={(e) => updateLine(idx, { unit: e.target.value })}
-                        className="input col-span-2 text-xs"
-                        aria-label={`Order unit for ${l.name} (cost applies per this unit)`}
-                        title="Unit this quantity and cost are quoted in"
-                      >
-                        {unitOptions(l.materialId).map((u) => (
-                          <option key={u} value={u}>
-                            {u}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        step="0.001"
-                        min={0}
-                        value={l.unitCost}
-                        onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
-                        className="input col-span-2 num text-right"
-                        aria-label={`Unit cost for ${l.name} (per ${l.unit || "unit"})`}
-                      />
-                      <div className="col-span-1 text-right num text-sm font-semibold">
-                        {formatCurrency(l.qty * l.unitCost, settings?.currency)}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setLines(lines.filter((_, i) => i !== idx))}
-                        className="col-span-1 btn btn-ghost text-danger h-8 w-8 p-0 justify-self-end"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   );
                 })
@@ -276,43 +354,44 @@ export default function POModal({
           </div>
 
           <div>
-            <label htmlFor="po-notes" className="label">Notes</label>
+            <label htmlFor="po-notes" className="label text-[9px] md:text-xs">Notes</label>
             <textarea
               id="po-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="input mt-1 h-20"
+              className="input mt-1 h-14 md:h-20 text-[13px] md:text-sm"
               placeholder="Delivery instructions..."
             />
           </div>
 
-          <div className="paper-card p-4 space-y-1">
-            <div className="flex justify-between text-sm">
+          <div className="paper-card p-2 md:p-4 space-y-0.5 md:space-y-1">
+            <div className="flex justify-between text-[11px] md:text-sm">
               <span>Subtotal</span>
-              <span className="num">{formatCurrency(subtotal, settings?.currency)}</span>
+              <span className="num"><MoneyText value={formatCurrency(subtotal, settings?.currency)} /></span>
             </div>
-            <div className="flex justify-between text-sm text-ink-mute">
+            <div className="flex justify-between text-[11px] md:text-sm text-ink-mute">
               <span>Tax ({settings?.taxRate}%)</span>
-              <span className="num">{formatCurrency(tax, settings?.currency)}</span>
+              <span className="num"><MoneyText value={formatCurrency(tax, settings?.currency)} /></span>
             </div>
-            <div className="dashed-divider" />
+            <div className="dashed-divider my-1 md:my-0" />
             <div className="flex justify-between items-baseline">
-              <span className="font-display text-lg font-semibold">Total</span>
-              <span className="num text-xl font-bold">
-                {formatCurrency(total, settings?.currency)}
+              <span className="font-display text-sm md:text-lg font-semibold">Total</span>
+              <span className="num text-base md:text-xl font-bold">
+                <MoneyText value={formatCurrency(total, settings?.currency)} />
               </span>
             </div>
           </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t">
-            <button type="button" onClick={onClose} className="btn btn-outline">
-              Cancel
-            </button>
-            <button type="submit" disabled={upsert.isPending} className="btn btn-primary">
-              {upsert.isPending ? "Saving..." : po ? "Save PO" : "Create PO"}
-            </button>
-          </div>
         </form>
+
+        {/* Pinned footer — actions stay reachable while the form scrolls */}
+        <div className="shrink-0 flex items-center justify-end gap-1.5 md:gap-2 px-2.5 md:px-5 py-2 md:py-3 border-t">
+          <button type="button" onClick={onClose} className="btn btn-outline">
+            Cancel
+          </button>
+          <button type="submit" form="po-form" disabled={upsert.isPending} className="btn btn-primary">
+            {upsert.isPending ? "Saving..." : po ? "Save PO" : "Create PO"}
+          </button>
+        </div>
       </div>
     </div>
   );

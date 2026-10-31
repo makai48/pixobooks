@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import ExpenseModal from "@/components/features/expenses/ExpenseModal";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassSelect from "@/components/ui/GlassSelect";
+import MoneyText from "@/components/ui/MoneyText";
 import StatCard from "@/components/ui/StatCard";
 import type { Expense } from "@/types";
 import {
@@ -161,7 +162,7 @@ export default function Expenses() {
                 <div className="flex justify-between text-[10px] md:text-sm leading-tight">
                   <span className="truncate pr-2">{cat}</span>
                   <span className="num text-ink-mute shrink-0">
-                    {formatMoney(amt, currency)}
+                    <MoneyText value={formatMoney(amt, currency)} />
                   </span>
                 </div>
                 <div className="h-1 md:h-1.5 rounded bg-ink/5 overflow-hidden">
@@ -176,8 +177,8 @@ export default function Expenses() {
         )}
       </div>
 
-      <div className="paper-card p-2.5 md:p-4 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:grid-cols-5 items-center md:items-end gap-x-1.5 gap-y-1.5 md:gap-3">
-        <div className="relative col-span-4 md:col-span-2">
+      <div className="paper-card p-2.5 md:p-4 flex flex-wrap items-center gap-x-1.5 gap-y-1.5 md:gap-3">
+        <div className="relative flex-1 min-w-[130px]">
           <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
           <input
             value={q}
@@ -186,29 +187,24 @@ export default function Expenses() {
             className="input input-sm pl-7 md:pl-9"
           />
         </div>
-        <div className="max-md:contents">
-          <label htmlFor="ex-from" className="label max-md:text-[9px] max-md:whitespace-nowrap">From</label>
+        <div className="flex items-center gap-1 md:gap-2 min-w-0 max-md:order-last max-md:w-full max-md:overflow-x-auto">
+          <label htmlFor="ex-from" className="label text-[9px] md:text-xs whitespace-nowrap">From</label>
           <GlassDatePicker
             id="ex-from"
             value={from}
             onChange={setFrom}
             ariaLabel="From date"
-            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+            className="input input-sm select-glass min-w-0 shrink-0 max-md:px-1.5"
           />
-        </div>
-        <div className="max-md:contents">
-          <label htmlFor="ex-to" className="label max-md:text-[9px] max-md:whitespace-nowrap">To</label>
+          <label htmlFor="ex-to" className="label text-[9px] md:text-xs whitespace-nowrap">To</label>
           <GlassDatePicker
             id="ex-to"
             value={to}
             onChange={setTo}
             ariaLabel="To date"
-            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+            className="input input-sm select-glass min-w-0 shrink-0 max-md:px-1.5"
           />
-        </div>
-        {tab === "expenses" && (
-          <div className="max-md:contents">
-            <label htmlFor="ex-category" className="label max-md:text-[9px] max-md:whitespace-nowrap">Category</label>
+          {tab === "expenses" && (
             <GlassSelect
               id="ex-category"
               value={category}
@@ -220,9 +216,19 @@ export default function Expenses() {
                   .filter((c) => c !== DRAWINGS_CATEGORY)
                   .map((c) => ({ value: c, label: c })),
               ]}
-              className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+              className="input input-sm select-glass min-w-0 shrink-0 max-md:px-1.5"
             />
-          </div>
+          )}
+        </div>
+        {can("expenses.manage") && (
+          <button
+            onClick={() => openNew(tab === "drawings")}
+            className="btn btn-primary btn-sm shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">{tab === "drawings" ? "New drawing" : "New expense"}</span>
+            <span className="sm:hidden">New</span>
+          </button>
         )}
       </div>
 
@@ -246,15 +252,6 @@ export default function Expenses() {
             <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
             <span className="hidden sm:inline">Export</span>
           </button>
-          {can("expenses.manage") && (
-            <button
-              onClick={() => openNew(tab === "drawings")}
-              className="btn btn-primary btn-sm"
-            >
-              <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              {tab === "drawings" ? "New drawing" : "New expense"}
-            </button>
-          )}
         </div>
       </div>
 
@@ -301,7 +298,7 @@ export default function Expenses() {
                   {e.createdByName}
                 </span>
                 <span className="num font-bold text-[10px] md:text-xs text-right w-16 md:w-24 shrink-0">
-                  {formatMoney(e.amount, currency)}
+                  <MoneyText value={formatMoney(e.amount, currency)} />
                 </span>
                 {can("expenses.manage") && (
                   <span className="flex items-center gap-0.5 md:gap-1 pr-1 md:pr-3 shrink-0">

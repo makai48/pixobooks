@@ -7,6 +7,7 @@ import { useShopSettings } from "@/hooks/useShopSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { processImageFile } from "@/lib/imageUpload";
 import PhoneInput from "@/components/common/PhoneInput";
+import GlassSelect from "@/components/ui/GlassSelect";
 import type { SupplierItem, SupplierRecord } from "@/types";
 
 type Draft = {
@@ -289,19 +290,17 @@ export default function SupplierModal({
                   <div key={i} className="grid grid-cols-12 gap-2 items-end">
                     <div className="col-span-12 md:col-span-4">
                       <label htmlFor={`sup-item-${i}`} className="label">Item</label>
-                      <select
+                      <GlassSelect
                         id={`sup-item-${i}`}
                         value={line.itemId || ""}
-                        onChange={(e) => pickItem(i, e.target.value)}
-                        className="input mt-1"
-                      >
-                        <option value="">Custom / not tracked</option>
-                        {items.map((it) => (
-                          <option key={it.id} value={it.id}>
-                            {it.name}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(v) => pickItem(i, v)}
+                        ariaLabel="Item"
+                        options={[
+                          { value: "", label: "Custom / not tracked" },
+                          ...items.map((it) => ({ value: it.id, label: it.name })),
+                        ]}
+                        className="input select-glass mt-1"
+                      />
                       {!line.itemId && (
                         <input
                           value={line.itemName}

@@ -79,6 +79,10 @@ export function useUpdateShopSettings() {
       if (patch.loyalty !== undefined) payload.loyalty = patch.loyalty;
       if (patch.discount !== undefined) payload.discount = patch.discount;
       if (patch.theme !== undefined) payload.theme = patch.theme;
+      if (patch.transactionAllowancePolicy !== undefined)
+        payload.transaction_allowance_policy = patch.transactionAllowancePolicy;
+      if (patch.pendingTxnAllowances !== undefined)
+        payload.pending_txn_allowances = patch.pendingTxnAllowances;
 
       const { error } = await supabase
         .from("shop_settings")

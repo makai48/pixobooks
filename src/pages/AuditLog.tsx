@@ -48,20 +48,20 @@ export default function AuditLogPage() {
           { to: "/audit-log", label: "Audit Log", icon: Shield },
         ]}
       />
-      <div className="paper-card p-3 flex flex-col md:flex-row md:items-center gap-3">
+      <div className="paper-card p-2.5 md:p-4 flex items-center gap-1.5 md:gap-3">
         <div className="flex-1 min-w-0">
-          <h1 className="font-display text-lg font-bold">Owner audit log</h1>
-          <p className="text-[10px] text-ink-mute">
+          <h1 className="font-display text-sm md:text-lg font-bold leading-tight truncate">Owner audit log</h1>
+          <p className="hidden md:block text-[10px] md:text-xs text-ink-mute mt-0.5">
             Chronological trail of privileged actions across your shop.
           </p>
         </div>
-        <div className="relative w-full md:w-72">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
+        <div className="relative flex-1 min-w-0 md:max-w-72">
+          <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Filter by actor, action, entity..."
-            className="input pl-9"
+            className="input input-sm pl-7 md:pl-9"
           />
         </div>
       </div>

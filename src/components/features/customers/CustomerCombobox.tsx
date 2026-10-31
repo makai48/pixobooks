@@ -32,6 +32,20 @@ export default function CustomerCombobox({
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  /** Glass treatment is mobile-only: desktop keeps the original solid
+   *  surfaces. matchMedia keeps the two breakpoints honest without
+   *  duplicating the popover markup. */
+  const [mobile, setMobile] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const onChangeMq = (e: MediaQueryListEvent) => setMobile(e.matches);
+    mq.addEventListener("change", onChangeMq);
+    return () => mq.removeEventListener("change", onChangeMq);
+  }, []);
 
   const selected = customers.find((c) => c.id === value) || null;
 
@@ -79,7 +93,8 @@ export default function CustomerCombobox({
         disabled={disabled}
         className={cn(
           "input h-8 py-0 text-xs w-full flex items-center gap-2 pl-2 pr-2 min-w-0",
-          "disabled:opacity-50"
+          "disabled:opacity-50",
+          mobile && "select-glass"
         )}
       >
         <User className="w-3.5 h-3.5 shrink-0 text-ink-mute" />
@@ -88,8 +103,15 @@ export default function CustomerCombobox({
       </button>
 
       {open && (
-        <div className="absolute z-50 left-0 right-0 top-[calc(100%+4px)] paper-card shadow-xl overflow-hidden border">
-          <div className="p-2 border-b bg-paper/40">
+        <div
+          className={cn(
+            "absolute z-50 left-0 right-0 top-[calc(100%+4px)] overflow-hidden",
+            mobile
+              ? "glass-pop rounded-xl animate-fade-in"
+              : "paper-card shadow-xl border"
+          )}
+        >
+          <div className={cn("p-2 border-b", mobile ? "border-line/40" : "bg-paper/40")}>
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
               <input
@@ -97,7 +119,10 @@ export default function CustomerCombobox({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search customers..."
-                className="input h-8 py-0 text-xs pl-7 pr-6 w-full"
+                className={cn(
+                  "input h-8 py-0 text-xs pl-7 pr-6 w-full",
+                  mobile && "select-glass"
+                )}
               />
               {query && (
                 <button

@@ -99,8 +99,8 @@ export default function PayrollHistoryPage() {
             Every Salary expense recorded — grouped by employee and month.
           </p>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="relative max-md:flex-1 max-md:min-w-[130px]">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          <div className="relative flex-1 min-w-[110px] md:flex-none">
             <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <input
               value={q}
