@@ -25,3 +25,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# local junk
+*.bak
+tatus
+.env
+.env.local
