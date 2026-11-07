@@ -1,5 +1,5 @@
 ---
-name: yellow-login
+name: Yellow login skill
 description: Yellow Login — the implemented PixoBooks V3 auth design system (login, register, auth modals, toasts, skeletons) with every applied amendment. Use when building, reviewing, or extending the yellow auth UI.
 ---
 
