@@ -174,7 +174,7 @@ export default function ExpenseModal({
               {isSalary
                 ? "Payroll payment"
                 : isDrawing
-                ? "Owner drawing"
+                ? "Admin drawing"
                 : "Track shop spend"}
             </h2>
           </div>
@@ -214,7 +214,7 @@ export default function ExpenseModal({
           {isDrawing && (
             <div className="rounded-lg border border-danger/30 bg-danger/5 p-2.5 md:p-3 space-y-0.5 md:space-y-1">
               <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-danger font-semibold">
-                Owner drawing
+                Admin drawing
               </div>
               <p className="text-[10px] md:text-[11px] text-ink-mute">
                 Drawings feed today&apos;s total into the Daily Balancing &amp;

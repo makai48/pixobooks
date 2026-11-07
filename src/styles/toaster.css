@@ -1,0 +1,169 @@
+/* ------------------------------------------------------------------ */
+/* V3 toast (Sonner) — same card language as auth: white surface,     */
+/* 1px border, 12px control radius, card shadow, DM Sans/Manrope.    */
+/* Applies globally so Signed out + every other notification match.  */
+/* ------------------------------------------------------------------ */
+
+/* 45% transparent glass (55% opaque) */
+:root {
+  --toast-brand: oklch(0.86 0.175 92);
+  --toast-brand-foreground: oklch(0.18 0 0);
+  --toast-card: oklch(1 0 0 / 0.55);
+  --toast-card-foreground: oklch(0.18 0 0);
+  --toast-foreground: oklch(0.18 0 0);
+  --toast-muted: oklch(0.56 0 0);
+  --toast-border: oklch(1 0 0 / 0.55);
+  --toast-danger: oklch(0.577 0.245 27.325);
+  --toast-success: oklch(0.72 0.15 155);
+  --toast-shadow: 0 1px 2px oklch(0 0 0 / 0.1),
+    0 12px 32px -12px oklch(0 0 0 / 0.15);
+  --toast-font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --toast-font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-theme="dark"] {
+  --toast-card: oklch(0.208 0.042 265.755 / 0.55);
+  --toast-card-foreground: oklch(0.984 0.003 247.858);
+  --toast-foreground: oklch(0.984 0.003 247.858);
+  --toast-muted: oklch(0.704 0.04 256.788);
+  --toast-border: oklch(1 0 0 / 0.28);
+  --toast-danger: oklch(0.704 0.191 22.216);
+  --toast-shadow: 0 1px 2px oklch(0 0 0 / 0.4),
+    0 12px 32px -12px oklch(0 0 0 / 0.7);
+}
+
+/* Sonner has no "center" position: anchor at 50% vertically (minus half the
+   front toast height, which Sonner publishes as a CSS var) while keeping its
+   own inline translateX for the track. */
+[data-sonner-toaster][data-y-position="top"] {
+  top: calc(50% - var(--front-toast-height, 0px) / 2) !important;
+  bottom: auto !important;
+  translate: none;
+}
+
+[data-sonner-toaster][data-x-position="center"] {
+  left: 50% !important;
+  right: auto !important;
+}
+
+/* Sonner sizes the track with --width and left-aligns each toast in it.
+   Our auto-width cards must be centred inside that track instead. */
+[data-sonner-toaster] [data-sonner-toast] {
+  left: 50% !important;
+  right: auto !important;
+  translate: -50% 0;
+}
+
+[data-sonner-toaster] {
+  font-family: var(--toast-font-sans);
+  --width: max-content;
+  --normal-bg: var(--toast-card);
+  --normal-text: var(--toast-foreground);
+  --border: var(--toast-border);
+  --success-bg: var(--toast-card);
+  --success-border: var(--toast-border);
+  --success-text: var(--toast-foreground);
+  --error-bg: var(--toast-card);
+  --error-border: var(--toast-border);
+  --error-text: var(--toast-foreground);
+  --warning-bg: var(--toast-card);
+  --warning-border: var(--toast-border);
+  --warning-text: var(--toast-foreground);
+  --info-bg: var(--toast-card);
+  --info-border: var(--toast-border);
+  --info-text: var(--toast-foreground);
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+  background: var(--toast-card);
+  color: var(--toast-foreground);
+  border: 1px solid var(--toast-border);
+  border-radius: 12px;
+  box-shadow: var(--toast-shadow);
+  font-family: var(--toast-font-sans);
+  padding: 10px 14px 10px 12px;
+  gap: 8px;
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+}
+
+[data-sonner-toaster] [data-title] {
+  font-family: var(--toast-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--toast-foreground);
+}
+
+[data-sonner-toaster] [data-description] {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--toast-muted);
+}
+
+[data-sonner-toaster] [data-icon] {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  border-radius: 12px;
+  background: var(--toast-brand);
+  color: var(--toast-brand-foreground);
+}
+
+[data-sonner-toaster] [data-icon] svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+  flex-shrink: 0;
+}
+
+[data-sonner-toaster] [data-type="error"] [data-icon] {
+  background: oklch(0.577 0.245 27.325 / 0.12);
+  color: var(--toast-danger);
+}
+
+[data-sonner-toaster] [data-type="warning"] [data-icon] {
+  background: oklch(0.86 0.175 92 / 0.22);
+  color: var(--toast-foreground);
+}
+
+[data-sonner-toaster] [data-type="info"] [data-icon] {
+  background: oklch(0.95 0.003 106);
+  color: var(--toast-foreground);
+}
+
+[data-theme="dark"] [data-sonner-toaster] [data-type="info"] [data-icon] {
+  background: oklch(0.279 0.041 260.031);
+}
+
+[data-sonner-toaster] [data-close-button] {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--toast-muted);
+}
+
+[data-sonner-toaster] [data-close-button]:hover {
+  color: var(--toast-foreground);
+  background: color-mix(in oklch, var(--toast-foreground) 6%, transparent);
+}
+
+[data-sonner-toaster] [data-close-button] svg {
+  width: 14px;
+  height: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toaster] [data-sonner-toast] {
+    animation: none !important;
+  }
+}

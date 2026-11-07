@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import "@/styles/auth.css";
 
 type Blocked =
-  | { type: "pending_first"; email: string; ownerHint?: string }
+  | { type: "pending_first"; email: string; adminHint?: string }
   | { type: "pending_still"; email: string; requestedAt?: string }
   | { type: "rejected"; email: string; notes?: string }
   | { type: "expired"; email: string }
@@ -52,6 +52,9 @@ export default function Login() {
     email?: string;
     password?: string;
   }>({});
+  // A rejected credential pair is an error on BOTH fields (either could be
+  // wrong), but there is only one message — shown under Password.
+  const [credentialsError, setCredentialsError] = useState<string | null>(null);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [blocked, setBlocked] = useState<Blocked>(null);
   const submittingRef = useRef(false);
@@ -72,6 +75,7 @@ export default function Login() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBlocked(null);
+    setCredentialsError(null);
     // V3 mandatory-field warnings: asterisked fields warn inline when empty.
     const errors: { email?: string; password?: string } = {};
     if (!email.trim()) errors.email = "Enter your email address.";
@@ -154,7 +158,7 @@ export default function Login() {
           stop({
             type: "pending_first",
             email: prof.email,
-            ownerHint: prof.invited_by_name || undefined,
+            adminHint: prof.invited_by_name || undefined,
           });
           return;
 
@@ -181,9 +185,9 @@ export default function Login() {
       }
     } catch (err) {
       submittingRef.current = false;
-      // V3 style: wrong-credentials (and other sign-in failures) surface as an
-      // inline password error, not a top-right toast.
-      setFieldErrors({ password: describeSignInError(err) });
+      // V3 style: a rejected credential pair is one inline error, but BOTH
+      // fields are invalid because either value could be wrong.
+      setCredentialsError(describeSignInError(err));
       setLoading(false);
     }
   };
@@ -249,13 +253,20 @@ export default function Login() {
                       type="email"
                       required
                       autoComplete="email"
-                      aria-invalid={!!fieldErrors.email}
+                      aria-invalid={
+                        !!fieldErrors.email || !!credentialsError
+                      }
                       aria-describedby={
-                        fieldErrors.email ? "login-email-error" : undefined
+                        fieldErrors.email
+                          ? "login-email-error"
+                          : credentialsError
+                            ? "login-password-error"
+                            : undefined
                       }
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
+                        setCredentialsError(null);
                         if (fieldErrors.email)
                           setFieldErrors((prev) => ({
                             ...prev,
@@ -272,7 +283,9 @@ export default function Login() {
                     label="Password"
                     required
                     icon={Lock}
-                    error={fieldErrors.password}
+                    error={
+                      fieldErrors.password ?? credentialsError ?? undefined
+                    }
                   >
                     <input
                       id="login-password"
@@ -280,15 +293,18 @@ export default function Login() {
                       required
                       minLength={6}
                       autoComplete="current-password"
-                      aria-invalid={!!fieldErrors.password}
+                      aria-invalid={
+                        !!fieldErrors.password || !!credentialsError
+                      }
                       aria-describedby={
-                        fieldErrors.password
+                        fieldErrors.password || credentialsError
                           ? "login-password-error"
                           : undefined
                       }
                       value={password}
                       onChange={(e) => {
                         setPassword(e.target.value);
+                        setCredentialsError(null);
                         if (fieldErrors.password)
                           setFieldErrors((prev) => ({
                             ...prev,
@@ -407,7 +423,7 @@ function BlockedPanel({
             <>
               Your first sign-in with the temporary password has been logged. An
               approval request was just sent to{" "}
-              <strong>{blocked.ownerHint || "the workspace admin"}</strong>. As
+              <strong>{blocked.adminHint || "the workspace admin"}</strong>. As
               soon as they approve, sign in again — you'll then set a permanent
               password.
             </>

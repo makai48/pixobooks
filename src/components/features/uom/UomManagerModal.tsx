@@ -57,14 +57,14 @@ type ConversionDraft = {
 };
 
 export default function UomManagerModal({ onClose }: { onClose: () => void }) {
-  const { profile, can, isAppOwner } = useAuth();
+  const { profile, can, isAppAdmin } = useAuth();
   const { data: uoms = [], isLoading: uomsLoading } = useUoms();
   const { data: conversions = [], isLoading: conversionsLoading } = useUnitConversions();
   const { data: categories = [] } = useUomCategories();
   const upsertUom = useUpsertUom();
   const upsertConversion = useUpsertUnitConversion();
 
-  const canManage = can("settings.units") || can("settings.manage") || isAppOwner;
+  const canManage = can("settings.units") || can("settings.manage") || isAppAdmin;
 
   const [unitQuery, setUnitQuery] = useState("");
   const [unitFilter, setUnitFilter] = useState<UnitFilter>("all");
@@ -263,7 +263,7 @@ export default function UomManagerModal({ onClose }: { onClose: () => void }) {
           {!canManage && (
             <div className="uom-readonly">
               <CircleAlert className="uom-icon" />
-              You can browse the unit master, but Admin or Owner access is required to change it.
+              You can browse the unit master, but Admin access is required to change it.
             </div>
           )}
 

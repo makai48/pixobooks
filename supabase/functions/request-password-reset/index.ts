@@ -8,7 +8,7 @@ import { corsHeaders } from "../_shared/cors.ts";
  * The Login screen has no session, so RLS blocks it from reading
  * `user_profiles` directly. This function runs with the service-role key,
  * validates the email against real employee accounts, then writes a
- * pending row to `password_reset_requests` that the shop owner can approve
+ * pending row to `password_reset_requests` that the shop admin can approve
  * from their Password Requests page.
  */
 serve(async (req: Request) => {
@@ -43,11 +43,11 @@ serve(async (req: Request) => {
     if (!emp) {
       return json({
         error:
-          "That email is not registered as an employee. Ask the shop owner to invite you first.",
+          "That email is not registered as an employee. Ask the shop admin to invite you first.",
       }, 404);
     }
 
-    // Prevent flooding the owner: if there is already a pending request in the
+    // Prevent flooding the admin: if there is already a pending request in the
     // last 10 minutes for this email, just reuse it instead of piling more up.
     const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     const { data: existing } = await admin

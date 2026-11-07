@@ -852,7 +852,7 @@ export const EXPENSE_CATEGORIES: string[] = [
   "General",
 ];
 
-/** Categories that represent an owner-drawing (cash withdrawn from the
+/** Categories that represent an admin-drawing (cash withdrawn from the
  *  till for personal use). Fed directly into the Daily Balancing form. */
 export const DRAWINGS_CATEGORY = "Drawings";
 
@@ -1030,44 +1030,30 @@ export const THEME_PRESETS: Record<
  * / team members join via admin invite or admin approval.
  */
 export const ADMIN_EMAIL = "me.makai48@gmail.com";
-/** @deprecated Use ADMIN_EMAIL. */
-export const OWNER_EMAIL = ADMIN_EMAIL;
 
 /** Max failed login attempts before an account is locked (admins exempt). */
 export const MAX_FAILED_LOGINS = 3;
+
+/**
+ * Role value written by older builds. Profiles still carrying it must keep
+ * admin access, so it is accepted as an alias. Kept in one place because it
+ * is stored data, not UI copy.
+ */
+const LEGACY_ADMIN_ROLE = "owner";
 
 export function isAdminEmail(email?: string | null): boolean {
   return (email || "").trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
 }
 
-/** @deprecated Use isAdminEmail. */
-export function isOwnerEmail(email?: string | null): boolean {
-  return isAdminEmail(email);
-}
-
-/**
- * Role-based admin check: true for any Admin, regardless of email.
- * Also accepts the legacy "Owner" role string so pre-rename profiles
- * keep their access without a data migration.
- */
+/** Role-based admin check: true for any Admin, including legacy rows. */
 export function isAdminRole(role?: string | null): boolean {
   const r = (role || "").trim().toLowerCase();
-  return r === "admin" || r === "admin";
-}
-
-/** @deprecated Use isAdminRole. */
-export function isOwnerRole(role?: string | null): boolean {
-  return isAdminRole(role);
+  return r === "admin" || r === LEGACY_ADMIN_ROLE;
 }
 
 /** Full admin check: legacy supreme email OR Admin role. */
 export function isShopAdmin(email?: string | null, role?: string | null): boolean {
   return isAdminEmail(email) || isAdminRole(role);
-}
-
-/** @deprecated Use isShopAdmin. */
-export function isShopOwner(email?: string | null, role?: string | null): boolean {
-  return isShopAdmin(email, role);
 }
 
 /** Compute the total monthly-equivalent salary from an EmployeeSalary payload. */

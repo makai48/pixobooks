@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { authService } from "@/lib/auth";
-import { useAppOwnerStatus } from "@/hooks/useAuth";
+import { useAppAdminStatus } from "@/hooks/useAuth";
 import { TERMS_TEXT, PRIVACY_TEXT, TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal";
 import PhoneInput from "@/components/common/PhoneInput";
 import CountrySelect from "@/components/common/CountrySelect";
@@ -25,6 +25,7 @@ import GlassSelect from "@/components/ui/GlassSelect";
 import AuthShell from "@/components/auth/AuthShell";
 import AuthField from "@/components/auth/AuthField";
 import AuthModal from "@/components/auth/AuthModal";
+import { RegisterSkeletonBody } from "@/components/auth/RegisterSkeleton";
 import {
   CURRENCIES,
   BUSINESS_TYPES,
@@ -96,7 +97,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 
 export default function Register() {
   const nav = useNavigate();
-  const { data: ownerStatus, isLoading } = useAppOwnerStatus();
+  const { data: adminStatus, isLoading } = useAppAdminStatus();
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>("details");
   const [loading, setLoading] = useState(false);
@@ -110,7 +111,7 @@ export default function Register() {
   const paramMode: Mode | null =
     modeParam === "signin" || modeParam === "create" ? modeParam : null;
   const mode: Mode | null =
-    paramMode ?? (isLoading ? null : ownerStatus?.hasOwner ? "signin" : "create");
+    paramMode ?? (isLoading ? null : adminStatus?.hasAdmin ? "signin" : "create");
 
   // Reset the form step when the user jumps between create/sign-in surfaces
   // via the footer cross-link, so a stale OTP step never greets them.
@@ -146,7 +147,7 @@ export default function Register() {
   // legal
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  const wasOwnerless = useMemo(() => !ownerStatus?.hasOwner, [ownerStatus]);
+  const hadNoAdmin = useMemo(() => !adminStatus?.hasAdmin, [adminStatus]);
 
   useEffect(() => {
     const c = countryByIso2(countryIso);
@@ -166,7 +167,7 @@ export default function Register() {
 
   const sendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (ownerStatus?.hasOwner) {
+    if (adminStatus?.hasAdmin) {
       toast.error("This shop already has an admin. Branches join via admin invite — ask the shop admin to add you.");
       return;
     }
@@ -242,7 +243,7 @@ export default function Register() {
           })
           .eq("id", newUser.id);
       }
-      if (wasOwnerless) {
+      if (hadNoAdmin) {
         // Belt-and-braces: the signup trigger already bootstrapped the shop
         // from metadata; confirm the full form values as the new admin.
         await supabase
@@ -275,18 +276,24 @@ export default function Register() {
     }
   };
 
-  const hasOwner = ownerStatus?.hasOwner;
+  const hasAdmin = adminStatus?.hasAdmin;
+
+  if (isLoading) {
+    return (
+      <AuthShell className="register-wide" hideBrand footer={null}>
+        <RegisterSkeletonBody />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell
-      loading={isLoading}
-      loadingLabel="Preparing setup…"
       className="register-wide"
       hideBrand
       footer={
         <p className="register-footer">
           {mode === "signin" ? (
-            hasOwner ? (
+            hasAdmin ? (
               <>Need access? Ask your workspace admin for an invite.</>
             ) : (
               <>
@@ -296,7 +303,7 @@ export default function Register() {
                 </Link>
               </>
             )
-          ) : mode === "create" && hasOwner ? (
+          ) : mode === "create" && hasAdmin ? (
             <>
               Already have access?{" "}
               <Link to="/login" className="reg-link">
@@ -341,7 +348,7 @@ export default function Register() {
                 </div>
               </div>
             </>
-          ) : hasOwner ? (
+          ) : hasAdmin ? (
             <>
               <div className="reg-intro">
                 <p className="reg-step">Workspace access</p>
@@ -700,7 +707,7 @@ export default function Register() {
                       ) : null}
                       {loading
                         ? "Creating workspace…"
-                        : wasOwnerless
+                        : hadNoAdmin
                           ? "Create workspace"
                           : "Create account"}
                       {!loading && <ArrowRight aria-hidden="true" />}

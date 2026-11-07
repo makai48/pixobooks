@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { MAX_FAILED_LOGINS, isShopOwner } from "@/types";
+import { MAX_FAILED_LOGINS, isShopAdmin } from "@/types";
 import { isWrongPasswordError } from "./signInFlow";
 
 /**
@@ -119,8 +119,8 @@ export const authService = {
       .ilike("email", trimmed)
       .maybeSingle();
 
-    const isOwner = isShopOwner(trimmed, profile?.role);
-    if (profile && !isOwner) {
+    const isAdmin = isShopAdmin(trimmed, profile?.role);
+    if (profile && !isAdmin) {
       const locked = (profile.failed_login_count || 0) >= MAX_FAILED_LOGINS;
       const timeLocked = profile.locked_until
         ? new Date(profile.locked_until) > new Date()
@@ -140,7 +140,7 @@ export const authService = {
     if (error) {
       // Only real credential failures count towards the lockout. A schema or
       // network fault must never lock an employee out of a fresh account.
-      if (profile && !isOwner && isWrongPasswordError(error)) {
+      if (profile && !isAdmin && isWrongPasswordError(error)) {
         const next = (profile.failed_login_count || 0) + 1;
         const payload: Record<string, unknown> = { failed_login_count: next };
         if (next >= MAX_FAILED_LOGINS) {

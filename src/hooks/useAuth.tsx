@@ -8,10 +8,11 @@ import {
 } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { mapEmployee } from "@/lib/mappers";
 import type { Employee, Permission } from "@/types";
-import { isShopAdmin } from "@/types";
+import { isAdminRole, isShopAdmin } from "@/types";
 
 type AuthCtx = {
   user: User | null;
@@ -21,10 +22,6 @@ type AuthCtx = {
   canViewCosts: boolean;
   isAdmin: boolean;
   isAppAdmin: boolean;
-  /** @deprecated Use isAdmin. */
-  isOwner: boolean;
-  /** @deprecated Use isAppAdmin. */
-  isAppOwner: boolean;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -60,8 +57,8 @@ function writeProfileSnapshot(p: Employee | null): void {
 /**
  * Runtime safeguard: fills a missing username. Access itself is
  * ROLE-based (any email can administer; the first registered user becomes Admin).
- * The database trigger `enforce_owner_role_trg` guards the admin tier at
- * the storage layer, so no client-side demotion happens here.
+ * A database trigger guards the admin tier at the storage layer, so no
+ * client-side demotion happens here.
  */
 function sanitizeProfile(raw: Record<string, unknown> | null): Record<string, unknown> | null {
   if (!raw) return raw;
@@ -181,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const roleLower = profile?.role?.toLowerCase() || "";
   // Access is role-based (any email): legacy supreme email still counts.
   const isAppAdmin = isShopAdmin(profile?.email || user?.email, profile?.role);
-  const isAdmin = roleLower === "admin" || roleLower === "admin";
+  const isAdmin = isAdminRole(profile?.role);
   const isManager = roleLower === "manager" || roleLower.includes("manager");
 
   const value = useMemo<AuthCtx>(
@@ -191,8 +188,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       isAdmin,
       isAppAdmin,
-      isOwner: isAdmin,
-      isAppOwner: isAppAdmin,
       canViewCosts:
         isAppAdmin ||
         isAdmin ||
@@ -207,7 +202,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (user) await loadProfile(user.id);
       },
       logout: async () => {
-        await supabase.auth.signOut();
+        try {
+          await supabase.auth.signOut();
+          toast.success("Signed out");
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : "Could not sign out"
+          );
+          throw err;
+        }
       },
     }),
     [user, profile, loading, isAdmin, isManager, isAppAdmin]
@@ -226,9 +229,8 @@ export function useAuth() {
  * Checks whether ANY shop admin (role='Admin', any email) is registered.
  * Open registration is only available while no admin exists (first user
  * becomes admin); afterwards team/branch accounts join via admin invite
- * or admin approval of the pending request.
- * The legacy "Owner" role string is still honored so pre-rename workspaces
- * keep their admin.
+ * or admin approval of the pending request. Legacy admin role rows are
+ * included so older workspaces still count.
  */
 export function useAppAdminStatus() {
   return useQuery({
@@ -237,24 +239,15 @@ export function useAppAdminStatus() {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("id, email, role")
-        .in("role", ["Owner", "Admin"])
+        .in("role", ["Admin", "owner"])
         .limit(1);
       if (error) throw error;
       const admin = (data || [])[0] || null;
       return {
         hasAdmin: !!admin,
-        /** @deprecated Use hasAdmin. */
-        hasOwner: !!admin,
         adminEmail: admin?.email || "",
-        /** @deprecated Use adminEmail. */
-        ownerEmail: admin?.email || "",
       };
     },
     staleTime: 30_000,
   });
-}
-
-/** @deprecated Use useAppAdminStatus. */
-export function useAppOwnerStatus() {
-  return useAppAdminStatus();
 }

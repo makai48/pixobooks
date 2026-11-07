@@ -6,7 +6,7 @@ import {
   getActiveBusinessId,
   useActiveBusiness,
   useCreateBusiness,
-  type LegacyOwnerAccess,
+  type LegacyAdminAccess,
   type MasterScope,
 } from "@/hooks/useBusinesses";
 import { setActiveBranch, useBranches, useCreateBranch } from "@/hooks/useBranches";
@@ -16,7 +16,7 @@ import GlassSelect from "@/components/ui/GlassSelect";
 import { upgradeToast } from "@/components/billing/UpgradePrompt";
 import { cn } from "@/lib/utils";
 
-const ACCESS_LABELS: Record<LegacyOwnerAccess, string> = {
+const ACCESS_LABELS: Record<LegacyAdminAccess, string> = {
   none: "No cross-business access",
   platform_admin: "Platform admin (metadata only)",
   supreme: "Supreme admin (full access)",
@@ -49,7 +49,7 @@ export default function CreateWorkspaceDialog({
 
   const [bizName, setBizName] = useState("");
   const [scope, setScope] = useState<MasterScope>("shared");
-  const [access, setAccess] = useState<LegacyOwnerAccess>("none");
+  const [access, setAccess] = useState<LegacyAdminAccess>("none");
   const [emails, setEmails] = useState("");
   const [branchName, setBranchName] = useState("");
 
@@ -77,8 +77,8 @@ export default function CreateWorkspaceDialog({
       await createBusiness.mutateAsync({
         name: bizName.trim(),
         masterScope: scope,
-        legacyOwnerAccess: access,
-        legacyOwnerEmails: delegates,
+        legacyAdminAccess: access,
+        legacyAdminEmails: delegates,
       });
       toast.success("Business created");
       onClose();
@@ -184,9 +184,9 @@ export default function CreateWorkspaceDialog({
               <GlassSelect
                 id="ws-legacy"
                 value={access}
-                onChange={(v) => setAccess(v as LegacyOwnerAccess)}
+                onChange={(v) => setAccess(v as LegacyAdminAccess)}
                 ariaLabel="Legacy admin access"
-                options={(Object.keys(ACCESS_LABELS) as LegacyOwnerAccess[]).map((key) => ({
+                options={(Object.keys(ACCESS_LABELS) as LegacyAdminAccess[]).map((key) => ({
                   value: key,
                   label: ACCESS_LABELS[key],
                 }))}

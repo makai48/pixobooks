@@ -75,7 +75,7 @@ export type CashDayFlow = {
   cashSales: number;
   /** Cash expenses excluding drawings. */
   cashExpenses: number;
-  /** Owner drawings paid from the till. */
+  /** Admin drawings paid from the till. */
   drawings: number;
   /** Till → bank transfers recorded on this day. */
   banked: number;

@@ -42,9 +42,9 @@ const STATUS_COLORS: Record<QuoteStatus, string> = {
 };
 
 export default function Quotes() {
-  const { can, profile, isOwner, isAppOwner } = useAuth();
+  const { can, profile, isAdmin, isAppAdmin } = useAuth();
   const canDeleteQuote =
-    isOwner || isAppOwner || (profile?.role || "").toLowerCase() === "admin";
+    isAdmin || isAppAdmin || (profile?.role || "").toLowerCase() === "admin";
   const { data: quotes = [], isLoading } = useQuotes();
   const { data: settings } = useShopSettings();
   const { data: items = [] } = useItems();

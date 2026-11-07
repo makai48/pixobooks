@@ -34,7 +34,7 @@ import type { PasswordResetRequest } from "@/types";
 const TEMP_PASSWORD_HOUR_PRESETS = [12, 24, 48, 72, 168];
 
 export default function PasswordResetsPage() {
-  const { profile, can, isAppOwner } = useAuth();
+  const { profile, can, isAppAdmin } = useAuth();
   const { data: requests = [], isLoading, isFetching } =
     usePasswordResetRequests();
   const { data: settings } = useShopSettings();
@@ -50,7 +50,7 @@ export default function PasswordResetsPage() {
     (PasswordResetApprovalResult & { requestId: string }) | null
   >(null);
 
-  const canApprove = isAppOwner || can("password.approve");
+  const canApprove = isAppAdmin || can("password.approve");
 
   const filtered = useMemo(() => {
     if (filter === "all") return requests;

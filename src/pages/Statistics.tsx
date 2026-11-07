@@ -676,7 +676,7 @@ export default function Statistics() {
               />
             </ChartCard>
 
-            <ChartCard icon={Wallet} kicker={`Drawings · ${periodLabel}`} title="Owner drawings">
+            <ChartCard icon={Wallet} kicker={`Drawings · ${periodLabel}`} title="Admin drawings">
               <LineChart
                 data={drawings.map((p) => ({ label: p.label, value: p.value }))}
                 color="#dc2626"

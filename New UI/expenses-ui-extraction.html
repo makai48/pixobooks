@@ -155,7 +155,7 @@ const EXPENSES = [
   { id: '4', date: '2025-10-12', category: 'Salary', description: 'Staff salaries', vendor: '', amount: 1500000, method: 'transfer', by: 'John M.' },
   { id: '5', date: '2025-10-11', category: 'Fuel', description: 'Generator fuel', vendor: 'Fuel Station', amount: 120000, method: 'cash', by: 'Sarah O.' },
   { id: '6', date: '2025-10-10', category: 'Marketing', description: 'Facebook ads', vendor: 'Meta', amount: 100000, method: 'card', by: 'John M.' },
-  { id: '7', date: '2025-10-09', category: 'Drawings', description: 'Owner draw', vendor: '', amount: 200000, method: 'cash', by: 'John M.' },
+  { id: '7', date: '2025-10-09', category: 'Drawings', description: 'Admin draw', vendor: '', amount: 200000, method: 'cash', by: 'John M.' },
   { id: '8', date: '2025-10-08', category: 'Office Supplies', description: 'Pens, folders', vendor: 'Stationery Shop', amount: 50000, method: 'cash', by: 'Amina K.' },
   { id: '9', date: '2025-10-07', category: 'Maintenance', description: 'Printer repair', vendor: 'Tech Fix', amount: 150000, method: 'cash', by: 'Sarah O.' },
   { id: '10', date: '2025-10-06', category: 'General', description: 'Cleaning supplies', vendor: '', amount: 30000, method: 'cash', by: 'Amina K.' },
@@ -186,7 +186,7 @@ function switchExpTab(tab, btn) {
   document.getElementById('expTableExpenses').classList.toggle('hidden', tab !== 'expenses');
   document.getElementById('expTableDrawings').classList.toggle('hidden', tab !== 'drawings');
   document.getElementById('expCategoryFilter').style.display = tab === 'expenses' ? '' : 'none';
-  document.getElementById('expSummaryLabel').textContent = tab === 'drawings' ? 'Owner drawings' : 'Total in range';
+  document.getElementById('expSummaryLabel').textContent = tab === 'drawings' ? 'Admin drawings' : 'Total in range';
   document.getElementById('expSummaryValue').className = 'stat-value num ' + (tab === 'drawings' ? 'tone-danger' : 'tone-warning');
   document.getElementById('expSummaryDesc').textContent = tab === 'drawings' ? '2 records · fed to Daily Balancing' : '10 records';
   document.getElementById('expNewBtnLabel').textContent = tab === 'drawings' ? 'New drawing' : 'New expense';

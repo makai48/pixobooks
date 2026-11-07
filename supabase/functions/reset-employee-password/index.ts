@@ -1,7 +1,7 @@
 // Reset an employee's password via a temporary credential + require them
 // to set a permanent one on next sign-in.
 //
-// FLOW (invoked by Owner/authorized user from PasswordResets page):
+// FLOW (invoked by Admin/authorized user from PasswordResets page):
 //  1. Verify caller has an active session (edge-runtime side).
 //  2. Load the pending password_reset_requests row.
 //  3. Resolve the target user by employee_id or email.
@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json().catch(() => ({}));
     const requestId = String(body?.requestId || "").trim();
-    const approverName = String(body?.approverName || "Owner").trim();
+    const approverName = String(body?.approverName || "Admin").trim();
     const expirationHours = clamp(Number(body?.expirationHours || 24), 1, 720);
     if (!requestId) return json({ error: "requestId is required" }, 400);
 
@@ -177,7 +177,7 @@ Deno.serve(async (req: Request) => {
         locked_until: null,
         // Ensure account is active (previously-approved accounts stay
         // approved; explicitly-rejected ones should be re-approved by
-        // the owner through Account Approvals — do not overwrite here).
+        // the admin through Account Approvals — do not overwrite here).
       })
       .eq("id", resolvedUserId)
       .select("id");
@@ -295,7 +295,7 @@ async function verifyTempPassword(
   }
 }
 
-/** Pull GoTrue's message out of an error body so the owner sees something useful. */
+/** Pull GoTrue's message out of an error body so the admin sees something useful. */
 function shortAuthError(raw: string): string {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;

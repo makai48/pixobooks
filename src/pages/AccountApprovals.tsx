@@ -24,7 +24,7 @@ import { cn, formatDateTime, timeAgo } from "@/lib/utils";
 import type { AccountApprovalRequest } from "@/types";
 
 export default function AccountApprovalsPage() {
-  const { profile, can, isAppOwner } = useAuth();
+  const { profile, can, isAppAdmin } = useAuth();
   const { data: requests = [], isLoading, isFetching } =
     useAccountApprovalRequests();
   const approve = useApproveAccount();
@@ -33,7 +33,7 @@ export default function AccountApprovalsPage() {
     "pending" | "approved" | "rejected" | "all"
   >("pending");
 
-  const canApprove = isAppOwner || can("employees.manage");
+  const canApprove = isAppAdmin || can("employees.manage");
 
   const filtered = useMemo(() => {
     if (filter === "all") return requests;

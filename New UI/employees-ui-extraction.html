@@ -117,7 +117,7 @@
 .emp-permission-presets .presets-label svg { width: 12px; height: 12px; }
 .emp-permission-presets .preset-chip { height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #8c8c8c; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 150ms ease; }
 .emp-permission-presets .preset-chip:hover { background: rgba(0, 0, 0, 0.05); }
-.emp-permission-presets .preset-chip.owner { background: rgba(224, 51, 128, 0.1); color: #e03380; border-color: rgba(224, 51, 128, 0.3); }
+.emp-permission-presets .preset-chip.admin { background: rgba(224, 51, 128, 0.1); color: #e03380; border-color: rgba(224, 51, 128, 0.3); }
 .emp-invite-modal { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.5); display: flex; align-items: flex-end; justify-content: center; padding: 0; animation: fade-in 160ms ease-out; }
 @media (min-width: 768px) { .emp-invite-modal { align-items: center; padding: 16px; } }
 .emp-invite-box { width: 100%; max-width: 672px; max-height: 95vh; display: flex; flex-direction: column; border-radius: 16px 16px 0 0; background: #fdfbf7; border: 1px solid #8c8c8c; overflow: hidden; }
@@ -342,7 +342,7 @@ function renderEmpDetail() {
       <button class="preset-chip" onclick="applyPreset('cashier')">Cashier</button>
       <button class="preset-chip" onclick="applyPreset('designer')">Designer</button>
       <button class="preset-chip" onclick="applyPreset('manager')">Manager</button>
-      <button class="preset-chip owner" onclick="applyPreset('owner')">Owner (all)</button>
+      <button class="preset-chip admin" onclick="applyPreset('admin')">Admin (all)</button>
       <button class="preset-chip" onclick="applyPreset('none')">Clear</button>
     </div>
     <div class="emp-permission-groups">

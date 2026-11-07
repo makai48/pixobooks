@@ -63,7 +63,7 @@ import {
   DEFAULT_STAFF_PERMISSIONS,
   ATTENDANCE_META,
   CURRENCIES,
-  isShopOwner,
+  isShopAdmin,
   DEFAULT_TEMP_PASSWORD_HOURS,
   TEMP_PASSWORD_HOUR_PRESETS,
   type Employee,
@@ -87,7 +87,7 @@ import { upgradeToast } from "@/components/billing/UpgradePrompt";
 type TabKey = "profile" | "payroll" | "attendance" | "permissions";
 
 export default function Employees() {
-  const { profile, can, isAppOwner } = useAuth();
+  const { profile, can, isAppAdmin } = useAuth();
   const { data: employees = [], isLoading } = useEmployees();
   const { data: settings } = useShopSettings();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -99,7 +99,7 @@ export default function Employees() {
 
   const canInvite = can("employees.manage") || can("users.invite");
   const canDelete =
-    can("employees.delete") || can("users.delete") || isAppOwner;
+    can("employees.delete") || can("users.delete") || isAppAdmin;
 
   // Imported staff cleanup (Report cashier duplicates): profiles that arrived
   // via file import carry no invite trail (`invitedAt`/`invitedBy` are only
@@ -113,7 +113,7 @@ export default function Employees() {
           !e.invitedBy &&
           e.id !== profile?.id &&
           e.role.trim().toLowerCase() !== "admin" &&
-          !isShopOwner(e.email, e.role)
+          !isShopAdmin(e.email, e.role)
       ),
     [employees, profile?.id]
   );
@@ -268,7 +268,7 @@ export default function Employees() {
   };
 
   const handleDelete = (e: Employee) => {
-    if (isShopOwner(e.email, e.role)) {
+    if (isShopAdmin(e.email, e.role)) {
       return toast.error("The shop admin account cannot be deleted");
     }
     if (e.id === profile?.id) {
@@ -403,7 +403,7 @@ export default function Employees() {
                 onClick={cleanImported}
                 disabled={cleaning}
                 className="btn btn-outline btn-sm text-danger border-danger/40"
-                title="Remove profiles that arrived via file import (no invite trail). Owner and invited employees are kept."
+                title="Remove profiles that arrived via file import (no invite trail). Admin and invited employees are kept."
               >
                 <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <span className="hidden sm:inline">
@@ -471,7 +471,7 @@ export default function Employees() {
                     <Circle className="w-3.5 h-3.5 md:w-4 md:h-4 text-ink-mute shrink-0" />
                   )}
                 </button>
-                {canDelete && !isShopOwner(e.email, e.role) && e.id !== profile?.id && (
+                {canDelete && !isShopAdmin(e.email, e.role) && e.id !== profile?.id && (
                   <button
                     onClick={() => handleDelete(e)}
                     className="btn btn-ghost h-6 w-6 md:h-8 md:w-8 p-0 text-danger shrink-0"
@@ -521,7 +521,7 @@ export default function Employees() {
                 key={selected.id}
                 employee={selected}
                 onDelete={() => handleDelete(selected)}
-                canDelete={canDelete && !isShopOwner(selected.email, selected.role) && selected.id !== profile?.id}
+                canDelete={canDelete && !isShopAdmin(selected.email, selected.role) && selected.id !== profile?.id}
               />
             )}
             {tab === "payroll" && <PayrollTab key={selected.id} employee={selected} />}
@@ -1508,7 +1508,7 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input mt-1" />
         </Field>
         <Field label="Role / Job title">
-          <input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="input mt-1" placeholder="Cashier / Designer / Owner" />
+          <input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="input mt-1" placeholder="Cashier / Designer / Admin" />
         </Field>
         <PhoneInput
           label="Phone"

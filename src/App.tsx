@@ -1,8 +1,12 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
+import { AlertCircle, Check, Info, TriangleAlert } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
+import RegisterSkeleton from "@/components/auth/RegisterSkeleton";
+import "@/styles/toaster.css";
+import "@/styles/auth.css";
 
 const Login = lazy(() => import("@/pages/Login"));
 const Register = lazy(() => import("@/pages/Register"));
@@ -69,18 +73,29 @@ export default function App() {
   return (
     <BrowserRouter basename={basename}>
       <Toaster
-        position="top-right"
+        position="top-center"
+        gap={10}
+        icons={{
+          success: <Check size={16} strokeWidth={2.5} aria-hidden="true" />,
+          error: <AlertCircle size={16} strokeWidth={2} aria-hidden="true" />,
+          info: <Info size={16} strokeWidth={2} aria-hidden="true" />,
+          warning: <TriangleAlert size={16} strokeWidth={2} aria-hidden="true" />,
+          loading: <Check size={16} strokeWidth={2} aria-hidden="true" />,
+        }}
         toastOptions={{
           style: {
-            background: "hsl(224 45% 18%)",
-            color: "hsl(38 32% 96%)",
-            border: "1px solid hsl(224 45% 25%)",
+            background: "var(--toast-card, oklch(1 0 0 / 0.55))",
+            color: "var(--toast-foreground, oklch(0.18 0 0))",
+            border: "1px solid var(--toast-border, oklch(1 0 0 / 0.55))",
+            borderRadius: "12px",
+            fontFamily:
+              "'DM Sans', ui-sans-serif, system-ui, sans-serif",
           },
         }}
       />
       <Routes>
         <Route path="/login" element={<Suspense fallback={<PageFallback />}><Login /></Suspense>} />
-        <Route path="/register" element={<Suspense fallback={<PageFallback />}><Register /></Suspense>} />
+        <Route path="/register" element={<Suspense fallback={<RegisterSkeleton />}><Register /></Suspense>} />
         <Route path="/change-password" element={<Suspense fallback={<PageFallback />}><ChangePassword /></Suspense>} />
         <Route path="/pending-approval" element={<Suspense fallback={<PageFallback />}><PendingApproval /></Suspense>} />
         <Route

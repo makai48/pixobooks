@@ -1561,6 +1561,98 @@
   }
 }
 
+/* Skeleton — Register only, instant paint while chunk/query resolves. */
+.reg-skel {
+  display: block;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--reg-foreground) 8%, transparent);
+  position: relative;
+  overflow: hidden;
+}
+
+.reg-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, var(--reg-card) 65%, transparent),
+    transparent
+  );
+  animation: reg-shimmer 1.6s infinite;
+}
+
+@keyframes reg-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.reg-skel-kicker {
+  width: 92px;
+  height: 10px;
+  margin: 0 auto;
+}
+
+.reg-skel-title {
+  width: min(100%, 260px);
+  height: 26px;
+  margin: 10px auto 0;
+}
+
+.reg-skel-lede {
+  width: min(100%, 220px);
+  height: 13px;
+  margin: 8px auto 0;
+}
+
+.reg-skel-group {
+  width: 64px;
+  height: 10px;
+  margin-bottom: 8px;
+}
+
+.reg-skel-label {
+  width: 96px;
+  height: 13px;
+  margin-bottom: 5px;
+}
+
+.reg-skel-input {
+  width: 100%;
+  height: var(--reg-control-h);
+  border-radius: 12px;
+}
+
+.reg-skel-line {
+  width: min(100%, 260px);
+  height: 13px;
+}
+
+.reg-skel-button {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.reg-skel-footer {
+  width: 180px;
+  height: 14px;
+  margin: 0 auto;
+}
+
+.reg-skeleton-card {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reg-skel::after {
+    animation: none;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Register wide — two-column fields beyond mobile                    */
 /* ------------------------------------------------------------------ */

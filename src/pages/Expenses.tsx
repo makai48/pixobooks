@@ -138,7 +138,7 @@ export default function Expenses() {
 
       <div className="grid grid-cols-3 gap-1.5 md:gap-3">
         <StatCard
-          label={tab === "drawings" ? "Owner drawings" : "Total in range"}
+          label={tab === "drawings" ? "Admin drawings" : "Total in range"}
           value={formatMoney(total, currency)}
           fullValue={formatCurrency(total, currency)}
           tone={tab === "drawings" ? "danger" : "warning"}

@@ -36,7 +36,7 @@ const corsHeaders = {
 };
 
 const DEFAULT_STAFF_PERMISSIONS = ["pos.sell", "inventory.view"];
-const OWNER_EMAIL = "me.makai48@gmail.com";
+const ADMIN_EMAIL = "me.makai48@gmail.com";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -73,15 +73,15 @@ Deno.serve(async (req: Request) => {
         ? body.permissions
         : DEFAULT_STAFF_PERMISSIONS;
     const expirationHours = clamp(Number(body?.expirationHours || 72), 1, 720);
-    const inviterName = String(body?.inviterName || "Owner").trim();
+    const inviterName = String(body?.inviterName || "Admin").trim();
     const businessId = orNull(body?.businessId);
     const shopName = String(body?.shopName || "").trim() || "your shop";
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return json({ error: "A valid email address is required" }, 400);
     }
-    if (email === OWNER_EMAIL) {
-      return json({ error: "The app owner account is not invitable" }, 400);
+    if (email === ADMIN_EMAIL) {
+      return json({ error: "The app admin account is not invitable" }, 400);
     }
 
     // The caller may only add staff to a business they manage. RLS on
@@ -252,7 +252,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // === Deliver the invite from the server ============================
-    // Sending happens here (not in the browser) so the owner does not have to
+    // Sending happens here (not in the browser) so the admin does not have to
     // copy anything, and so the send is recorded against the same request.
     // Providers are optional: without credentials the invite still succeeds and
     // the response says `not_configured`, which the UI turns into "share these
@@ -361,7 +361,7 @@ async function verifyTempPassword(
   }
 }
 
-/** Pull GoTrue's message out of an error body so the owner sees something useful. */
+/** Pull GoTrue's message out of an error body so the admin sees something useful. */
 function shortAuthError(raw: string): string {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;

@@ -3,14 +3,14 @@ import { useSyncExternalStore } from "react";
 import { supabase } from "@/lib/supabase";
 
 export type MasterScope = "shared" | "per_branch";
-export type LegacyOwnerAccess = "none" | "platform_admin" | "supreme" | "delegate";
+export type LegacyAdminAccess = "none" | "platform_admin" | "supreme" | "delegate";
 
 export type Business = {
   id: string;
   name: string;
   masterScope: MasterScope;
-  legacyOwnerAccess: LegacyOwnerAccess;
-  legacyOwnerEmails: string[];
+  legacyAdminAccess: LegacyAdminAccess;
+  legacyAdminEmails: string[];
 };
 
 const ACTIVE_KEY = "pixobooks:active_business"; // uuid or "none"
@@ -67,13 +67,13 @@ function mapBusiness(r: import("@/lib/mappers").DbRow): Business {
     id: r.id,
     name: r.name || "Business",
     masterScope: r.master_scope === "per_branch" ? "per_branch" : "shared",
-    legacyOwnerAccess:
+    legacyAdminAccess:
       r.legacy_owner_access === "platform_admin" ||
       r.legacy_owner_access === "supreme" ||
       r.legacy_owner_access === "delegate"
         ? r.legacy_owner_access
         : "none",
-    legacyOwnerEmails: Array.isArray(r.legacy_owner_emails) ? r.legacy_owner_emails : [],
+    legacyAdminEmails: Array.isArray(r.legacy_owner_emails) ? r.legacy_owner_emails : [],
   };
 }
 
@@ -98,16 +98,16 @@ export function useCreateBusiness() {
     mutationFn: async (input: {
       name: string;
       masterScope?: MasterScope;
-      legacyOwnerAccess?: LegacyOwnerAccess;
-      legacyOwnerEmails?: string[];
+      legacyAdminAccess?: LegacyAdminAccess;
+      legacyAdminEmails?: string[];
     }) => {
       const clean = input.name.trim();
       if (!clean) throw new Error("Business name is required");
       const { data, error } = await supabase.rpc("create_business", {
         p_name: clean,
         p_master_scope: input.masterScope ?? "shared",
-        p_legacy_owner_access: input.legacyOwnerAccess ?? "none",
-        p_legacy_owner_emails: input.legacyOwnerEmails ?? [],
+        p_legacy_owner_access: input.legacyAdminAccess ?? "none",
+        p_legacy_owner_emails: input.legacyAdminEmails ?? [],
       });
       if (error) throw error;
       return data as string;

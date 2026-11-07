@@ -39,13 +39,13 @@ const STATUS_SHORT: Record<POStatus, string> = {
 };
 
 export default function PurchaseOrders() {
-  const { can, isOwner, isAppOwner, profile } = useAuth();
-  const isAdmin =
-    isOwner || isAppOwner || (profile?.role || "").toLowerCase() === "admin";
-  const canDeletePO = isAdmin;
+  const { can, isAdmin, isAppAdmin, profile } = useAuth();
+  const isAdminUser =
+    isAdmin || isAppAdmin || (profile?.role || "").toLowerCase() === "admin";
+  const canDeletePO = isAdminUser;
   // Admins retain FULL CRUD across every PO regardless of status; other
   // roles keep the existing status-gated workflow.
-  const canEditAnyPO = isAdmin || can("po.manage");
+  const canEditAnyPO = isAdminUser || can("po.manage");
   const { data: pos = [], isLoading } = usePurchaseOrders();
   const { data: settings } = useShopSettings();
   const del = useDeletePO();

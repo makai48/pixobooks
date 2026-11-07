@@ -10,13 +10,13 @@ import StatCard from "@/components/ui/StatCard";
 import { download, formatCurrency, formatDate, formatMoney } from "@/lib/utils";
 
 export default function PayrollHistoryPage() {
-  const { can, isAppOwner } = useAuth();
+  const { can, isAppAdmin } = useAuth();
   const { entries, isLoading } = usePayrollHistory();
   const { data: settings } = useShopSettings();
   const [q, setQ] = useState("");
   const [year, setYear] = useState<string>(new Date().getFullYear().toString());
 
-  const canView = isAppOwner || can("employees.payroll") || can("expenses.view");
+  const canView = isAppAdmin || can("employees.payroll") || can("expenses.view");
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
@@ -70,7 +70,7 @@ export default function PayrollHistoryPage() {
           <Wallet className="w-7 h-7 md:w-8 md:h-8 mx-auto text-ink-mute" />
           <h2 className="font-display text-lg md:text-xl font-bold mt-2 md:mt-3">Restricted</h2>
           <p className="text-[11px] md:text-sm text-ink-mute mt-1">
-            Only owners and payroll-authorized users can view this log.
+            Only admins and payroll-authorized users can view this log.
           </p>
         </div>
       </div>

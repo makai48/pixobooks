@@ -23,8 +23,8 @@ const MONTH_NAMES = [
   "December",
 ];
 
-// Mirrors OWNER_EMAIL in src/types/index.ts.
-const OWNER_EMAIL = "me.makai48@gmail.com";
+// Mirrors ADMIN_EMAIL in src/types/index.ts.
+const ADMIN_EMAIL = "me.makai48@gmail.com";
 
 type CallerProfile = {
   role?: string | null;
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
         return json({ error: "Unauthorized" }, 401);
       }
 
-      // Manual runs are restricted to owners and managers. The pg_cron job
+      // Manual runs are restricted to admins and managers. The pg_cron job
       // authenticates with the service role key and bypasses this check.
       const { data: profile } = await createClient(supabaseUrl, serviceKey)
         .from("user_profiles")
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (!canGenerateInvoices(profile, user.email)) {
         return json(
-          { error: "Only owners and managers can generate invoices" },
+          { error: "Only admins and managers can generate invoices" },
           403
         );
       }
@@ -547,7 +547,7 @@ function canGenerateInvoices(
   if (role === "owner") return true;
 
   const email = String(profile?.email || userEmail || "").trim().toLowerCase();
-  if (email && email === OWNER_EMAIL.toLowerCase()) return true;
+  if (email && email === ADMIN_EMAIL.toLowerCase()) return true;
 
   const permissions = Array.isArray(profile?.permissions)
     ? profile.permissions

@@ -22,7 +22,6 @@ import { useHeldTickets } from "@/hooks/useHeldTickets";
 import { usePasswordResetRequests } from "@/hooks/usePasswordResets";
 import { useAccountApprovalRequests } from "@/hooks/useAccountApprovals";
 import type { Permission } from "@/types";
-import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
@@ -42,7 +41,7 @@ type NavItem = {
    *  several ways in. */
   anyPerm?: Permission[];
   end?: boolean;
-  ownerOnly?: boolean;
+  adminOnly?: boolean;
   badge?: number;
 };
 
@@ -55,7 +54,7 @@ type Props = {
 const WHITE = "#FFFFFF";
 
 export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Props) {
-  const { can, profile, logout, isAppOwner } = useAuth();
+  const { can, profile, logout, isAppAdmin } = useAuth();
   const { data: settings } = useShopSettings();
   const { data: heldTickets } = useHeldTickets();
   const { data: resetRequests } = usePasswordResetRequests();
@@ -186,7 +185,7 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
               can(i.perm) ||
               (i.altPerm ? can(i.altPerm) : false) ||
               (i.anyPerm ? i.anyPerm.some((p) => can(p)) : false) ||
-              (isAppOwner && (i.perm === "audit.view" || i.perm === "password.approve"))
+              (isAppAdmin && (i.perm === "audit.view" || i.perm === "password.approve"))
           );
           if (visible.length === 0) return null;
           return (
@@ -271,7 +270,6 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
         <button
           onClick={async () => {
             await logout();
-            toast.success("Signed out");
             nav("/login");
             onNavigate?.();
           }}

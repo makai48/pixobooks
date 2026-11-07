@@ -2,7 +2,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { LogOut, RefreshCw, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDateTime } from "@/lib/utils";
-import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import BusinessSwitcher from "@/components/layout/BusinessSwitcher";
 import OfflineIndicator from "@/components/layout/OfflineIndicator";
@@ -91,7 +90,6 @@ export default function TopBar({ onOpenMenu, collapsed, onToggleCollapse }: Prop
           className="btn btn-primary btn-sm md:h-9 md:px-4"
           onClick={async () => {
             await logout();
-            toast.success("Signed out");
             nav("/login");
           }}
         >

@@ -6,11 +6,11 @@ import { formatDateTime } from "@/lib/utils";
 import SubNav from "@/components/layout/SubNav";
 
 export default function AuditLogPage() {
-  const { can, isAppOwner } = useAuth();
+  const { can, isAppAdmin } = useAuth();
   const { data: logs = [], isLoading } = useAuditLogs(500);
   const [q, setQ] = useState("");
 
-  const canView = isAppOwner || can("audit.view");
+  const canView = isAppAdmin || can("audit.view");
 
   const filtered = useMemo(() => {
     const query = q.toLowerCase();

@@ -817,7 +817,7 @@ async function importEmployeeProfiles(
 }
 
 /** Update-only fallback for a project that has not applied
- *  `20261028000002_invite_phone_and_employee_import.sql`. RLS permits owners
+ *  `20261028000002_invite_phone_and_employee_import.sql`. RLS permits admins
  *  and managers to update member profiles, so this is safe — but it cannot
  *  insert a missing row, and says so instead of pretending. */
 async function updateProfilesOnly(
