@@ -8,7 +8,7 @@ import { describePasswordUpdateError } from "@/lib/signInFlow";
 
 /**
  * Forced password-change screen. Users land here on their first login after
- * the owner approves their account (must_change_password = true).
+ * the admin approves their account (must_change_password = true).
  *
  * WHY THE CURRENT PASSWORD IS ASKED FOR
  * -------------------------------------

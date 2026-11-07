@@ -55,9 +55,9 @@ export default function AccountApprovalsPage() {
       <div className="p-8 max-w-lg mx-auto text-center">
         <div className="paper-card p-8">
           <UserCheck className="w-8 h-8 mx-auto text-ink-mute" />
-          <h2 className="font-display text-xl font-bold mt-3">Owner only</h2>
+          <h2 className="font-display text-xl font-bold mt-3">Admin only</h2>
           <p className="text-sm text-ink-mute mt-1">
-            Account approvals are restricted to the shop owner and users with
+            Account approvals are restricted to the shop admin and users with
             employee management permission.
           </p>
         </div>
@@ -71,7 +71,7 @@ export default function AccountApprovalsPage() {
         request: r,
         approver: {
           id: profile?.id || "",
-          name: profile?.name || "Owner",
+          name: profile?.name || "Admin",
           role: profile?.role,
         },
       });
@@ -90,7 +90,7 @@ export default function AccountApprovalsPage() {
         request: r,
         approver: {
           id: profile?.id || "",
-          name: profile?.name || "Owner",
+          name: profile?.name || "Admin",
           role: profile?.role,
         },
         notes,

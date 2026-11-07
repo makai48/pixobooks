@@ -35,6 +35,25 @@ const base: CashLedgerInput = {
 };
 
 describe("buildCashLedger", () => {
+  it("keeps voided sales' original cash and nets it with the refund row", () => {
+    const ledger = buildCashLedger({
+      payments: [
+        { sale_id: "v1", amount: 300, payment_method: "cash", created_at: "2026-10-29T10:00:00Z" },
+        // Void refund posted on the day the reversal happened (sale_id null).
+        { sale_id: null, amount: -300, payment_method: "cash", created_at: "2026-10-30T09:00:00Z" },
+        { sale_id: "ok", amount: 40, payment_method: "cash", created_at: "2026-10-29T11:00:00Z" },
+      ],
+      sales: [
+        { id: "v1", amount_paid: 300, payment_method: "cash", created_at: "2026-10-29T10:00:00Z", voided_at: "2026-10-30T09:00:00Z" },
+        { id: "ok", amount_paid: 40, payment_method: "cash", created_at: "2026-10-29T11:00:00Z" },
+      ],
+    });
+    // The original trading day is untouched…
+    expect(ledger.day("2026-10-29").cashSales).toBe(340);
+    // …and the reversal lands on the day it happened.
+    expect(ledger.day("2026-10-30").cashSales).toBe(-300);
+  });
+
   it("derives each day's cash flow from real movements", () => {
     const ledger = buildCashLedger(base);
     expect(ledger.day("2026-10-29")).toEqual({

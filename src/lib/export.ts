@@ -37,7 +37,7 @@ export const EXPORT_CATEGORIES: {
   { key: "receipts", label: "Receipts & invoices", description: "Sale documents with payment history." },
 { key: "loyalty", label: "Loyalty", description: "Loyalty points transactions." },
   { key: "client_billing", label: "Client Billing", description: "Clients, work entries, billing periods, invoices, payments and services." },
-  { key: "audit", label: "Audit log", description: "Owner-visible audit trail (who did what, when)." },
+  { key: "audit", label: "Audit log", description: "Admin-visible audit trail (who did what, when)." },
   ];
 
 async function urlToBase64(url: string | null | undefined): Promise<string | null> {

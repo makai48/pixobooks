@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "PixoBooks — Printshop POS",
+  "name": "PixoBooks — Business POS",
   "short_name": "PixoBooks",
-  "description": "All-in-one POS and business management for print shops.",
+  "description": "All-in-one POS and business management for growing businesses.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",

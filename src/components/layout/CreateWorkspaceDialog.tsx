@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 const ACCESS_LABELS: Record<LegacyOwnerAccess, string> = {
   none: "No cross-business access",
   platform_admin: "Platform admin (metadata only)",
-  supreme: "Supreme owner (full access)",
+  supreme: "Supreme admin (full access)",
   delegate: "Delegate by email",
 };
 
@@ -41,7 +41,7 @@ export default function CreateWorkspaceDialog({
 
   const canManageBranches =
     activeBusiness !== "none" &&
-    (profile?.role?.toLowerCase() === "owner" ||
+    (profile?.role?.toLowerCase() === "admin" ||
       (profile?.role || "").toLowerCase().includes("manager") ||
       can("settings.manage"));
 
@@ -180,12 +180,12 @@ export default function CreateWorkspaceDialog({
             </fieldset>
 
             <div>
-              <label htmlFor="ws-legacy" className="label">Legacy owner access</label>
+              <label htmlFor="ws-legacy" className="label">Legacy admin access</label>
               <GlassSelect
                 id="ws-legacy"
                 value={access}
                 onChange={(v) => setAccess(v as LegacyOwnerAccess)}
-                ariaLabel="Legacy owner access"
+                ariaLabel="Legacy admin access"
                 options={(Object.keys(ACCESS_LABELS) as LegacyOwnerAccess[]).map((key) => ({
                   value: key,
                   label: ACCESS_LABELS[key],
@@ -194,14 +194,14 @@ export default function CreateWorkspaceDialog({
               />
               <p className="mt-1 text-xs text-ink-mute flex items-start gap-1">
                 <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                Controls whether the existing shop owner can reach this business.
+                Controls whether the existing shop admin can reach this business.
               </p>
               {access === "delegate" && (
                 <input
                   value={emails}
                   onChange={(e) => setEmails(e.target.value)}
                   className="input mt-2"
-                  placeholder="owner@example.com, partner@example.com"
+                  placeholder="admin@example.com, partner@example.com"
                   aria-label="Delegate emails"
                 />
               )}

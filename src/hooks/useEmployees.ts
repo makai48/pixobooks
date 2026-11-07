@@ -8,9 +8,11 @@ import { logAudit } from "@/lib/audit";
 import { useActiveBusiness } from "@/hooks/useBusinesses";
 
 /** Map a free-text job title to a tenant membership role. */
-function membershipRole(role: string): "owner" | "manager" | "staff" {
+function membershipRole(role: string): "admin" | "manager" | "staff" {
   const r = (role || "").trim().toLowerCase();
-  if (r === "owner") return "owner";
+  // "admin" is the backend tier name; both "Owner" (legacy) and "Admin"
+  // map to it so the RLS mirror stays valid.
+  if (r === "admin" || r === "admin") return "admin";
   if (r === "manager") return "manager";
   return "staff";
 }
@@ -43,7 +45,7 @@ export function useEmployees() {
 export type UpdateEmployeeResult = {
   /** Set when the profile saved but the tenant role sync was refused
    *  (e.g. the editor lacks membership-write rights). The edit itself
-   *  is persisted — only the RLS role mirror needs an owner re-save. */
+   *  is persisted — only the RLS role mirror needs an admin re-save. */
   roleSyncWarning: string | null;
 };
 
@@ -75,7 +77,7 @@ export function useUpdateEmployee() {
       if (error) throw error;
 
       // Keep tenant privileges in sync with the profile role so a promoted
-      // manager actually gains owner/manager RLS rights in this business.
+      // manager actually gains admin/manager RLS rights in this business.
       // Best-effort AFTER the profile save: the edit above already
       // succeeded, and editors without membership-write rights must still
       // be able to save. A refusal is returned as a warning, never thrown.
@@ -150,12 +152,12 @@ export type InviteEmployeeResult = {
 /**
  * ONBOARDING FLOW (invite-employee edge function) — no approval step.
  *
- *  1. Owner calls this hook with the invitee's email + name + role.
+ *  1. Admin calls this hook with the invitee's email + name + role.
  *  2. The edge function creates the auth user with a securely-generated
  *     temporary password and sets user_profiles.approval_status = 'approved',
  *     active = true, must_change_password = true and
  *     temp_password_expires_at = now + expirationHours.
- *  3. The hook returns the temporary password + expiry so the owner can share
+ *  3. The hook returns the temporary password + expiry so the admin can share
  *     it with the invitee (email, SMS, WhatsApp, print).
  *  4. The invitee signs in with the temp password and is taken straight to
  *     /change-password. Until they set a permanent password, `must_change_password`
@@ -192,7 +194,7 @@ export function useInviteEmployee() {
           hireDate: p.hireDate ?? null,
           emergencyContact: p.emergencyContact ?? null,
           emergencyContactPhone: p.emergencyContactPhone ?? null,
-          inviterName: p.actor?.name || "Owner",
+          inviterName: p.actor?.name || "Admin",
           shopName: p.shopName || undefined,
           businessId: active === "none" ? null : active,
         },

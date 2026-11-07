@@ -22,7 +22,7 @@ const TITLES: Record<string, string> = {
   "/statistics": "Financial Statistics",
   "/employees": "Team & Permissions",
   "/payroll-history": "Payroll History",
-  "/audit-log": "Owner Audit Log",
+  "/audit-log": "Admin Audit Log",
   "/password-resets": "Password Requests",
   "/account-approvals": "Account Approvals",
   "/settings": "Shop Settings",

@@ -11,7 +11,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { mapEmployee } from "@/lib/mappers";
 import type { Employee, Permission } from "@/types";
-import { isShopOwner } from "@/types";
+import { isShopAdmin } from "@/types";
 
 type AuthCtx = {
   user: User | null;
@@ -19,7 +19,11 @@ type AuthCtx = {
   loading: boolean;
   can: (perm: Permission) => boolean;
   canViewCosts: boolean;
+  isAdmin: boolean;
+  isAppAdmin: boolean;
+  /** @deprecated Use isAdmin. */
   isOwner: boolean;
+  /** @deprecated Use isAppAdmin. */
   isAppOwner: boolean;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
@@ -54,9 +58,9 @@ function writeProfileSnapshot(p: Employee | null): void {
 }
 
 /**
- * Runtime safeguard: fills a missing username. Ownership itself is
- * ROLE-based (any email can own; the first registered user becomes Owner).
- * The database trigger `enforce_owner_role_trg` guards the Owner role at
+ * Runtime safeguard: fills a missing username. Access itself is
+ * ROLE-based (any email can administer; the first registered user becomes Admin).
+ * The database trigger `enforce_owner_role_trg` guards the admin tier at
  * the storage layer, so no client-side demotion happens here.
  */
 function sanitizeProfile(raw: Record<string, unknown> | null): Record<string, unknown> | null {
@@ -145,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_IN" && session?.user) {
         // Clear any stale profile from a previous session BEFORE loading
         // this user's profile, so we never briefly render another user's
-        // data during the fetch. This kills "profile flashes as owner then
+        // data during the fetch. This kills "profile flashes as admin then
         // switches" style bugs.
         setProfile(null);
         setUser(session.user);
@@ -175,9 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const roleLower = profile?.role?.toLowerCase() || "";
-  // Ownership is role-based (any email): legacy supreme email still counts.
-  const isAppOwner = isShopOwner(profile?.email || user?.email, profile?.role);
-  const isOwner = roleLower === "owner";
+  // Access is role-based (any email): legacy supreme email still counts.
+  const isAppAdmin = isShopAdmin(profile?.email || user?.email, profile?.role);
+  const isAdmin = roleLower === "admin" || roleLower === "admin";
   const isManager = roleLower === "manager" || roleLower.includes("manager");
 
   const value = useMemo<AuthCtx>(
@@ -185,16 +189,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       loading,
-      isOwner,
-      isAppOwner,
+      isAdmin,
+      isAppAdmin,
+      isOwner: isAdmin,
+      isAppOwner: isAppAdmin,
       canViewCosts:
-        isAppOwner ||
-        isOwner ||
+        isAppAdmin ||
+        isAdmin ||
         isManager ||
         (profile?.permissions.includes("reports.viewCosts") ?? false),
       can: (perm) => {
         if (!profile) return false;
-        if (isAppOwner || isOwner) return true;
+        if (isAppAdmin || isAdmin) return true;
         return profile.permissions.includes(perm);
       },
       refreshProfile: async () => {
@@ -204,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
       },
     }),
-    [user, profile, loading, isOwner, isManager, isAppOwner]
+    [user, profile, loading, isAdmin, isManager, isAppAdmin]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -217,27 +223,38 @@ export function useAuth() {
 }
 
 /**
- * Checks whether ANY shop owner (role='Owner', any email) is registered.
- * Open registration is only available while no owner exists (first user
- * becomes owner); afterwards team/branch accounts join via owner invite
- * or owner approval of the pending request.
+ * Checks whether ANY shop admin (role='Admin', any email) is registered.
+ * Open registration is only available while no admin exists (first user
+ * becomes admin); afterwards team/branch accounts join via admin invite
+ * or admin approval of the pending request.
+ * The legacy "Owner" role string is still honored so pre-rename workspaces
+ * keep their admin.
  */
-export function useAppOwnerStatus() {
+export function useAppAdminStatus() {
   return useQuery({
-    queryKey: ["app_owner_status"],
+    queryKey: ["app_admin_status"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("id, email, role")
-        .eq("role", "Owner")
+        .in("role", ["Owner", "Admin"])
         .limit(1);
       if (error) throw error;
-      const owner = (data || [])[0] || null;
+      const admin = (data || [])[0] || null;
       return {
-        hasOwner: !!owner,
-        ownerEmail: owner?.email || "",
+        hasAdmin: !!admin,
+        /** @deprecated Use hasAdmin. */
+        hasOwner: !!admin,
+        adminEmail: admin?.email || "",
+        /** @deprecated Use adminEmail. */
+        ownerEmail: admin?.email || "",
       };
     },
     staleTime: 30_000,
   });
+}
+
+/** @deprecated Use useAppAdminStatus. */
+export function useAppOwnerStatus() {
+  return useAppAdminStatus();
 }

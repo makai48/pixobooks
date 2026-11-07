@@ -65,7 +65,7 @@ const FINANCE_TABS: {
 
 export default function FinancialStatements() {
   const { profile, can } = useAuth();
-  const { data: sales = [] } = useSales(1000);
+  const { data: sales = [] } = useSales(5000);
   const { data: expenses = [] } = useExpenses();
   const { data: settings } = useShopSettings();
   const [now] = useState(() => new Date());
@@ -146,6 +146,7 @@ export default function FinancialStatements() {
   // Filter by LOCAL business date (not UTC .slice) so late-evening
   // sales stay attributed to the correct business day.
   const salesInMonth = useMemo(() => sales.filter((s) => {
+    if (s.voidedAt) return false;
     const d = localISODate(s.createdAt);
     return d >= from && d <= to;
   }), [sales, from, to]);
@@ -310,7 +311,7 @@ export default function FinancialStatements() {
 
       {allowedTabs.length === 0 ? (
         <div className="paper-card p-6 text-center text-ink-mute text-sm">
-          You do not have permission to view any finance statement. Ask an owner
+          You do not have permission to view any finance statement. Ask an admin
           for cashbook, bank, P&amp;L or orders access.
         </div>
       ) : (

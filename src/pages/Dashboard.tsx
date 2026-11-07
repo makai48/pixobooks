@@ -498,7 +498,7 @@ export default function Dashboard() {
           </div>
           <h2 className="font-display text-xl md:text-2xl font-bold mt-4">Your catalog is empty</h2>
           <p className="text-ink-mute text-sm mt-2 max-w-md mx-auto">
-            Add items in the Inventory page — or seed sample print-shop data so you can explore right away.
+             Add items in the Inventory page — or seed sample business data so you can explore right away.
           </p>
           <div className="mt-6 flex flex-col md:flex-row items-center justify-center gap-3">
             <button
@@ -1182,7 +1182,7 @@ export default function Dashboard() {
 
           {canViewCosts && cart.length > 0 && (
             <div className="text-[9px] text-ink-mute uppercase tracking-widest flex justify-between">
-              <span>COGS (owner/manager)</span>
+              <span>COGS (admin/manager)</span>
               <span className="num">
                 {formatNumber(cart.reduce((s, l) => { const it = items.find((i) => i.id === l.itemId); return s + (it?.cost || 0) * l.qty; }, 0), settings?.currency)}
               </span>

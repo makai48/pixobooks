@@ -140,7 +140,7 @@ export default function DocsSection() {
                     onChange={(v) =>
                       setForm({ ...form, receipt: { ...form.receipt, showLogo: v } })
                     }
-                    label="Print Shop Logo on Top of Receipt"
+                    label="Business Logo on Top of Receipt"
                   />
                 </div>
               )}

@@ -140,6 +140,28 @@ export default function ImportModal({ open, onClose, existing, actor }: Props) {
         setProgress({ done, total: plan.length });
       };
 
+      // Every imported quantity is recorded in the stock ledger without
+      // re-applying it (the row already carries absolute stock): inserts post
+      // an opening movement, updates post the signed delta.
+      const batch = Date.now().toString(36);
+      const recordStock = async (
+        itemId: string,
+        quantity: number,
+        mode: "set" | "add" = "set"
+      ) => {
+        if (!Number.isFinite(quantity) || (mode === "add" && Math.abs(quantity) < 1e-9)) return;
+        const { error } = await supabase.rpc("import_stock", {
+          p_item_id: itemId,
+          p_quantity: quantity,
+          p_mode: mode,
+          p_reason: `Inventory import — ${fileName || "file"}`,
+          p_operation_id: `import:${batch}:${itemId}`,
+          p_actor_id: actor.id,
+          p_actor_name: actor.name,
+        });
+        if (error) throw error;
+      };
+
       // Pass 1: everything without BOM (materials, ready items) — creates ids.
       for (const group of [ordered.materials]) {
         for (const row of group) {
@@ -153,20 +175,28 @@ export default function ImportModal({ open, onClose, existing, actor }: Props) {
           const stock = planned.kind === "update" && stockMode === "add"
             ? planned.existingStock + Number(row.stock || 0)
             : Number(row.stock || 0);
-          const payload = {
+          const payload: Record<string, unknown> = {
             ...toItemPayload(row, { stock, imageUrl: url, selectedColumns }),
             bom: null,
             ...(currentBusinessId() ? { business_id: currentBusinessId() } : {}),
           };
           if (planned.kind === "insert") {
-            const { data, error } = await supabase.from("items").insert(payload).select("id, sku").single();
+            const { stock: _initialStock, ...catalogPayload } = payload;
+            const { data, error } = await supabase.from("items").insert({ ...catalogPayload, stock: 0 }).select("id, sku").single();
             if (error) throw new Error(`${row.sku}: ${error.message}`);
             skuToId.set(String(row.sku).trim().toLowerCase(), data.id);
             inserted++;
+            await recordStock(data.id, stock);
           } else {
-            const { error } = await supabase.from("items").update(payload).eq("id", planned.id);
+            const { stock: _ignoredStock, ...catalogPayload } = payload;
+            const { error } = await supabase.from("items").update(catalogPayload).eq("id", planned.id);
             if (error) throw new Error(`${row.sku}: ${error.message}`);
             updated++;
+            await recordStock(
+              planned.id,
+              stockMode === "add" ? Number(row.stock || 0) : stock,
+              stockMode === "add" ? "add" : "set"
+            );
           }
           tick();
         }
@@ -185,20 +215,28 @@ export default function ImportModal({ open, onClose, existing, actor }: Props) {
           : Number(row.stock || 0);
         const { bom, dropped } = remapBom(row, skuToId, byId);
         bomDropped += dropped;
-        const payload = {
+          const payload: Record<string, unknown> = {
           ...toItemPayload(row, { stock, imageUrl: url, selectedColumns }),
           bom: bom.length ? bom : null,
           ...(currentBusinessId() ? { business_id: currentBusinessId() } : {}),
-        };
-        if (planned.kind === "insert") {
-          const { data, error } = await supabase.from("items").insert(payload).select("id, sku").single();
+          };
+          if (planned.kind === "insert") {
+            const { stock: _initialStock, ...catalogPayload } = payload;
+            const { data, error } = await supabase.from("items").insert({ ...catalogPayload, stock: 0 }).select("id, sku").single();
           if (error) throw new Error(`${row.sku}: ${error.message}`);
           skuToId.set(String(row.sku).trim().toLowerCase(), data.id);
           inserted++;
-        } else {
-          const { error } = await supabase.from("items").update(payload).eq("id", planned.id);
-          if (error) throw new Error(`${row.sku}: ${error.message}`);
-          updated++;
+            await recordStock(data.id, stock);
+          } else {
+            const { stock: _ignoredStock, ...catalogPayload } = payload;
+            const { error } = await supabase.from("items").update(catalogPayload).eq("id", planned.id);
+            if (error) throw new Error(`${row.sku}: ${error.message}`);
+            updated++;
+            await recordStock(
+              planned.id,
+              stockMode === "add" ? Number(row.stock || 0) : stock,
+              stockMode === "add" ? "add" : "set"
+            );
         }
         tick();
       }
@@ -214,6 +252,7 @@ export default function ImportModal({ open, onClose, existing, actor }: Props) {
         stockMode,
       }).catch(() => undefined);
       qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stock_movements"] });
       setResult({ inserted, updated, skipped, rehosted, imageWarnings, bomDropped });
       setPhase("done");
       toast.success(`Import complete — ${inserted} new, ${updated} updated`);

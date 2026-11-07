@@ -17,10 +17,10 @@ describe("resolveActor", () => {
   it("prefers the profile", () => {
     expect(
       resolveActor(
-        { id: "p1", name: "Mary", email: "m@x.com", role: "Owner" } as never,
+        { id: "p1", name: "Mary", email: "m@x.com", role: "Admin" } as never,
         { id: "u1", email: "m@x.com" } as never
       )
-    ).toEqual({ id: "p1", name: "Mary", role: "Owner" });
+    ).toEqual({ id: "p1", name: "Mary", role: "Admin" });
   });
 
   it("falls back to the auth user instead of Unknown", () => {

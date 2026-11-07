@@ -103,7 +103,7 @@ export default function Employees() {
 
   // Imported staff cleanup (Report cashier duplicates): profiles that arrived
   // via file import carry no invite trail (`invitedAt`/`invitedBy` are only
-  // set by the invite flow). The owner account, the current user and invited
+  // set by the invite flow). The admin account, the current user and invited
   // employees are never candidates.
   const importedStaff = useMemo(
     () =>
@@ -112,7 +112,7 @@ export default function Employees() {
           !e.invitedAt &&
           !e.invitedBy &&
           e.id !== profile?.id &&
-          e.role.trim().toLowerCase() !== "owner" &&
+          e.role.trim().toLowerCase() !== "admin" &&
           !isShopOwner(e.email, e.role)
       ),
     [employees, profile?.id]
@@ -124,7 +124,7 @@ export default function Employees() {
     const names = importedStaff.map((e) => `• ${e.name} (${e.role})`).join("\n");
     if (
       !confirm(
-        `Permanently remove ${importedStaff.length} imported profile(s)?\n\n${names}\n\nThe shop owner and all invited employees are kept. Historical sales keep their recorded cashier names.`
+        `Permanently remove ${importedStaff.length} imported profile(s)?\n\n${names}\n\nThe shop admin and all invited employees are kept. Historical sales keep their recorded cashier names.`
       )
     )
       return;
@@ -146,7 +146,7 @@ export default function Employees() {
       }
     }
     setCleaning(false);
-    if (ok > 0) toast.success(`Removed ${ok} imported profile(s) — owner and invited staff kept`);
+    if (ok > 0) toast.success(`Removed ${ok} imported profile(s) — admin and invited staff kept`);
     if (failed.length > 0) toast.error(`Could not remove: ${failed.join(", ")}`);
   };
 
@@ -269,7 +269,7 @@ export default function Employees() {
 
   const handleDelete = (e: Employee) => {
     if (isShopOwner(e.email, e.role)) {
-      return toast.error("The shop owner account cannot be deleted");
+      return toast.error("The shop admin account cannot be deleted");
     }
     if (e.id === profile?.id) {
       return toast.error("You can't delete your own account");
@@ -569,7 +569,7 @@ function ApprovalPill({
     status === "pending_first_login"
       ? { label: "Pending first login", color: "text-yellow-reg", icon: Clock3 }
       : status === "pending_approval"
-      ? { label: "Awaiting owner approval", color: "text-yellow-reg", icon: Clock3 }
+      ? { label: "Awaiting admin approval", color: "text-yellow-reg", icon: Clock3 }
       : { label: "Rejected", color: "text-danger", icon: X };
   const Icon = meta.icon;
   return (
@@ -694,7 +694,7 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
                       className="input pl-9"
-                      placeholder="employee@printshop.co"
+                       placeholder="employee@business.co"
                     />
                   </div>
                 </Field>
@@ -1046,7 +1046,7 @@ function inviteState(e: Employee): InviteState {
 /**
  * Every account that has an invite record (`invited_at`), newest first.
  *
- * This is the "+ view" next to the invite button: the owner can see who was
+ * This is the "+ view" next to the invite button: the admin can see who was
  * invited, whether they have signed in and set a password, when the temporary
  * password expires, resend a fresh one, or revoke the account.
  */
@@ -1459,7 +1459,7 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
         onSuccess: (res) => {
           if (res?.roleSyncWarning) {
             toast.warning(
-              `Profile saved, but tenant role sync needs an owner: ${res.roleSyncWarning}`
+              `Profile saved, but tenant role sync needs an admin: ${res.roleSyncWarning}`
             );
           } else {
             toast.success("Profile saved");
@@ -1606,7 +1606,7 @@ function PayrollTab({ employee }: { employee: Employee }) {
         onSuccess: (res) => {
           if (res?.roleSyncWarning) {
             toast.warning(
-              `Payroll saved, but tenant role sync needs an owner: ${res.roleSyncWarning}`
+              `Payroll saved, but tenant role sync needs an admin: ${res.roleSyncWarning}`
             );
           } else {
             toast.success("Payroll saved");
@@ -1888,8 +1888,8 @@ function PermissionsTab({ employee }: { employee: Employee }) {
 
   const toggle = (p: Permission) => setPermsState((cur) => cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]);
 
-  const applyPreset = (preset: "cashier" | "manager" | "designer" | "owner" | "none") => {
-    if (preset === "owner") { setPermsState([...ALL_PERMISSION_KEYS]); setRole("Owner"); }
+  const applyPreset = (preset: "cashier" | "manager" | "designer" | "admin" | "none") => {
+    if (preset === "admin") { setPermsState([...ALL_PERMISSION_KEYS]); setRole("Admin"); }
     else if (preset === "cashier") { setPermsState(DEFAULT_STAFF_PERMISSIONS); setRole("Cashier"); }
     else if (preset === "manager") {
       setPermsState([
@@ -1920,7 +1920,7 @@ function PermissionsTab({ employee }: { employee: Employee }) {
               onSuccess: (res) => {
                 if (res?.roleSyncWarning) {
                   toast.warning(
-                    `Permissions saved, but tenant role sync needs an owner: ${res.roleSyncWarning}`
+                    `Permissions saved, but tenant role sync needs an admin: ${res.roleSyncWarning}`
                   );
                 } else {
                   toast.success("Permissions saved");
@@ -1960,7 +1960,7 @@ function PermissionsTab({ employee }: { employee: Employee }) {
             <button onClick={() => applyPreset("cashier")} className="chip border hover:bg-ink/5">Cashier</button>
             <button onClick={() => applyPreset("designer")} className="chip border hover:bg-ink/5">Designer</button>
             <button onClick={() => applyPreset("manager")} className="chip border hover:bg-ink/5">Manager</button>
-            <button onClick={() => applyPreset("owner")} className="chip bg-magenta-reg/10 text-magenta-reg border border-magenta-reg/30">Owner (all)</button>
+            <button onClick={() => applyPreset("admin")} className="chip bg-magenta-reg/10 text-magenta-reg border border-magenta-reg/30">Admin (all)</button>
             <button onClick={() => applyPreset("none")} className="chip border hover:bg-ink/5">Clear</button>
           </div>
         </div>

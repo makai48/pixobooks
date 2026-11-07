@@ -2,7 +2,7 @@
 
 PixoBooks is an all-in-one cloud-based business management SaaS for SMEs, integrating point-of-sale (POS), inventory, finance, HR, payroll, reporting, and business intelligence. It helps businesses manage operations, automate processes, gain real-time insights, and make smarter decisions to drive growth—anytime, anywhere.
 
-The app is built with Vite, React, TypeScript, Tailwind CSS, and Supabase (Postgres, Auth, and Edge Functions). It is designed for offline-capable POS and business workflows, including print shops and small businesses.
+The app is built with Vite, React, TypeScript, Tailwind CSS, and Supabase (Postgres, Auth, and Edge Functions). It is designed for offline-capable POS and business workflows across retail, services, wholesale, and other growing businesses.
 
 ## Setup
 

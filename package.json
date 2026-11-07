@@ -2,7 +2,7 @@
   "name": "pixobooks",
   "private": true,
   "version": "1.0.0",
-  "description": "All-in-one POS and business management app for print shops.",
+  "description": "All-in-one POS and business management app for growing businesses.",
   "type": "module",
   "scripts": {
     "dev": "vite",

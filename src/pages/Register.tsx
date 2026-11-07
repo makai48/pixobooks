@@ -1,24 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Printer,
+  ArrowLeft,
   ArrowRight,
-  Mail,
-  KeyRound,
-  Lock,
-  LogIn,
+  Building2,
+  ChevronDown,
   Eye,
   EyeOff,
-  User,
+  KeyRound,
+  Loader2,
+  Lock,
+  Mail,
   ShieldCheck,
-  ShieldAlert,
-  Building2,
-  Clock3,
-  Briefcase,
-  Coins,
-  Hash,
-  FileText,
-  X,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -28,21 +22,31 @@ import { TERMS_TEXT, PRIVACY_TEXT, TERMS_VERSION, PRIVACY_VERSION } from "@/lib/
 import PhoneInput from "@/components/common/PhoneInput";
 import CountrySelect from "@/components/common/CountrySelect";
 import GlassSelect from "@/components/ui/GlassSelect";
+import AuthShell from "@/components/auth/AuthShell";
+import AuthField from "@/components/auth/AuthField";
+import AuthModal from "@/components/auth/AuthModal";
 import {
   CURRENCIES,
   BUSINESS_TYPES,
   GROUPING_SYSTEMS,
   SEPARATOR_PRESETS,
   TIMEZONES,
-    countryByIso2,
-    currencyByCode,
-    isValidPhone,
-    formatPhone,
-    splitPhone,
-    joinPhone,
+  TIMEZONE_OPTIONS,
+  countryByIso2,
+  currencyByCode,
+  isValidPhone,
+  formatPhone,
+  splitPhone,
+  joinPhone,
 } from "@/lib/referenceData";
+import "@/styles/auth.css";
 
 type Step = "details" | "otp";
+type Mode = "signin" | "create";
+
+/* ------------------------------------------------------------------ */
+/* Form primitives                                                    */
+/* ------------------------------------------------------------------ */
 
 function PhoneRow({
   label,
@@ -66,7 +70,8 @@ function PhoneRow({
       label={label}
       required={required}
       placeholder={placeholder}
-      value={joinPhone(dial, number)}
+      value={joinPhone(dial, number) || (dial ? `+${dial}` : "")}
+      keepDialWhenEmpty
       onChange={(full) => {
         const p = splitPhone(full);
         setDial(p.dial);
@@ -76,34 +81,18 @@ function PhoneRow({
   );
 }
 
-function LegalModal({ kind, onClose }: { kind: "terms" | "privacy"; onClose: () => void }) {
+function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50" onClick={onClose}>
-      <div
-        className="paper-card max-w-lg w-full max-h-[80dvh] flex flex-col p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="font-display text-lg font-bold flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            {kind === "terms" ? `Terms & Conditions (v${TERMS_VERSION})` : `Privacy Policy (v${PRIVACY_VERSION})`}
-          </h3>
-          <button onClick={onClose} className="btn btn-ghost h-8 w-8 p-0" aria-label="Close">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <pre className="mt-4 text-xs whitespace-pre-wrap overflow-auto flex-1 text-ink-soft">
-          {kind === "terms" ? TERMS_TEXT : PRIVACY_TEXT}
-        </pre>
-        <button onClick={onClose} className="btn btn-primary w-full h-10 mt-4">
-          Close
-        </button>
-      </div>
+    <div className="reg-group">
+      <p className="reg-group-title">{title}</p>
+      <div className="reg-fields">{children}</div>
     </div>
   );
 }
 
-type Mode = "signin" | "create";
+/* ------------------------------------------------------------------ */
+/* Page                                                               */
+/* ------------------------------------------------------------------ */
 
 export default function Register() {
   const nav = useNavigate();
@@ -112,19 +101,22 @@ export default function Register() {
   const [step, setStep] = useState<Step>("details");
   const [loading, setLoading] = useState(false);
   const [legal, setLegal] = useState<"terms" | "privacy" | null>(null);
-  // Workplace gateway (register screen only): explicit choice between joining
-  // an existing workplace and creating a new one. Defaults from backend state
-  // (fresh install -> create; existing shop -> sign in), overridable via
-  // ?mode=signin|create and by tapping the chooser.
-  const [mode, setMode] = useState<Mode | null>(() => {
-    const m = searchParams.get("mode");
-    return m === "signin" || m === "create" ? m : null;
-  });
+  // Workplace gateway: explicit choice between joining an existing workplace
+  // and creating a new one. Derived from ?mode=signin|create when present,
+  // otherwise from backend state (fresh install -> create; existing shop ->
+  // sign in). Deriving (not state) keeps in-page Links like
+  // /register?mode=create seamless when already on /register.
+  const modeParam = searchParams.get("mode");
+  const paramMode: Mode | null =
+    modeParam === "signin" || modeParam === "create" ? modeParam : null;
+  const mode: Mode | null =
+    paramMode ?? (isLoading ? null : ownerStatus?.hasOwner ? "signin" : "create");
+
+  // Reset the form step when the user jumps between create/sign-in surfaces
+  // via the footer cross-link, so a stale OTP step never greets them.
   useEffect(() => {
-    if (mode === null && !isLoading) {
-      setMode(ownerStatus?.hasOwner ? "signin" : "create");
-    }
-  }, [mode, isLoading, ownerStatus]);
+    setStep("details");
+  }, [mode]);
 
   // account
   const [email, setEmail] = useState("");
@@ -139,7 +131,7 @@ export default function Register() {
   const [timezone, setTimezone] = useState(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
   );
-  const [businessType, setBusinessType] = useState("Printshop");
+  const [businessType, setBusinessType] = useState("Retail");
   const [currency, setCurrency] = useState("UGX");
   const [grouping, setGrouping] = useState<"western" | "indian">("western");
   const [decimalPlaces, setDecimalPlaces] = useState(2);
@@ -175,7 +167,7 @@ export default function Register() {
   const sendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (ownerStatus?.hasOwner) {
-      toast.error("This shop already has an owner. Branches join via owner invite — ask the shop owner to add you.");
+      toast.error("This shop already has an admin. Branches join via admin invite — ask the shop admin to add you.");
       return;
     }
     if (!acceptedTerms) {
@@ -252,7 +244,7 @@ export default function Register() {
       }
       if (wasOwnerless) {
         // Belt-and-braces: the signup trigger already bootstrapped the shop
-        // from metadata; confirm the full form values as the new owner.
+        // from metadata; confirm the full form values as the new admin.
         await supabase
           .from("shop_settings")
           .update({
@@ -272,9 +264,9 @@ export default function Register() {
             privacy_version: PRIVACY_VERSION,
           })
           .eq("id", "main");
-        toast.success("Shop created — welcome, owner");
+        toast.success("Shop created — welcome, admin");
       } else {
-        toast.success("Account created — waiting for owner approval");
+        toast.success("Account created — waiting for admin approval");
       }
       nav("/");
     } catch (err) {
@@ -283,346 +275,475 @@ export default function Register() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-paper text-ink-mute text-sm">
-        Preparing setup...
-      </div>
-    );
-  }
-
   const hasOwner = ownerStatus?.hasOwner;
 
   return (
-    <div className="h-[100dvh] bg-paper flex justify-center overflow-y-auto overscroll-contain p-4 md:p-6">
-      <div className="w-full max-w-md m-auto">
-        <div className="flex items-center gap-3">
-          <div className="relative w-10 h-10 rounded-lg bg-ink overflow-hidden flex items-center justify-center">
-            <div className="absolute inset-0 flex opacity-90">
-              <span className="flex-1 bg-cyan-reg" />
-              <span className="flex-1 bg-magenta-reg" />
-              <span className="flex-1 bg-yellow-reg" />
-              <span className="flex-1 bg-ink" />
-            </div>
-            <Printer className="relative z-10 w-5 h-5 text-paper mix-blend-difference" />
-          </div>
-          <div>
-            <div className="font-display text-lg font-bold">PixoBooks</div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
-              Shop setup
-            </div>
-          </div>
-        </div>
-
-        {mode && (
-          <div className="mt-6 grid grid-cols-2 gap-1 p-1 rounded-xl border border-line bg-ink/5" role="tablist" aria-label="Workplace access">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "signin"}
-              onClick={() => setMode("signin")}
-              className={`h-11 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition ${
-                mode === "signin" ? "bg-paper shadow text-ink" : "text-ink-mute hover:text-ink"
-              }`}
-            >
-              <LogIn className="w-4 h-4" />
-              Sign in to your Workplace
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "create"}
-              onClick={() => setMode("create")}
-              className={`h-11 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition ${
-                mode === "create" ? "bg-paper shadow text-ink" : "text-ink-mute hover:text-ink"
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              Create New Workplace
-            </button>
-          </div>
-        )}
-
-        {mode === null ? (
-          <div className="paper-card p-8 mt-6 text-center text-sm text-ink-mute">
-            Preparing…
-          </div>
-        ) : mode === "signin" ? (
-          <div className="paper-card p-8 mt-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-cyan-reg/10 flex items-center justify-center mx-auto">
-              <LogIn className="w-6 h-6 text-cyan-reg" />
-            </div>
-            <h2 className="font-display text-2xl font-bold mt-4">
-              Sign in to your Workplace
-            </h2>
-            <p className="text-ink-mute text-sm mt-2">
-              Already have an account on this or another workplace? Sign in
-              with your work email and password. New shops start under
-              Create New Workplace.
-            </p>
-            <Link to="/login" className="btn btn-primary w-full h-11 mt-6">
-              <LogIn className="w-4 h-4" />
-              Go to sign in
-            </Link>
-          </div>
-        ) : hasOwner ? (
-          <div className="paper-card p-8 mt-6">
-            <div className="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center">
-              <ShieldAlert className="w-6 h-6 text-danger" />
-            </div>
-            <h2 className="font-display text-2xl font-bold mt-4">
-              This shop already has an owner
-            </h2>
-            <p className="text-ink-mute text-sm mt-2">
-              The shop owner account exists. Branches and team members join only
-              through the owner: ask the shop owner to invite you from their
-              dashboard, then sign in. If you requested access, wait for the
-              owner's approval or use{" "}
-              <span className="font-semibold text-ink">Set / reset password</span>.
-            </p>
-            <div className="mt-6">
-              <Link to="/login" className="btn btn-primary w-full h-11">
-                Go to sign in
+    <AuthShell
+      loading={isLoading}
+      loadingLabel="Preparing setup…"
+      className="register-wide"
+      hideBrand
+      footer={
+        <p className="register-footer">
+          {mode === "signin" ? (
+            hasOwner ? (
+              <>Need access? Ask your workspace admin for an invite.</>
+            ) : (
+              <>
+                New to PixoBooks?{" "}
+                <Link to="/register?mode=create" className="reg-link">
+                  Create a business
+                </Link>
+              </>
+            )
+          ) : mode === "create" && hasOwner ? (
+            <>
+              Already have access?{" "}
+              <Link to="/login" className="reg-link">
+                Sign in
               </Link>
-            </div>
-          </div>
-        ) : step === "details" ? (
-          <div className="paper-card p-6 md:p-8 mt-6">
-            <div className="flex items-start gap-2 rounded-md bg-yellow-reg/10 border border-yellow-reg/30 p-3 mb-5 text-xs text-ink-soft">
-              <ShieldCheck className="w-4 h-4 text-yellow-reg shrink-0 mt-0.5" />
-              <div>
-                <div className="font-semibold text-ink">First registration owns this shop</div>
-                <div className="mt-1">
-                  Any email can register first — that account becomes the shop
-                  owner. Afterwards, branches and staff join only via owner
-                  invite or approval.
-                </div>
-              </div>
-            </div>
-
-            <h2 className="font-display text-2xl font-bold">Set up your shop</h2>
-            <p className="text-ink-mute text-sm mt-1">
-              Your account, business profile and contacts — then we verify your email.
-            </p>
-            <form onSubmit={sendCode} className="mt-6 space-y-4">
-              <div>
-                <label htmlFor="reg-email" className="label">Your email <span className="text-danger">*</span></label>
-                <div className="mt-1 relative">
-                  <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                  <input id="reg-email" autoFocus type="email" required value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@yourshop.com" className="input pl-9" />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="reg-name" className="label">Your name</label>
-                <div className="mt-1 relative">
-                  <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                  <input id="reg-name" value={username} onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Owner name" className="input pl-9" />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="reg-business" className="label">Business name <span className="text-danger">*</span></label>
-                <div className="mt-1 relative">
-                  <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                  <input id="reg-business" required value={businessName} onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="e.g. Pixo Printshop" className="input pl-9" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <CountrySelect
-                  label="Country"
-                  required
-                  valueIso2={countryIso}
-                  onChange={setCountryIso}
-                />
-                <div>
-                  <label htmlFor="reg-biz-type" className="label">Business type</label>
-                  <div className="mt-1 relative">
-                    <Briefcase className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                    <GlassSelect
-                      id="reg-biz-type"
-                      value={businessType}
-                      onChange={setBusinessType}
-                      options={BUSINESS_TYPES.map((t) => ({ value: t, label: t }))}
-                      ariaLabel="Business type"
-                      className="input select-glass pl-9"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="reg-tz" className="label">Time zone</label>
-                  <div className="mt-1 relative">
-                    <Clock3 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                    <GlassSelect
-                      id="reg-tz"
-                      value={timezone}
-                      onChange={setTimezone}
-                      options={TIMEZONES.map((z) => ({ value: z, label: z }))}
-                      ariaLabel="Time zone"
-                      className="input select-glass pl-9"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="reg-currency" className="label">Currency</label>
-                  <div className="mt-1 relative">
-                    <Coins className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                    <GlassSelect
-                      id="reg-currency"
-                      value={currency}
-                      onChange={setCurrency}
-                      options={CURRENCIES.map((c) => ({
-                        value: c.code,
-                        label: `${c.code} ${c.symbol} - ${c.name}`,
-                      }))}
-                      ariaLabel="Currency"
-                      className="input select-glass pl-9"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="reg-grouping" className="label">Digit grouping</label>
-                  <GlassSelect
-                    id="reg-grouping"
-                    value={grouping}
-                    onChange={(v) => setGrouping(v as "western" | "indian")}
-                    options={GROUPING_SYSTEMS.map((g) => ({ value: g.id, label: g.label }))}
-                    ariaLabel="Digit grouping"
-                    className="input select-glass mt-1"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="reg-decimals" className="label">Decimal places</label>
-                  <div className="mt-1 relative">
-                    <Hash className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                    <GlassSelect
-                      id="reg-decimals"
-                      value={String(decimalPlaces)}
-                      onChange={(v) => setDecimalPlaces(Number(v))}
-                      options={[0, 1, 2, 3, 4].map((n) => ({ value: String(n), label: String(n) }))}
-                      ariaLabel="Decimal places"
-                      className="input select-glass pl-9"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="reg-separator" className="label">Separator format</label>
-                <GlassSelect
-                  id="reg-separator"
-                  value={separatorId}
-                  onChange={setSeparatorId}
-                  options={SEPARATOR_PRESETS.map((s) => ({ value: s.id, label: s.label }))}
-                  ariaLabel="Separator format"
-                  className="input select-glass mt-1"
-                />
-              </div>
-              <PhoneRow label="Mobile" dial={mobileDial} setDial={setMobileDial}
-                number={mobileNumber} setNumber={setMobileNumber} required />
-              <PhoneRow label="Office (optional)" dial={officeDial} setDial={setOfficeDial}
-                number={officeNumber} setNumber={setOfficeNumber} />
-              <PhoneRow label="WhatsApp (optional)" dial={waDial} setDial={setWaDial}
-                number={waNumber} setNumber={setWaNumber} />
-              <label className="flex items-start gap-2 text-xs text-ink-soft cursor-pointer">
-                <input type="checkbox" checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  I have read and accept the{" "}
-                  <button type="button" onClick={() => setLegal("terms")}
-                    className="underline font-semibold text-ink">Terms &amp; Conditions (v{TERMS_VERSION})</button>{" "}
-                  and the{" "}
-                  <button type="button" onClick={() => setLegal("privacy")}
-                    className="underline font-semibold text-ink">Privacy Policy (v{PRIVACY_VERSION})</button>.
-                </span>
-              </label>
-              <button type="submit" disabled={loading || !acceptedTerms}
-                className="btn btn-primary w-full h-11 disabled:opacity-50">
-                {loading ? "Sending code..." : "Save & send verification code"}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-              {!acceptedTerms && (
-                <p className="text-[11px] text-ink-mute text-center">
-                  Tick the box above to save and proceed.
-                </p>
-              )}
-            </form>
-          </div>
-        ) : (
-          <div className="paper-card p-6 md:p-8 mt-6">
-            <h2 className="font-display text-2xl font-bold">Verify &amp; set a password</h2>
-            <p className="text-ink-mute text-sm mt-1">
-              Check <span className="font-semibold text-ink">{email}</span> for the
-              email — enter the <span className="font-semibold text-ink">6-digit code</span> below
-              (not the button link).
-            </p>
-            <form onSubmit={verify} className="mt-6 space-y-4">
-              <div>
-                <label htmlFor="reg-otp" className="label">Verification code</label>
-                <div className="mt-1 relative">
-                  <KeyRound className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                  <input id="reg-otp" autoFocus inputMode="numeric" required value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="000000" maxLength={6}
-                    className="input pl-9 tracking-[0.5em] text-center num text-lg" />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="reg-password" className="label">Set a password (6+ characters)</label>
-                <div className="mt-1 relative">
-                  <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                  <input id="reg-password" type={showPassword ? "text" : "password"} required minLength={6} value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••" className="input pl-9 pr-10" autoComplete="new-password" />
-                  <button type="button" onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-ink-mute hover:text-ink"
-                    aria-label={showPassword ? "Hide password" : "Show password"}>
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="reg-confirm" className="label">Confirm password</label>
-                <div className="mt-1 relative">
-                  <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
-                  <input id="reg-confirm" type={showPassword ? "text" : "password"} required minLength={6} value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••" className="input pl-9 pr-10" autoComplete="new-password" />
-                  <button type="button" onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-ink-mute hover:text-ink"
-                    aria-label={showPassword ? "Hide password" : "Show password"}>
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {confirmPassword && password !== confirmPassword && (
-                  <p className="mt-1 text-[11px] text-danger">Passwords do not match.</p>
-                )}
-              </div>
-              <button type="submit" disabled={loading} className="btn btn-primary w-full h-11">
-                {loading ? "Creating shop..." : wasOwnerless ? "Create my shop" : "Create account"}
-              </button>
-              <button type="button" onClick={() => setStep("details")} className="btn btn-ghost w-full">
-                Back to details
-              </button>
-            </form>
-          </div>
-        )}
-
-        {legal && <LegalModal kind={legal} onClose={() => setLegal(null)} />}
-
-        <p className="text-center text-sm text-ink-mute mt-4">
-          Already have an account?{" "}
-          <Link to="/login" className="text-ink font-semibold underline">
-            Sign in
-          </Link>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <Link to="/login" className="reg-link">
+                Sign in
+              </Link>
+            </>
+          )}
         </p>
-      </div>
-    </div>
+      }
+    >
+          {mode === null ? (
+            <div className="reg-intro">
+              <h1 className="reg-title">Preparing your workspace</h1>
+              <p className="reg-lede">This will only take a moment.</p>
+            </div>
+          ) : mode === "signin" ? (
+            <>
+              <div className="reg-intro">
+                <p className="reg-step">Workplace access</p>
+                <h1 className="reg-title">Welcome back</h1>
+                <p className="reg-lede">
+                  Sign in to the workspace your admin already set up.
+                </p>
+              </div>
+              <div className="reg-card">
+                <div className="reg-state">
+                  <p className="reg-state-text">
+                    Use your work email and password. Access is managed by your
+                    workspace admin.
+                  </p>
+                  <Link to="/login" className="reg-cta">
+                    Continue to sign in
+                    <ArrowRight aria-hidden="true" />
+                  </Link>
+                </div>
+              </div>
+            </>
+          ) : hasOwner ? (
+            <>
+              <div className="reg-intro">
+                <p className="reg-step">Workspace access</p>
+                <h1 className="reg-title">This workspace is already set up</h1>
+                <p className="reg-lede">
+                  Ask your workspace admin for an invite, or sign in if you
+                  already have an account.
+                </p>
+              </div>
+              <div className="reg-card">
+                <div className="reg-state">
+                  <p className="reg-state-text">
+                    New team members join through an admin invite.
+                  </p>
+                  <Link to="/login" className="reg-cta">
+                    Go to sign in
+                    <ArrowRight aria-hidden="true" />
+                  </Link>
+                </div>
+              </div>
+            </>
+          ) : step === "details" ? (
+            <>
+              <div className="reg-intro">
+                <p className="reg-step">Step 1 of 2</p>
+                <h1 className="reg-title">Create your business</h1>
+                <p className="reg-lede">
+                  One workspace for sales, stock, and books. Verify your email
+                  next.
+                </p>
+              </div>
+
+              <div className="reg-card">
+                <form onSubmit={sendCode} className="reg-form">
+                  <Group title="Account">
+                    <AuthField htmlFor="reg-email" label="Email address" required icon={Mail}>
+                      <input
+                        id="reg-email"
+                        autoFocus
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@company.com"
+                        autoComplete="email"
+                        className="input reg-input reg-with-icon"
+                      />
+                    </AuthField>
+                    <AuthField htmlFor="reg-name" label="Your name" icon={User}>
+                      <input
+                        id="reg-name"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="Admin name"
+                        autoComplete="name"
+                        className="input reg-input reg-with-icon"
+                      />
+                    </AuthField>
+                  </Group>
+
+                  <Group title="Business">
+                    <AuthField
+                      htmlFor="reg-business"
+                      label="Business name"
+                      required
+                      icon={Building2}
+                      className="reg-span-2"
+                    >
+                      <input
+                        id="reg-business"
+                        required
+                        value={businessName}
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        placeholder="e.g. Pixo Business"
+                        autoComplete="organization"
+                        className="input reg-input reg-with-icon"
+                      />
+                    </AuthField>
+
+                    <div className="reg-field">
+                      <CountrySelect
+                        label="Country"
+                        required
+                        valueIso2={countryIso}
+                        onChange={setCountryIso}
+                      />
+                    </div>
+
+                    <AuthField htmlFor="reg-biz-type" label="Business type">
+                      <GlassSelect
+                        id="reg-biz-type"
+                        value={businessType}
+                        onChange={setBusinessType}
+                        options={BUSINESS_TYPES.map((t) => ({ value: t, label: t }))}
+                        ariaLabel="Business type"
+                        fullWidth
+                        className="input select-glass reg-input"
+                      />
+                    </AuthField>
+
+                    <AuthField htmlFor="reg-tz" label="Time zone">
+                      <GlassSelect
+                        id="reg-tz"
+                        value={timezone}
+                        onChange={setTimezone}
+                        options={TIMEZONE_OPTIONS}
+                        ariaLabel="Time zone"
+                        fullWidth
+                        className="input select-glass reg-input"
+                      />
+                    </AuthField>
+
+                    <AuthField htmlFor="reg-currency" label="Currency">
+                      <GlassSelect
+                        id="reg-currency"
+                        value={currency}
+                        onChange={setCurrency}
+                        options={CURRENCIES.map((c) => ({
+                          value: c.code,
+                          label: `${c.code} ${c.symbol} - ${c.name}`,
+                        }))}
+                        ariaLabel="Currency"
+                        fullWidth
+                        className="input select-glass reg-input"
+                      />
+                    </AuthField>
+
+                    <details className="reg-advanced">
+                      <summary>
+                        <ChevronDown className="reg-chevron" aria-hidden="true" />
+                        Regional and number format
+                      </summary>
+                      <div className="reg-advanced-fields">
+                        <AuthField htmlFor="reg-grouping" label="Digit grouping">
+                          <GlassSelect
+                            id="reg-grouping"
+                            value={grouping}
+                            onChange={(v) => setGrouping(v as "western" | "indian")}
+                            options={GROUPING_SYSTEMS.map((g) => ({
+                              value: g.id,
+                              label: g.label,
+                            }))}
+                            ariaLabel="Digit grouping"
+                            fullWidth
+                            className="input select-glass reg-input"
+                          />
+                        </AuthField>
+                        <AuthField htmlFor="reg-decimals" label="Decimal places">
+                          <GlassSelect
+                            id="reg-decimals"
+                            value={String(decimalPlaces)}
+                            onChange={(v) => setDecimalPlaces(Number(v))}
+                            options={[0, 1, 2, 3, 4].map((n) => ({
+                              value: String(n),
+                              label: String(n),
+                            }))}
+                            ariaLabel="Decimal places"
+                            fullWidth
+                            className="input select-glass reg-input"
+                          />
+                        </AuthField>
+                        <AuthField htmlFor="reg-separator" label="Separator format">
+                          <GlassSelect
+                            id="reg-separator"
+                            value={separatorId}
+                            onChange={setSeparatorId}
+                            options={SEPARATOR_PRESETS.map((s) => ({
+                              value: s.id,
+                              label: s.label,
+                            }))}
+                            ariaLabel="Separator format"
+                            fullWidth
+                            className="input select-glass reg-input"
+                          />
+                        </AuthField>
+                      </div>
+                    </details>
+                  </Group>
+
+                  <Group title="Contact">
+                    <div className="reg-field">
+                      <PhoneRow
+                        label="Mobile number"
+                        dial={mobileDial}
+                        setDial={setMobileDial}
+                        number={mobileNumber}
+                        setNumber={setMobileNumber}
+                        required
+                      />
+                    </div>
+                    <div className="reg-field">
+                      <PhoneRow
+                        label="Office number"
+                        dial={officeDial}
+                        setDial={setOfficeDial}
+                        number={officeNumber}
+                        setNumber={setOfficeNumber}
+                      />
+                    </div>
+                    <div className="reg-field reg-span-2">
+                      <PhoneRow
+                        label="WhatsApp"
+                        dial={waDial}
+                        setDial={setWaDial}
+                        number={waNumber}
+                        setNumber={setWaNumber}
+                      />
+                    </div>
+                  </Group>
+
+                  <div className="reg-actions">
+                    <label className="reg-terms">
+                      <input
+                        type="checkbox"
+                        checked={acceptedTerms}
+                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                        className="reg-check"
+                      />
+                      <span>
+                        I accept the{" "}
+                        <button
+                          type="button"
+                          onClick={() => setLegal("terms")}
+                          className="reg-legal"
+                        >
+                          Terms
+                        </button>{" "}
+                        and{" "}
+                        <button
+                          type="button"
+                          onClick={() => setLegal("privacy")}
+                          className="reg-legal"
+                        >
+                          Privacy Policy
+                        </button>
+                        .
+                      </span>
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={loading || !acceptedTerms}
+                      className="reg-submit"
+                    >
+                      {loading ? (
+                        <Loader2 className="reg-spin" aria-hidden="true" />
+                      ) : null}
+                      {loading ? "Sending code…" : "Continue"}
+                      {!loading && <ArrowRight aria-hidden="true" />}
+                    </button>
+                    <p className="reg-secure">
+                      <ShieldCheck aria-hidden="true" />
+                      The first account becomes the workspace admin.
+                    </p>
+                  </div>
+                </form>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="reg-intro">
+                <p className="reg-step">Step 2 of 2</p>
+                <h1 className="reg-title">Verify your email</h1>
+                <p className="reg-lede">
+                  Enter the 6-digit code sent to{" "}
+                  <span className="reg-strong">{email}</span>.
+                </p>
+              </div>
+
+              <div className="reg-card">
+                <form onSubmit={verify} className="reg-form">
+                  <Group title="Verification">
+                    <AuthField
+                      htmlFor="reg-otp"
+                      label="Verification code"
+                      hint="Use the code, not the email link."
+                      className="reg-span-2"
+                    >
+                      <input
+                        id="reg-otp"
+                        autoFocus
+                        inputMode="numeric"
+                        required
+                        value={otp}
+                        onChange={(e) =>
+                          setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                        }
+                        placeholder="000000"
+                        maxLength={6}
+                        autoComplete="one-time-code"
+                        className="input reg-input reg-code"
+                      />
+                    </AuthField>
+
+                    <AuthField
+                      htmlFor="reg-password"
+                      label="Password"
+                      required
+                      icon={Lock}
+                      hint="Use at least 6 characters."
+                    >
+                      <input
+                        id="reg-password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        minLength={6}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        autoComplete="new-password"
+                        className="input reg-input reg-with-icon reg-with-eye"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="reg-eye"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-pressed={showPassword}
+                      >
+                        {showPassword ? (
+                          <EyeOff aria-hidden="true" />
+                        ) : (
+                          <Eye aria-hidden="true" />
+                        )}
+                      </button>
+                    </AuthField>
+
+                    <AuthField
+                      htmlFor="reg-confirm"
+                      label="Confirm password"
+                      required
+                      icon={KeyRound}
+                      error={
+                        confirmPassword && password !== confirmPassword
+                          ? "Passwords do not match."
+                          : undefined
+                      }
+                    >
+                      <input
+                        id="reg-confirm"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        minLength={6}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        autoComplete="new-password"
+                        className="input reg-input reg-with-icon"
+                      />
+                    </AuthField>
+                  </Group>
+
+                  <div className="reg-actions">
+                    <button type="submit" disabled={loading} className="reg-submit">
+                      {loading ? (
+                        <Loader2 className="reg-spin" aria-hidden="true" />
+                      ) : null}
+                      {loading
+                        ? "Creating workspace…"
+                        : wasOwnerless
+                          ? "Create workspace"
+                          : "Create account"}
+                      {!loading && <ArrowRight aria-hidden="true" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStep("details")}
+                      className="reg-back"
+                    >
+                      <ArrowLeft aria-hidden="true" />
+                      Back to details
+                    </button>
+                    <p className="reg-secure">
+                      <ShieldCheck aria-hidden="true" />
+                      Your business data is protected and secure.
+                    </p>
+                  </div>
+                </form>
+              </div>
+            </>
+          )}
+
+      {legal && (
+        <AuthModal
+          kicker="Legal"
+          title={
+            legal === "terms"
+              ? `Terms & Conditions (v${TERMS_VERSION})`
+              : `Privacy Policy (v${PRIVACY_VERSION})`
+          }
+          wide
+          onClose={() => setLegal(null)}
+          footer={
+            <button type="button" onClick={() => setLegal(null)} className="reg-submit">
+              Close
+            </button>
+          }
+        >
+          <pre className="reg-modal-text">
+            {legal === "terms" ? TERMS_TEXT : PRIVACY_TEXT}
+          </pre>
+        </AuthModal>
+      )}
+    </AuthShell>
   );
 }

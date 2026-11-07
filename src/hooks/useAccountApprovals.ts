@@ -7,7 +7,7 @@ import { DEFAULT_STAFF_PERMISSIONS, DEFAULT_TEMP_PASSWORD_HOURS } from "@/types"
 import { useActiveBusiness } from "@/hooks/useBusinesses";
 
 /**
- * Live list of account-approval requests. Polled every 8s so the owner sees new
+ * Live list of account-approval requests. Polled every 8s so the admin sees new
  * requests within seconds of the user logging in with their temp password.
  */
 export function useAccountApprovalRequests() {
@@ -149,13 +149,13 @@ export function useRejectAccount() {
 /**
  * Called by the Login screen after a user has successfully signed in with
  * their temp password for the very first time. Marks the profile as
- * "pending_approval" and inserts a request row for the owner.
+ * "pending_approval" and inserts a request row for the admin.
  */
 export async function createAccountApprovalRequest(user: Employee) {
   const now = new Date().toISOString();
 
   // Idempotent: a retry after a partial failure must reuse the pending row
-  // instead of creating duplicates for the owner.
+  // instead of creating duplicates for the admin.
   const { data: pending } = await supabase
     .from("account_approval_requests")
     .select("*")
@@ -185,7 +185,7 @@ export async function createAccountApprovalRequest(user: Employee) {
 
   // Promote the profile only after the request exists. If this update fails we
   // roll the *new* request back so the employee stays in pending_first_login
-  // and can retry, rather than being stuck with no request for the owner.
+  // and can retry, rather than being stuck with no request for the admin.
   const { error: profErr } = await supabase
     .from("user_profiles")
     .update({

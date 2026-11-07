@@ -1,18 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { mapSale, mapSalePayment } from "@/lib/mappers";
+import { movementPayload } from "@/lib/stockLedger";
 import type {
   Item,
   PaymentMethod,
   SaleLine,
   Settings,
   SalePayment,
-  DocumentType,
-  PaymentStatus,
 } from "@/types";
 import { useActiveBranch } from "@/hooks/useBranches";
 import { useActiveBusiness } from "@/hooks/useBusinesses";
-import { currentBusinessId } from "@/lib/tenant";
+import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
 
 /**
@@ -43,8 +42,8 @@ export function useSales(limit = 500) {
       // imported sales carry their original timestamp, so they interleave
       // with live sales by the day they actually happened, not import day.
       const rows: Record<string, unknown>[] = [];
-      for (let offset = 0; offset < limit; offset += SALES_PAGE_SIZE) {
-        const end = Math.min(offset + SALES_PAGE_SIZE, limit) - 1;
+      for (let offset = 0; limit === 0 || offset < limit; offset += SALES_PAGE_SIZE) {
+        const end = limit === 0 ? offset + SALES_PAGE_SIZE - 1 : Math.min(offset + SALES_PAGE_SIZE, limit) - 1;
         let q = supabase
           .from("sales")
           .select("*")
@@ -63,7 +62,9 @@ export function useSales(limit = 500) {
       }
       return rows.map(mapSale);
     },
-    refetchInterval: 20000,
+    // Large report feeds (5,000 rows) refresh far less aggressively than the
+    // POS-sized 500-row feed to keep mobile pages responsive.
+    refetchInterval: limit <= 500 ? 20000 : 60000,
   });
 }
 
@@ -136,6 +137,7 @@ export function useCompleteSale() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stock_movements"] });
       qc.invalidateQueries({ queryKey: ["customers"] });
       qc.invalidateQueries({ queryKey: ["shop_settings"] });
       qc.invalidateQueries({ queryKey: ["loyalty"] });
@@ -154,53 +156,29 @@ export type AddPaymentInput = {
   receivedBy: string | null;
   receivedByName: string;
   notes?: string;
+  /** Stable key for one user-initiated collection attempt. */
+  idempotencyKey?: string;
 };
 
 export function useAddSalePayment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: AddPaymentInput) => {
-      // Fetch sale
-      const { data: sale, error: sErr } = await supabase
-        .from("sales")
-        .select("*")
-        .eq("id", p.saleId)
-        .single();
-      if (sErr) throw sErr;
-
-      const amt = Math.max(0, Math.min(Number(sale.amount_due || 0), Number(p.amount || 0)));
-      if (amt <= 0) throw new Error("Nothing due on this sale.");
-
-      const { error: payErr } = await supabase.from("sale_payments").insert({
-        sale_id: p.saleId,
-        business_id: sale.business_id || currentBusinessId() || undefined,
-        amount: amt,
-        payment_method: p.paymentMethod,
-        received_by: p.receivedBy,
-        received_by_name: p.receivedByName,
-        notes: p.notes || null,
+      const { data, error } = await supabase.rpc("add_sale_payment", {
+        p_sale_id: p.saleId,
+        p_amount: p.amount,
+        p_method: p.paymentMethod,
+        p_received_by: p.receivedBy,
+        p_received_by_name: p.receivedByName,
+        p_notes: p.notes || null,
+        p_idempotency_key:
+          p.idempotencyKey ??
+          (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`),
       });
-      if (payErr) throw payErr;
-
-      const newPaid = Number(sale.amount_paid || 0) + amt;
-      const newDue = Number(sale.total || 0) - newPaid;
-      const newStatus: PaymentStatus = newDue <= 0 ? "paid" : "partial";
-      const newDoc: DocumentType = newDue <= 0 ? "receipt" : "invoice";
-
-      const { data: updated, error: uErr } = await supabase
-        .from("sales")
-        .update({
-          amount_paid: newPaid,
-          amount_due: Math.max(0, newDue),
-          payment_status: newStatus,
-          document_type: newDoc,
-        })
-        .eq("id", p.saleId)
-        .select()
-        .single();
-      if (uErr) throw uErr;
-
-      return mapSale(updated);
+      if (error) throw error;
+      return mapSale(data as Record<string, unknown>);
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["sales"] });
@@ -212,22 +190,70 @@ export function useAddSalePayment() {
 
 export function useVoidSale() {
   const qc = useQueryClient();
+  const { profile } = useAuth();
   return useMutation({
-    mutationFn: async (id: string) => {
-      // Retain a permanent audit trail of every sale/invoice/receipt
-      // deletion. Backend RLS additionally restricts DELETE to
-      // Owner/Admin roles so hiding the UI button is not the sole gate.
-      const { data: sale } = await supabase
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      // A void is a reversal document, never a deletion:
+      //   1. stock goes back through the movement ledger (sale_void)
+      //   2. the sale row is marked voided and stays visible/auditable
+      //   3. the financial trail is unwound (customer spend + loyalty)
+      // Reports and the cash ledger exclude voided rows.
+      const { data: raw, error: readErr } = await supabase
         .from("sales")
-        .select("number, customer_name, total, payment_method, payment_status, document_type")
+        .select("*")
         .eq("id", id)
         .maybeSingle();
-      const { error } = await supabase.from("sales").delete().eq("id", id);
-      if (error) throw error;
-      await logAudit(null, "sale.delete", "sale", id, sale || {});
+      if (readErr) throw readErr;
+      if (!raw) throw new Error("Sale not found");
+      if (raw.voided_at) throw new Error("This sale is already voided");
+
+      const sale = mapSale(raw);
+      // The database reverses the original sale movement rows exactly. The
+      // browser must not reconstruct stock using today's BOM/UOM catalogue.
+      const { data: originalMovements, error: movementReadError } = await supabase
+        .from("stock_movements")
+        .select("item_id, qty_base")
+        .eq("source_type", "sale")
+        .eq("source_id", id);
+      if (movementReadError) throw movementReadError;
+      const movements = (originalMovements || []).map((m) => ({
+        itemId: m.item_id as string,
+        qtyBase: Number(m.qty_base || 0),
+      }));
+
+      // Preferred path: the server verifies `sales.void` AND marks the
+      // document voided in the same transaction as the stock return, so the
+      // UI gate is not the only control.
+      const rpc = await supabase.rpc("void_sale", {
+        p_sale_id: id,
+        p_reason: reason ?? null,
+        p_movements: movementPayload([]),
+      });
+      if (rpc.error) {
+        throw rpc.error;
+      }
+
+      await logAudit(
+        profile ? { id: profile.id, name: profile.name, role: profile.role } : null,
+        "sale.void",
+        "sale",
+        id,
+        {
+          number: sale.number,
+          total: sale.total,
+          customer: sale.customerName,
+          reason: reason || null,
+          stock_restored: movements,
+        }
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stock_movements"] });
+      qc.invalidateQueries({ queryKey: ["stock_adjustments"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["loyalty"] });
       qc.invalidateQueries({ queryKey: ["live_opening_balance"] });
     },
   });

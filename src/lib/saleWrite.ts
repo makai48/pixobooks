@@ -1,15 +1,13 @@
 // Shared sale writer — single source of truth for online checkout AND
 // offline-queue replay. Pure build step + Supabase execute step.
 import { supabase } from "./supabase";
-import { computeCartCost, computeTotals, decrementStock } from "./pos";
+import { computeCartCost, computeTotals } from "./pos";
 import { convertQuantity, validateTransactionQty } from "./uom";
 import { mapSale } from "./mappers";
-import { isUniqueViolation } from "./syncEngine";
 import { toError } from "./utils";
 import { makeDocumentNumber } from "./docNumber";
 import { getActiveBranchId } from "@/hooks/useBranches";
 import { currentBusinessId } from "./tenant";
-import { isShopOwner } from "@/types";
 import { logAudit } from "./audit";
 import type { CheckoutInput } from "@/hooks/useSales";
 import type {
@@ -22,7 +20,6 @@ import type {
 export type BuiltSale = {
   salePayload: Record<string, unknown>;
   paymentRow: Record<string, unknown> | null;
-  stockUpdates: { id: string; newStock: number }[];
   nextInvoice: Settings["invoice"];
   loyaltyEarned: number;
   paid: number;
@@ -161,7 +158,6 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
         }
       : null;
 
-  const stockUpdates = decrementStock(lines, items, input.conversions ?? []);
   const nextInvoice = {
     ...settings.invoice,
     nextNumber: settings.invoice.nextNumber + 1,
@@ -170,7 +166,6 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
   return {
     salePayload,
     paymentRow,
-    stockUpdates,
     nextInvoice,
     loyaltyEarned,
     paid,
@@ -239,154 +234,70 @@ export function buildLocalSale(input: CheckoutInput, queueId: string): Sale {
 
 export async function executeSaleWrite(input: CheckoutInput): Promise<Sale> {
   const {
-    customerId,
     customerName,
     cashierId,
     cashierName,
-    cashierEmail,
     cashierRole,
-    loyaltyRedeemPoints = 0,
   } = input;
-  const businessId = input.businessId ?? currentBusinessId();
-  // The stamped number is reused verbatim on every attempt. Only a proven
-  // duplicate (HTTP 409 / PG 23505) falls back to a fresh creation-time
-  // stamp — the other transaction is left untouched, ours gets a new
-  // moment, and the visible format never changes. Anything else fails fast
-  // with its real message.
-  const MAX_NUMBER_RETRIES = 5;
-  let built = buildSaleWrite(input);
-  let saleData;
-  for (let attempt = 0; attempt <= MAX_NUMBER_RETRIES; attempt++) {
-    const { data, error } = await supabase
-      .from("sales")
-      .insert(built.salePayload)
-      .select()
-      .single();
-    if (!error) {
-      saleData = data;
-      break;
+
+  // A stable id is generated up front so the stock movements can reference the
+  // sale before it is committed. Together with the stamped document number it
+  // makes checkout idempotent: a retried request finds the same sale row and
+  // returns it without touching stock again.
+  const newId = () => {
+    const c = typeof crypto !== "undefined" ? crypto : undefined;
+    if (c && typeof c.randomUUID === "function") return c.randomUUID();
+    if (c && typeof c.getRandomValues === "function") {
+      const b = c.getRandomValues(new Uint8Array(16));
+      b[6] = (b[6] & 0x0f) | 0x40;
+      b[8] = (b[8] & 0x3f) | 0x80;
+      const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+      return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
     }
-    if (!isUniqueViolation(error) || attempt === MAX_NUMBER_RETRIES) {
-      // PostgREST errors are plain objects, not Error instances — normalize
-      // so callers surface the real reason instead of a generic fallback.
-      // A duplicate that survives retries is a genuine cross-device
-      // collision: surfaced as an error, never merged or discarded.
-      console.error("sale insert failed", error);
-      throw toError(error, "Checkout failed");
-    }
-    console.warn(`sale number ${built.number} already exists, restamping`, error);
-    built = buildSaleWrite({ ...input, documentNumber: null });
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  };
+
+  const built = buildSaleWrite(input);
+  built.salePayload.id = newId();
+  let saleData: Record<string, unknown> | null = null;
+  let duplicate = false;
+
+  // Preferred path: one server transaction (sale + payment + stock).
+  const rpc = await supabase.rpc("commit_sale_authoritative", {
+    p_sale: built.salePayload,
+    p_payment: built.paymentRow,
+  });
+  if (!rpc.error) {
+    saleData = (rpc.data?.sale ?? null) as Record<string, unknown> | null;
+    duplicate = !!rpc.data?.duplicate;
+  } else {
+    console.error("commit_sale failed", rpc.error);
+    throw toError(rpc.error, "Checkout failed — the ledger transaction was not committed");
   }
+
   if (!saleData) {
     throw new Error("Checkout failed");
   }
+  // Idempotent replay: the document already exists with its payment and
+  // movements; return it untouched.
+  if (duplicate) {
+    return mapSale(saleData);
+  }
 
-  const { salePayload, paymentRow, stockUpdates, nextInvoice, loyaltyEarned, due, status, number } =
+  const { salePayload, due, status, number } =
     built;
   const totals = { total: (salePayload.total as number) ?? 0 };
 
-  if (paymentRow) {
-    // The initial payment row is what anchors this sale's cash to the
-    // correct business day in the cash ledger. A sale WITHOUT its payment
-    // row silently falls back to `sales.amount_paid`, and a later payment
-    // then moves that cash to a different day — a classic b/f fluctuation.
-    // So a failed payment insert must fail the whole write (with a
-    // compensating sale delete so a retry is safe), never be swallowed.
-    const { error: payErr } = await supabase.from("sale_payments").insert({
-      ...paymentRow,
-      sale_id: saleData.id,
-    });
-    if (payErr) {
-      await supabase.from("sales").delete().eq("id", saleData.id);
-      console.error("sale payment insert failed, sale rolled back", payErr);
-      throw toError(payErr, "Checkout failed");
-    }
-  }
-
-  await Promise.all(
-    stockUpdates.map((u) =>
-      supabase
-        .from("items")
-        .update({ stock: u.newStock, updated_at: new Date().toISOString() })
-        .eq("id", u.id)
-    )
-  );
-
-  let settingsQ = supabase
-    .from("shop_settings")
-    .update({ invoice: nextInvoice, updated_at: new Date().toISOString() });
-  settingsQ = businessId
-    ? settingsQ.eq("business_id", businessId)
-    : settingsQ.eq("id", "main");
-  await settingsQ;
-
-  if (customerId) {
-    const { data: cust } = await supabase
-      .from("customers")
-      .select("total_spent, loyalty_points")
-      .eq("id", customerId)
-      .maybeSingle();
-    if (cust) {
-      const newTotal = Number(cust.total_spent || 0) + totals.total;
-      const newPoints =
-        Number(cust.loyalty_points || 0) + loyaltyEarned - loyaltyRedeemPoints;
-      await supabase
-        .from("customers")
-        .update({ total_spent: newTotal, loyalty_points: Math.max(0, newPoints) })
-        .eq("id", customerId);
-    }
-
-    if (loyaltyEarned > 0) {
-      await supabase.from("loyalty_transactions").insert({
-        business_id: businessId || undefined,
-        customer_id: customerId,
-        sale_id: saleData.id,
-        points: loyaltyEarned,
-        type: "earn",
-        notes: `Earned from sale ${number}`,
-        created_by: cashierId,
-      });
-    }
-    if (loyaltyRedeemPoints > 0) {
-      await supabase.from("loyalty_transactions").insert({
-        business_id: businessId || undefined,
-        customer_id: customerId,
-        sale_id: saleData.id,
-        points: -loyaltyRedeemPoints,
-        type: "redeem",
-        notes: `Redeemed on sale ${number}`,
-        created_by: cashierId,
-      });
-    }
-  }
-
-  if (cashierId && !isShopOwner(cashierEmail || null, cashierRole || null)) {
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: existing } = await supabase
-      .from("attendance")
-      .select("id, status")
-      .eq("employee_id", cashierId)
-      .eq("date", today)
-      .maybeSingle();
-    if (!existing) {
-      await supabase.from("attendance").insert({
-        business_id: businessId || undefined,
-        employee_id: cashierId,
-        employee_name: cashierName,
-        date: today,
-        status: "present",
-        hours: 8,
-        notes: `Auto-logged via sale ${number}`,
-      });
-    }
-  }
+  // Invoice sequence, customer balances, loyalty and attendance are committed
+  // by commit_sale. Keeping no client-side compensation path prevents partial
+  // accounting when the browser closes after checkout.
 
   if (status !== "paid") {
     await logAudit(
       { id: cashierId || "", name: cashierName, role: cashierRole || undefined },
       `sale.${status}`,
       "sale",
-      saleData.id,
+      String(saleData.id),
       { number, total: totals.total, due, customer: customerName }
     );
   }

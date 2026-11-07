@@ -1,0 +1,1609 @@
+/* Auth surfaces — PixoBooks V3 design language.
+   Shared by Login and Register so the two routes feel like one continuous
+   experience. Scoped to the auth pages so the global Paper & Ink theme and
+   every other screen stay untouched. Tokens mirror the authoritative V3
+   system: Manrope display / DM Sans body, oklch colours, brand-yellow CTA. */
+
+.register-page {
+  /* V3 light tokens */
+  --reg-brand: oklch(0.86 0.175 92); /* #FFCC08 */
+  --reg-brand-foreground: oklch(0.18 0 0);
+  --reg-ink: oklch(0.18 0 0);
+  --reg-background: oklch(0.935 0.004 106);
+  --reg-foreground: oklch(0.18 0 0);
+  --reg-card: oklch(1 0 0);
+  --reg-muted: oklch(0.56 0 0);
+  --reg-border: oklch(0.925 0.004 106);
+  --reg-secondary: oklch(0.95 0.003 106);
+  --reg-input: oklch(1 0 0);
+  --reg-danger: oklch(0.577 0.245 27.325);
+  --reg-ring: oklch(0.86 0.175 92);
+  --reg-field-border: oklch(0.18 0 0 / 0.5);
+  --reg-field-border-hover: oklch(0.18 0 0 / 0.7);
+  --reg-dot-active: oklch(0.18 0 0);
+  --reg-deco: oklch(0.18 0 0 / 0.09);
+  --reg-deco-lit: oklch(0.18 0 0 / 0.3);
+  --reg-deco-accent: oklch(0.86 0.175 92 / 0.5);
+  --reg-font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --reg-font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --reg-font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --reg-shadow-card: 0 1px 2px oklch(0 0 0 / 0.03),
+    0 12px 32px -12px oklch(0 0 0 / 0.08);
+  --reg-shadow-brand: 0 8px 20px -8px oklch(0.86 0.175 92 / 0.6);
+  --reg-control-h: 33px;
+
+  position: relative;
+  isolation: isolate;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  justify-content: center;
+  padding: max(clamp(0.75rem, 4vh, 4rem), env(safe-area-inset-top)) 1rem
+    max(1rem, env(safe-area-inset-bottom));
+  background: var(--reg-background);
+  color: var(--reg-foreground);
+  font-family: var(--reg-font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background-color 220ms ease, color 220ms ease;
+}
+
+/* ------------------------------------------------------------------ */
+/* V3 background: drifting business icons, centre quiet, spotlight     */
+/* ------------------------------------------------------------------ */
+
+.reg-deco {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.reg-deco-icon {
+  position: absolute;
+  display: block;
+  color: var(--reg-deco);
+  animation: reg-drift 7s ease-in-out infinite;
+}
+
+.reg-deco-icon.is-accent {
+  color: var(--reg-deco-accent);
+}
+
+.reg-deco-icon.is-lit {
+  color: var(--reg-deco-lit);
+}
+
+.reg-deco-icon.is-lit.is-accent {
+  color: var(--reg-brand);
+}
+
+.reg-deco-mask {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 500ms ease;
+  -webkit-mask-image: radial-gradient(
+    circle 200px at var(--mx, 50%) var(--my, 50%),
+    #000,
+    transparent 75%
+  );
+  mask-image: radial-gradient(
+    circle 200px at var(--mx, 50%) var(--my, 50%),
+    #000,
+    transparent 75%
+  );
+}
+
+.reg-deco-quiet {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse min(520px, 60vw) min(460px, 55vh) at 50% 50%,
+    var(--reg-background) 35%,
+    transparent 100%
+  );
+}
+
+.reg-deco-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 500ms ease;
+  background: radial-gradient(
+    circle 280px at var(--mx, 50%) var(--my, 50%),
+    oklch(0.86 0.175 92 / 0.16),
+    transparent 70%
+  );
+}
+
+.register-page[data-spot] .reg-deco-mask,
+.register-page[data-spot] .reg-deco-glow {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* Shell                                                              */
+/* ------------------------------------------------------------------ */
+
+.register-shell {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 420px);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Brand — logo over name, both on the screen centre axis */
+.register-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.register-brand-logo {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--reg-ink);
+}
+
+.register-brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.register-brand-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1px;
+}
+
+.register-brand-name {
+  font-family: var(--reg-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: var(--reg-foreground);
+}
+
+.register-brand-subtitle {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--reg-muted);
+}
+
+/* Highlights carousel — compact slogan line */
+.reg-highlights {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: clamp(0.75rem, 2.5vh, 1.5rem);
+}
+
+.reg-highlight-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  max-width: 100%;
+}
+
+.reg-highlight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.reg-highlight-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--reg-brand);
+  color: var(--reg-brand-foreground);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.08);
+}
+
+.reg-highlight-text {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: left;
+  white-space: nowrap;
+  color: color-mix(in oklch, var(--reg-foreground) 80%, transparent);
+}
+
+.reg-highlight-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.reg-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--reg-foreground) 20%, transparent);
+  transition: width 300ms ease, background-color 300ms ease;
+}
+
+.reg-dot:hover {
+  background: color-mix(in oklch, var(--reg-foreground) 40%, transparent);
+}
+
+.reg-dot.is-active {
+  width: 20px;
+  background: var(--reg-dot-active);
+}
+
+.reg-dot:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--reg-ring);
+}
+
+/* Intro */
+.reg-intro {
+  width: 100%;
+  margin-top: clamp(0.75rem, 2.5vh, 1.5rem);
+  text-align: center;
+}
+
+.reg-step {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--reg-muted);
+}
+
+.reg-title {
+  margin-top: 6px;
+  font-family: var(--reg-font-display);
+  font-size: clamp(1.5rem, 4vw, 2.125rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--reg-foreground);
+  text-wrap: balance;
+}
+
+.reg-lede {
+  max-width: 30ch;
+  margin: 4px auto 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--reg-muted);
+  text-wrap: pretty;
+}
+
+.reg-strong {
+  color: var(--reg-foreground);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/* Card                                                               */
+/* ------------------------------------------------------------------ */
+
+.reg-card {
+  width: 100%;
+  max-width: 360px;
+  margin-top: clamp(0.875rem, 2.5vh, 1.5rem);
+  padding: clamp(1rem, 3vh, 2rem) clamp(1.25rem, 5vw, 2rem);
+  border: 1px solid var(--reg-border);
+  border-radius: 20px;
+  background: var(--reg-card);
+  color: var(--reg-foreground);
+  box-shadow: var(--reg-shadow-card);
+}
+
+.reg-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.reg-state-text {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--reg-muted);
+}
+
+.reg-cta {
+  width: 100%;
+  height: 40px;
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: var(--reg-brand);
+  color: var(--reg-brand-foreground);
+  font-size: 15px;
+  font-weight: 600;
+  transition: filter 180ms ease, box-shadow 180ms ease, transform 120ms ease;
+}
+
+.reg-cta:hover {
+  filter: brightness(0.96);
+  box-shadow: var(--reg-shadow-brand);
+}
+
+.reg-cta:active {
+  transform: scale(0.99);
+}
+
+.reg-cta:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.4);
+}
+
+.reg-cta svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Form                                                               */
+/* ------------------------------------------------------------------ */
+
+.reg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reg-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.reg-group + .reg-group {
+  margin-top: 2px;
+}
+
+.reg-group-title {
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--reg-muted);
+}
+
+.reg-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reg-field {
+  min-width: 0;
+}
+
+.reg-label,
+.register-page .reg-field .label {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--reg-font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--reg-foreground);
+}
+
+.reg-req,
+.register-page .reg-field .label .text-danger {
+  margin-left: 2px;
+  color: var(--reg-danger);
+}
+
+.reg-control {
+  position: relative;
+}
+
+.reg-icon {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  color: var(--reg-muted);
+  pointer-events: none;
+}
+
+/* Fields: V3 33px mobile/tablet, 44px laptop+ */
+.register-page .reg-field .input {
+  width: 100%;
+  height: var(--reg-control-h);
+  padding: 0 16px;
+  border: 1px solid var(--reg-field-border);
+  border-radius: 12px;
+  background: var(--reg-input);
+  color: var(--reg-foreground);
+  font-family: var(--reg-font-sans);
+  font-size: 16px;
+  line-height: 1.2;
+  outline: none;
+  box-shadow: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease,
+    background-color 200ms ease;
+}
+
+.register-page .reg-field .input::placeholder {
+  color: color-mix(in oklch, var(--reg-muted) 65%, transparent);
+}
+
+.register-page .reg-field .input:hover {
+  border-color: var(--reg-field-border-hover);
+}
+
+.register-page .reg-field .input:focus {
+  border-color: var(--reg-foreground);
+  box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.25);
+}
+
+/* V3 invalid state: destructive border + destructive /15 ring. */
+.register-page .reg-field .input[aria-invalid="true"] {
+  border-color: var(--reg-danger);
+}
+
+.register-page .reg-field .input[aria-invalid="true"]:hover {
+  border-color: var(--reg-danger);
+}
+
+.register-page .reg-field .input[aria-invalid="true"]:focus {
+  border-color: var(--reg-danger);
+  box-shadow: 0 0 0 4px oklch(0.577 0.245 27.325 / 0.15);
+}
+
+.register-page .reg-field .input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Dropdown triggers keep the V3 field surface, not the frosted glass one. */
+.register-page .reg-field .input.select-glass {
+  background: var(--reg-input);
+  border-color: var(--reg-field-border);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.register-page .reg-field .input.select-glass:hover {
+  border-color: var(--reg-field-border-hover);
+}
+
+.register-page .reg-field .input.select-glass:focus {
+  border-color: var(--reg-foreground);
+  box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.25);
+}
+
+.register-page .reg-field .input.reg-with-icon {
+  padding-left: 44px;
+}
+
+/* The flag/dial trigger reads more naturally at a tighter horizontal pad. */
+.register-page .reg-field .relative.shrink-0 > button.input {
+  gap: 6px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.register-page .reg-field .input.reg-with-eye {
+  padding-right: 48px;
+}
+
+.register-page .reg-field .input.reg-code {
+  padding: 0 12px;
+  font-family: var(--reg-font-mono);
+  font-size: 18px;
+  letter-spacing: 0.32em;
+  text-align: center;
+  text-indent: 0.32em;
+}
+
+/* Search / popup fields inside the shared country picker */
+.register-page .reg-field .paper-card {
+  border: 1px solid var(--reg-border);
+  border-radius: 12px;
+  background: var(--reg-card);
+  box-shadow: 0 24px 48px -24px oklch(0 0 0 / 0.45);
+}
+
+.register-page .reg-field .paper-card .input {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.reg-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--reg-muted);
+}
+
+.reg-hint-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--reg-danger);
+}
+
+.reg-hint-error svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  margin-top: 1px;
+}
+
+.reg-eye {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--reg-muted);
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.reg-eye:hover {
+  color: var(--reg-foreground);
+  background: color-mix(in oklch, var(--reg-foreground) 6%, transparent);
+}
+
+.reg-eye:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--reg-ring);
+}
+
+.reg-eye svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Optional regional settings */
+.reg-advanced {
+  margin-top: 2px;
+}
+
+.reg-advanced summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  color: var(--reg-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: color 160ms ease;
+}
+
+.reg-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.reg-advanced summary:hover {
+  color: var(--reg-foreground);
+}
+
+.reg-advanced summary:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--reg-ring);
+}
+
+.reg-chevron {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  transition: transform 200ms ease;
+}
+
+.reg-advanced[open] .reg-chevron {
+  transform: rotate(180deg);
+}
+
+.reg-advanced-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Terms + actions                                                    */
+/* ------------------------------------------------------------------ */
+
+.reg-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.reg-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--reg-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+  user-select: none;
+}
+
+.reg-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in oklch, var(--reg-foreground) 65%, transparent);
+  border-radius: 5px;
+  background: var(--reg-card);
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.reg-check:hover {
+  border-color: var(--reg-foreground);
+}
+
+.reg-check:checked {
+  border-color: var(--reg-brand);
+  background: var(--reg-brand);
+}
+
+.reg-check:checked::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid var(--reg-brand-foreground);
+  border-bottom: 2px solid var(--reg-brand-foreground);
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.reg-check:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--reg-ring);
+}
+
+.reg-legal {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--reg-foreground);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--reg-brand);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: text-decoration-color 160ms ease;
+}
+
+.reg-legal:hover {
+  text-decoration-color: var(--reg-foreground);
+}
+
+.reg-legal:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px var(--reg-ring);
+}
+
+.register-page .reg-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 33px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--reg-brand);
+  color: var(--reg-brand-foreground);
+  font-family: var(--reg-font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  transition: filter 180ms ease, box-shadow 180ms ease, transform 120ms ease,
+    opacity 160ms ease;
+}
+
+.register-page .reg-submit:hover {
+  filter: brightness(0.96);
+  box-shadow: var(--reg-shadow-brand);
+}
+
+.register-page .reg-submit:active {
+  transform: scale(0.99);
+}
+
+.register-page .reg-submit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.4);
+}
+
+.register-page .reg-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.register-page .reg-submit:disabled:hover {
+  filter: none;
+  box-shadow: none;
+  transform: none;
+}
+
+.reg-submit svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.reg-spin {
+  animation: reg-spin 1s linear infinite;
+}
+
+.reg-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--reg-muted);
+  font-family: var(--reg-font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.reg-back:hover {
+  color: var(--reg-foreground);
+  background: color-mix(in oklch, var(--reg-foreground) 5%, transparent);
+}
+
+.reg-back:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--reg-ring);
+}
+
+.reg-back svg {
+  width: 16px;
+  height: 16px;
+}
+
+.reg-secure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--reg-muted);
+}
+
+.reg-secure svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: color-mix(in oklch, var(--reg-foreground) 60%, transparent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Login extras — label row, inline help, dividers, blocked states    */
+/* ------------------------------------------------------------------ */
+
+.reg-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.reg-label-row .reg-label {
+  margin-bottom: 0;
+}
+
+.reg-forgot {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--reg-muted);
+  font-family: var(--reg-font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.reg-forgot:hover {
+  color: var(--reg-foreground);
+}
+
+.reg-forgot:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px var(--reg-ring);
+}
+
+/* V3 login card: disabled fieldset + Remember/Forgot row + submit.
+   Mirrors V3's Remember row (space-between) with the PWA's functional
+   Forgot handler; Remember is preference state like V3's placeholder —
+   Supabase `persistSession: true` already keeps the session. */
+.reg-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.reg-auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* V3 Remember me: sr-only input + 16px brand box (peer-checked in V3).
+   Label typography mirrors Forgot password (foreground, 600, 13/14px);
+   only the link keeps the brand underline. */
+.reg-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: var(--reg-foreground);
+  font-family: var(--reg-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (min-width: 640px) {
+  .reg-remember {
+    font-size: 14px;
+  }
+}
+
+.reg-remember-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.reg-remember-box {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  border: 1px solid color-mix(in oklch, var(--reg-foreground) 65%, transparent);
+  background: var(--reg-card);
+  transition: background-color 160ms ease, border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.reg-remember-box svg {
+  width: 10px;
+  height: 10px;
+  color: var(--reg-brand-foreground);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.reg-remember-input:checked + .reg-remember-box {
+  border-color: var(--reg-brand);
+  background: var(--reg-brand);
+}
+
+.reg-remember-input:checked + .reg-remember-box svg {
+  opacity: 1;
+}
+
+.reg-remember-input:focus-visible + .reg-remember-box {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--reg-ring);
+}
+
+.reg-forgot-link {
+  color: var(--reg-foreground);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: underline;
+  text-decoration-color: var(--reg-brand);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  transition: text-decoration-color 160ms ease;
+}
+
+@media (min-width: 640px) {
+  .reg-forgot-link {
+    font-size: 14px;
+  }
+}
+
+.reg-forgot-link:hover {
+  color: var(--reg-foreground);
+  text-decoration-color: var(--reg-foreground);
+}
+
+.reg-fieldset + .reg-secure {
+  margin-top: 16px;
+}
+
+.reg-fieldset .reg-submit {
+  margin-top: 16px;
+}
+
+.register-page .reg-submit-login:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.reg-caps {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--reg-muted);
+}
+
+.reg-caps svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+
+.reg-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 0;
+  color: var(--reg-muted);
+}
+
+.reg-divider::before,
+.reg-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--reg-border);
+}
+
+.reg-divider span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Secondary/outline CTA — same geometry as the brand CTA, quieter surface. */
+.register-page .reg-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 33px;
+  padding: 0 16px;
+  border: 1px solid var(--reg-field-border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--reg-foreground);
+  font-family: var(--reg-font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  transition: border-color 160ms ease, background-color 160ms ease,
+    box-shadow 160ms ease, transform 120ms ease;
+}
+
+.register-page .reg-secondary:hover {
+  border-color: var(--reg-foreground);
+  background: color-mix(in oklch, var(--reg-foreground) 4%, transparent);
+}
+
+.register-page .reg-secondary:active {
+  transform: scale(0.99);
+}
+
+.register-page .reg-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.4);
+}
+
+.reg-secondary svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+/* Blocked / approval panels reuse the card surface with a tonal badge. */
+.reg-blocked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.reg-blocked-badge {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--reg-border);
+  background: var(--reg-secondary);
+  color: var(--reg-foreground);
+}
+
+.reg-blocked-badge svg {
+  width: 22px;
+  height: 22px;
+}
+
+.reg-blocked-badge.is-warning {
+  border-color: oklch(0.86 0.175 92 / 0.55);
+  background: oklch(0.86 0.175 92 / 0.16);
+}
+
+.reg-blocked-badge.is-danger {
+  border-color: oklch(0.577 0.245 27.325 / 0.45);
+  background: oklch(0.577 0.245 27.325 / 0.12);
+  color: var(--reg-danger);
+}
+
+.reg-blocked-title {
+  margin-top: 12px;
+  font-family: var(--reg-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.reg-blocked-body {
+  margin-top: 8px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--reg-muted);
+  text-wrap: pretty;
+}
+
+.reg-blocked-body strong {
+  color: var(--reg-foreground);
+  font-weight: 600;
+}
+
+.reg-blocked-note {
+  display: block;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.reg-blocked-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+/* Compact info note under the form. */
+.reg-note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--reg-muted);
+}
+
+.reg-note svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  margin-top: 1px;
+}
+
+.reg-form .reg-card {
+  margin-top: clamp(0.875rem, 2.5vh, 1.5rem);
+}
+
+/* ------------------------------------------------------------------ */
+/* Footer                                                             */
+/* ------------------------------------------------------------------ */
+
+.register-footer {
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--reg-muted);
+}
+
+.reg-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--reg-foreground);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--reg-brand);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition: text-decoration-color 160ms ease;
+}
+
+.reg-link:hover {
+  text-decoration-color: var(--reg-foreground);
+}
+
+.reg-link:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px var(--reg-ring);
+}
+
+.register-copyright {
+  margin-top: clamp(0.75rem, 3vh, 2rem);
+  font-size: 12px;
+  color: var(--reg-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Loading                                                            */
+/* ------------------------------------------------------------------ */
+
+.register-loading-state {
+  position: relative;
+  z-index: 1;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.register-loading {
+  font-size: 13px;
+  color: var(--reg-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Modal (legal reader + password help)                               */
+/* ------------------------------------------------------------------ */
+
+.reg-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: oklch(0.18 0 0 / 0.5);
+  animation: reg-fade-in 160ms ease-out;
+}
+
+.reg-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 420px;
+  max-height: 85dvh;
+  padding: 24px;
+  border: 1px solid var(--reg-border);
+  border-radius: 20px;
+  background: var(--reg-card);
+  color: var(--reg-foreground);
+  box-shadow: 0 40px 80px -30px oklch(0 0 0 / 0.7);
+}
+
+.reg-modal-wide {
+  max-width: 560px;
+}
+
+.reg-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.reg-modal-title {
+  margin-top: 4px;
+  font-family: var(--reg-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.reg-modal-close {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--reg-muted);
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.reg-modal-close:hover {
+  color: var(--reg-foreground);
+  background: color-mix(in oklch, var(--reg-foreground) 6%, transparent);
+}
+
+.reg-modal-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--reg-ring);
+}
+
+.reg-modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.reg-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--reg-font-sans);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--reg-foreground);
+}
+
+.reg-modal-text {
+  margin: 0;
+  font-family: var(--reg-font-sans);
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  color: var(--reg-foreground);
+}
+
+.reg-modal-copy {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--reg-muted);
+}
+
+.reg-modal-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.reg-modal-badge {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: oklch(0.86 0.175 92 / 0.16);
+  color: var(--reg-foreground);
+}
+
+.reg-modal-badge svg {
+  width: 22px;
+  height: 22px;
+}
+
+.reg-modal-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reg-modal .reg-submit {
+  height: 40px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Dark theme (V3 dark tokens, scoped)                                */
+/* ------------------------------------------------------------------ */
+
+[data-theme="dark"] .register-page,
+.dark .register-page {
+  --reg-background: oklch(0.129 0.042 264.695);
+  --reg-foreground: oklch(0.984 0.003 247.858);
+  --reg-card: oklch(0.208 0.042 265.755);
+  --reg-muted: oklch(0.704 0.04 256.788);
+  --reg-border: oklch(1 0 0 / 0.1);
+  --reg-secondary: oklch(0.279 0.041 260.031);
+  --reg-input: oklch(1 0 0 / 0.04);
+  --reg-field-border: oklch(0.984 0.003 247.858 / 0.32);
+  --reg-field-border-hover: oklch(0.984 0.003 247.858 / 0.55);
+  --reg-dot-active: oklch(0.984 0.003 247.858);
+  --reg-deco: oklch(1 0 0 / 0.09);
+  --reg-deco-lit: oklch(1 0 0 / 0.3);
+  --reg-deco-accent: oklch(0.86 0.175 92 / 0.5);
+  --reg-shadow-card: 0 1px 2px oklch(0 0 0 / 0.4),
+    0 12px 32px -12px oklch(0 0 0 / 0.7);
+}
+
+/* ------------------------------------------------------------------ */
+/* Motion                                                             */
+/* ------------------------------------------------------------------ */
+
+@keyframes reg-drift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes reg-adv-in {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes reg-adv-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+}
+
+@keyframes reg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes reg-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.reg-adv-in {
+  animation: reg-adv-in 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reg-adv-out {
+  animation: reg-adv-out 220ms cubic-bezier(0.33, 0, 0.67, 1) both;
+}
+
+/* ------------------------------------------------------------------ */
+/* Responsive                                                         */
+/* ------------------------------------------------------------------ */
+
+/* Tablet: V3 keeps the compact field rhythm; icons that need room appear. */
+@media (min-width: 640px) {
+  .reg-highlight-text {
+    font-size: 13px;
+  }
+}
+
+/* Laptop: full-width card in the 420px column + desktop control sizes. */
+@media (min-width: 1024px) {
+  .register-page {
+    --reg-control-h: 44px;
+  }
+
+  .reg-card {
+    max-width: none;
+  }
+
+  .register-page .reg-field .input {
+    font-size: 14px;
+  }
+
+  .register-page .reg-field .input.reg-code {
+    font-size: 20px;
+  }
+
+  .register-page .reg-submit {
+    height: 48px;
+    font-size: 16px;
+  }
+
+  .register-page .reg-secondary {
+    height: 44px;
+    font-size: 15px;
+  }
+
+  .reg-forgot {
+    font-size: 13px;
+  }
+
+  .reg-eye {
+    right: 6px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .reg-cta {
+    height: 44px;
+  }
+
+  .reg-back {
+    height: 38px;
+  }
+}
+
+@media (max-width: 359px) {
+  .register-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .reg-highlight-text {
+    white-space: normal;
+  }
+}
+
+@media (max-height: 700px) {
+  .register-copyright {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .register-page *,
+  .register-page *::before,
+  .register-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reg-deco-mask,
+  .reg-deco-glow {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Register wide — two-column fields beyond mobile                    */
+/* ------------------------------------------------------------------ */
+@media (min-width: 768px) {
+  .register-page.register-wide {
+    --reg-control-h: 27px;
+  }
+
+  .register-page.register-wide .register-shell {
+    width: min(100%, 720px);
+  }
+
+  .register-page.register-wide .reg-card {
+    max-width: none;
+  }
+
+  .register-page.register-wide .reg-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 12px;
+    row-gap: 12px;
+    align-items: start;
+  }
+
+  .register-page.register-wide .reg-span-2,
+  .register-page.register-wide .reg-advanced {
+    grid-column: 1 / -1;
+  }
+
+  .register-page.register-wide .reg-advanced-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 12px;
+    row-gap: 12px;
+  }
+
+  .register-page.register-wide .reg-advanced-fields > .reg-field:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .register-page.register-wide {
+    --reg-control-h: 35px;
+  }
+}

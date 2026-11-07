@@ -270,7 +270,7 @@ export default function SettingsPage() {
               <ShieldCheck className="icon" />
               <h2 className="no-access-title">No settings access</h2>
               <p className="no-access-text">
-                Your role has no settings permissions. Ask the shop owner to grant access.
+                Your role has no settings permissions. Ask the shop admin to grant access.
               </p>
             </div>
           </div>

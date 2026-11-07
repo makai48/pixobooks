@@ -60,7 +60,7 @@ const exportJson = JSON.stringify({
 
 function renderModal() {
   return render(
-    <ImportDataModal open={true} onClose={() => {}} actor={{ id: "u1", name: "Owner" }} />
+    <ImportDataModal open={true} onClose={() => {}} actor={{ id: "u1", name: "Admin" }} />
   );
 }
 

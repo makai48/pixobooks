@@ -107,7 +107,12 @@ export default function Inventory() {
   };
 
   const remove = (i: Item) => {
-    if (!confirm(`Delete "${i.name}"?`)) return;
+    if (
+      !confirm(
+        `Delete "${i.name}"?\n\nItems with stock history cannot be deleted. Deactivate this item instead so its audit trail remains reversible.`
+      )
+    )
+      return;
     del.mutate(i.id, {
       onSuccess: () => toast.success(`Deleted ${i.name}`),
     });
@@ -227,7 +232,7 @@ export default function Inventory() {
         <div className="paper-card p-6 md:p-10 text-center">
           <div className="font-display font-bold text-lg">Empty catalog</div>
           <p className="text-ink-mute text-sm mt-1">
-            Add items manually or load starter print-shop data.
+             Add items manually or load starter business data.
           </p>
           <div className="mt-4 flex flex-col md:flex-row justify-center gap-2">
             <button className="btn btn-outline" onClick={openNew}>

@@ -90,7 +90,7 @@ export default function PurchaseOrders() {
   };
 
   const remove = (po: PurchaseOrder) =>
-    confirm(`Delete PO ${po.number}? Only Admins/Owner can perform this action.`) &&
+    confirm(`Delete PO ${po.number}? Only Admins/Admin can perform this action.`) &&
     del.mutate(po.id, {
       onSuccess: () => toast.success("Deleted"),
       onError: (e) =>
@@ -260,7 +260,10 @@ export default function PurchaseOrders() {
                   <Eye className="w-3.5 h-3.5" />
                   View
                 </button>
-                {canEditAnyPO && (po.status !== "received" || isAdmin) && (
+                {canEditAnyPO && po.status !== "received" &&
+                  !po.lines.some(
+                    (l) => Number(l.receivedBaseQty ?? l.receivedQty ?? 0) > 0
+                  ) && (
                   <button
                     onClick={() => openEditor(po)}
                     className="btn btn-outline btn-sm flex-1"
@@ -280,7 +283,10 @@ export default function PurchaseOrders() {
                     Receive
                   </button>
                 )}
-                {canDeletePO && (
+                {canDeletePO && po.status !== "received" &&
+                  !po.lines.some(
+                    (l) => Number(l.receivedBaseQty ?? l.receivedQty ?? 0) > 0
+                  ) && (
                   <button
                     onClick={() => remove(po)}
                     className="btn btn-ghost btn-sm w-7 px-0 text-danger shrink-0"
@@ -325,7 +331,10 @@ export default function PurchaseOrders() {
                   </span>
                   <span className="num font-bold shrink-0"><MoneyText value={formatMoney(po.total, currency)} /></span>
                 </button>
-                {canEditAnyPO && (po.status !== "received" || isAdmin) && (
+                {canEditAnyPO && po.status !== "received" &&
+                  !po.lines.some(
+                    (l) => Number(l.receivedBaseQty ?? l.receivedQty ?? 0) > 0
+                  ) && (
                   <button
                     onClick={() => openEditor(po)}
                     className="w-6 h-full inline-flex items-center justify-center text-ink-mute hover:bg-ink/5 transition shrink-0"
@@ -345,7 +354,10 @@ export default function PurchaseOrders() {
                     <PackageCheck className="w-3 h-3" />
                   </button>
                 )}
-                {canDeletePO && (
+                {canDeletePO && po.status !== "received" &&
+                  !po.lines.some(
+                    (l) => Number(l.receivedBaseQty ?? l.receivedQty ?? 0) > 0
+                  ) && (
                   <button
                     onClick={() => remove(po)}
                     className="w-6 h-full inline-flex items-center justify-center text-danger hover:bg-danger/10 transition shrink-0"

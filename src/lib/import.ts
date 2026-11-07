@@ -733,7 +733,7 @@ async function importTable(
  * teammate's profile with the caller's key failed with
  * "new row violates row-level security policy for table user_profiles".
  * `public.import_employee_profiles(jsonb)` re-checks that the caller owns or
- * manages each member, then upserts as the function owner.
+ * manages each member, then upserts as the function admin.
  *
  * The RPC also skips ids that have no `auth.users` account: a profile without
  * a login cannot sign in, so those must be created with Invite instead.

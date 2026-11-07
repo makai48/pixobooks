@@ -45,6 +45,8 @@ export type CashSaleRow = {
   amount_paid?: number | null;
   payment_method?: string | null;
   created_at?: string | null;
+  /** Set when the document was voided — its cash must not count. */
+  voided_at?: string | null;
 };
 
 export type CashExpenseRow = {
@@ -64,7 +66,7 @@ export type CashLedgerInput = {
   sales?: CashSaleRow[];
   expenses?: CashExpenseRow[];
   deposits?: CashDepositRow[];
-  /** Expense category treated as owner's drawings (default "Drawings"). */
+  /** Expense category treated as admin's drawings (default "Drawings"). */
   drawingsCategory?: string;
 };
 
@@ -154,6 +156,10 @@ export function buildCashLedger(input: CashLedgerInput): CashLedger {
   // A sale with at least one payment row is fully represented by the
   // sale_payments ledger. Legacy sales (pre-payment-table, or CSV imports
   // that carry no payments) fall back to the sale's own amount_paid.
+  //
+  // Voided sales keep their original cash on the day it was taken; the void
+  // posts a negative "refund" payment row on the day of the reversal (see
+  // useVoidSale), so past b/f figures are never rewritten.
   const paymentBacked = new Set<string>();
   for (const p of payments) {
     if (p.sale_id) paymentBacked.add(String(p.sale_id));

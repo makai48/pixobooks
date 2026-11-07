@@ -48,7 +48,7 @@ export async function ensureOwnProfile(user: { id: string; email?: string | null
   const { error } = await supabase.from("user_profiles").insert(row);
   if (error) {
     // Not fatal: the account exists, only the profile row is missing. The
-    // owner's invite flow will create it.
+    // admin's invite flow will create it.
     console.warn("[auth] could not create own profile:", error.message);
   }
 }
@@ -82,7 +82,7 @@ export const authService = {
     // IMPORTANT: never clobber the invite-time username / display name unless
     // the caller explicitly supplied a new one. Blindly writing metadata here
     // used to overwrite user_profiles.username via the auth trigger — the
-    // "user accounts kept losing their name / matched owner" bug.
+    // "user accounts kept losing their name / matched admin" bug.
     // display_name/full_name are only ever written here (invites set
     // username/role/permissions), so they can always be stored. username
     // stays conditional to preserve invite-time names (see above).
@@ -106,7 +106,7 @@ export const authService = {
   /**
    * Sign in with credentials. If the credentials are wrong the user's
    * `failed_login_count` is incremented; hitting `MAX_FAILED_LOGINS` locks the
-   * account (owner exempt). Locked accounts refuse to sign in until an admin
+   * account (admin exempt). Locked accounts refuse to sign in until an admin
    * clears the counter via the password-reset approval flow.
    */
   async signIn(email: string, password: string) {
@@ -127,7 +127,7 @@ export const authService = {
         : false;
       if (locked || timeLocked) {
         throw new Error(
-          "This account is locked after too many failed sign-in attempts. Please tap 'Forgot password' below so the shop owner can approve a reset."
+          "This account is locked after too many failed sign-in attempts. Please tap 'Forgot password' below so the shop admin can approve a reset."
         );
       }
     }
@@ -154,7 +154,7 @@ export const authService = {
           throw new Error(
             "Account locked after " +
               MAX_FAILED_LOGINS +
-              " failed attempts. Please tap 'Forgot password' — the shop owner will approve a reset."
+              " failed attempts. Please tap 'Forgot password' — the shop admin will approve a reset."
           );
         }
       }

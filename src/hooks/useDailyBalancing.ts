@@ -161,7 +161,7 @@ async function fetchCashRows(
     fetchPages<CashSaleRow>((from, to) => {
       let q = supabase
         .from("sales")
-        .select("id, amount_paid, payment_method, created_at")
+        .select("id, amount_paid, payment_method, created_at, voided_at")
         .in("payment_method", ["cash", "partial"])
         .gt("amount_paid", 0)
         .lt("created_at", upperIso)

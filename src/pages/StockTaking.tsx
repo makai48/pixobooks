@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   ClipboardList, Download, Plus, Printer, Upload,
-  X, ChevronLeft, ChevronRight, ChevronDown, Edit3, SlidersHorizontal,
+  X, ChevronLeft, ChevronRight, ChevronDown, Edit3, SlidersHorizontal, History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useItems } from "@/hooks/useItems";
@@ -26,9 +26,33 @@ import GlassSelect from "@/components/ui/GlassSelect";
 import StatCard from "@/components/ui/StatCard";
 import { resolveActor } from "@/lib/actor";
 import { useUoms } from "@/hooks/useUoms";
+import { useUnitConversions } from "@/hooks/useUnitConversions";
+import { useStockLedgerActivation, useStockMovements } from "@/hooks/useStockMovements";
+import { stockDeltasForLines } from "@/lib/pos";
+import { reconcileItem } from "@/lib/stockReconcile";
 import { validateTransactionQty } from "@/lib/uom";
-import type { Item, StockAdjustment } from "@/types";
+import type { Item, StockAdjustment, StockMovementSourceType } from "@/types";
 import { MONTH_NAMES } from "@/types";
+
+const MOVEMENT_LABEL: Record<StockMovementSourceType, string> = {
+  sale: "SALE",
+  sale_void: "VOID",
+  po_receipt: "RECEIPT",
+  po_return: "RETURN",
+  adjustment: "ADJUST",
+  stocktake: "COUNT",
+  opening: "OPEN",
+};
+
+const MOVEMENT_TONE: Record<StockMovementSourceType, string> = {
+  sale: "bg-cyan-reg/10 text-cyan-reg border-cyan-reg/30",
+  sale_void: "bg-danger/10 text-danger border-danger/30",
+  po_receipt: "bg-success/10 text-success border-success/30",
+  po_return: "bg-warning/10 text-warning border-warning/30",
+  adjustment: "bg-yellow-reg/10 text-yellow-reg border-yellow-reg/30",
+  stocktake: "bg-magenta-reg/10 text-magenta-reg border-magenta-reg/30",
+  opening: "bg-ink/5 text-ink-soft border-line",
+};
 
 /**
  * Stock Taking &amp; Analysis
@@ -51,7 +75,14 @@ export default function StockTaking() {
   const { profile, user, can } = useAuth();
   const actor = useMemo(() => resolveActor(profile, user), [profile, user]);
   const { data: items = [], isLoading: itemsLoading } = useItems();
-  const { data: sales = [] } = useSales(2000);
+  const { data: sales = [] } = useSales(0);
+  const { data: conversions = [] } = useUnitConversions();
+  // Complete paged ledger: reconciliation must not silently switch to
+  // document maths after an arbitrary 20,000-row ceiling.
+  const { data: movements = [] } = useStockMovements(0);
+  const { data: ledgerActivatedAt } = useStockLedgerActivation();
+  const recentMovements = useMemo(() => movements.slice(0, 200), [movements]);
+  const itemNameById = useMemo(() => new Map(items.map((i) => [i.id, i.name])), [items]);
   const { data: pos = [] } = usePurchaseOrders();
   const { data: settings } = useShopSettings();
 
@@ -66,6 +97,7 @@ export default function StockTaking() {
   const [customTo, setCustomTo] = useState(todayISO());
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [typeFilter, setTypeFilter] = useState<string>("All");
+  const [movementsOpen, setMovementsOpen] = useState(false);
   const [adjustItem, setAdjustItem] = useState<Item | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [printSheet, setPrintSheet] = useState(false);
@@ -113,6 +145,8 @@ export default function StockTaking() {
       item: Item;
       sold: number;
       received: number;
+      soldValue: number;
+      receivedValue: number;
       adjustPositive: number;
       adjustNegative: number;
       opening: number;
@@ -125,6 +159,8 @@ export default function StockTaking() {
         item: it,
         sold: 0,
         received: 0,
+        soldValue: 0,
+        receivedValue: 0,
         adjustPositive: 0,
         adjustNegative: 0,
         opening: 0,
@@ -132,50 +168,97 @@ export default function StockTaking() {
       });
     }
 
-    // Sales sold-in-period
-    for (const s of sales) {
-      const d = localISODate(s.createdAt);
-      if (d < from || d > to) continue;
-      for (const l of s.lines) {
-        const row = map.get(l.itemId);
-        // If the sold item is a Product with a BOM, decrement its
-        // materials in the BOM view. For direct-stocked items just
-        // decrement themselves.
-        if (row) {
-          row.sold += l.qty;
-          continue;
+    // When the stock ledger already covers the analysed period, its movements
+    // are the authoritative flows (exact BOM/UOM at transaction time, voided
+    // sales already netted). Older periods fall back to document-derived
+    // flows, which is the best available evidence before the ledger existed.
+    const ledgerStart = ledgerActivatedAt?.slice(0, 10) ?? null;
+    // An empty ledger period is still authoritative: zero movements is valid
+    // and must not silently switch to approximate document reconstruction.
+    const useLedger = !!ledgerStart && from >= ledgerStart;
+
+    type Flow = { sold: number; received: number; adj: number; soldValue: number; receivedValue: number };
+    const periodFlow = new Map<string, Flow>();
+    const afterFlow = new Map<string, Flow>();
+    if (useLedger) {
+      for (const m of movements) {
+        if (!m.itemId) continue;
+        const d = localISODate(m.occurredAt);
+        const bucket = d >= from && d <= to ? periodFlow : d > to ? afterFlow : null;
+        if (!bucket) continue;
+        const acc = bucket.get(m.itemId) ?? { sold: 0, received: 0, adj: 0, soldValue: 0, receivedValue: 0 };
+        const movementValue = Math.abs(m.qtyBase) * (m.unitCost ?? map.get(m.itemId)?.item.cost ?? 0);
+        switch (m.sourceType) {
+          case "sale":
+            acc.sold += -m.qtyBase;
+            acc.soldValue += movementValue;
+            break;
+          case "sale_void":
+            acc.sold += -m.qtyBase;
+            acc.soldValue -= movementValue;
+            break;
+          case "po_receipt":
+            acc.received += m.qtyBase;
+            acc.receivedValue += movementValue;
+            break;
+          case "po_return":
+            // Supplier returns are stock outflows, not purchases. Keep the
+            // signed quantity in the receipt bucket for the balance equation,
+            // while the report's net movement remains negative.
+            acc.received += m.qtyBase;
+            acc.receivedValue -= movementValue;
+            break;
+          case "opening":
+            // Opening/baseline quantities are real inflows at ledger start;
+            // ignoring them makes periods containing activation reconcile low.
+            acc.received += m.qtyBase;
+            acc.receivedValue += movementValue;
+            break;
+          case "adjustment":
+          case "stocktake":
+            acc.adj += m.qtyBase;
+            break;
+          default:
+            break;
         }
-        const soldItem = items.find((i) => i.id === l.itemId);
-        if (soldItem?.bom && soldItem.bom.length > 0) {
-          for (const b of soldItem.bom) {
-            const matRow = map.get(b.materialId);
-            if (matRow) matRow.sold += b.qty * l.qty;
-          }
+        bucket.set(m.itemId, acc);
+      }
+    } else {
+      // Sales sold-in-period, in BASE units. Uses the same delta engine the
+      // stock ledger posts with, so "sold" equals what checkout moved.
+      for (const s of sales) {
+        if (s.voidedAt) continue;
+        const d = localISODate(s.createdAt);
+        if (d < from || d > to) continue;
+        for (const { id, delta } of stockDeltasForLines(s.lines, items, conversions)) {
+          const row = map.get(id);
+          if (row) row.sold += Math.abs(delta);
         }
       }
-    }
 
-    // Received-in-period from POs marked received in the window
-    for (const p of pos) {
-      const ra = p.receivedAt || p.updatedAt;
-      if (!ra) continue;
-      const d = ra.slice(0, 10);
-      if (d < from || d > to) continue;
-      if (p.status !== "received") continue;
-      for (const line of p.lines) {
-        const row = map.get(line.materialId);
+      // Received-in-period. Partial deliveries count too (they posted stock
+      // even while the PO stays 'ordered'); the stored figure is cumulative
+      // base units.
+      for (const p of pos) {
+        if (p.status === "cancelled") continue;
+        const ra = p.receivedAt || p.updatedAt;
+        if (!ra) continue;
+        const d = ra.slice(0, 10);
+        if (d < from || d > to) continue;
+        for (const line of p.lines) {
+          const row = map.get(line.materialId);
+          if (!row) continue;
+          row.received += Number(line.receivedBaseQty ?? line.receivedQty ?? 0);
+        }
+      }
+
+      // Adjustments in-period
+      for (const a of adjustments) {
+        const row = map.get(a.itemId);
         if (!row) continue;
-        const qty = Number(line.receivedQty ?? line.qty ?? 0);
-        row.received += qty;
+        if (a.qtyChange >= 0) row.adjustPositive += a.qtyChange;
+        else row.adjustNegative += Math.abs(a.qtyChange);
       }
-    }
-
-    // Adjustments in-period
-    for (const a of adjustments) {
-      const row = map.get(a.itemId);
-      if (!row) continue;
-      if (a.qtyChange >= 0) row.adjustPositive += a.qtyChange;
-      else row.adjustNegative += Math.abs(a.qtyChange);
     }
 
     // Reverse-compute Opening / Closing from items.stock snapshot.
@@ -185,41 +268,70 @@ export default function StockTaking() {
       const it = row.item;
       const nowStock = Number(it.stock || 0);
 
-      // Everything after "to"
+      let sold: number;
+      let received: number;
+      let netAdj: number;
       let soldAfter = 0;
       let recvAfter = 0;
       let adjAfter = 0;
-      for (const s of sales) {
-        const d = localISODate(s.createdAt);
-        if (d <= to) continue;
-        for (const l of s.lines) {
-          if (l.itemId === it.id) soldAfter += l.qty;
-          const so = items.find((i) => i.id === l.itemId);
-          if (so?.bom) {
-            for (const b of so.bom) {
-              if (b.materialId === it.id) soldAfter += b.qty * l.qty;
-            }
+
+      if (useLedger) {
+        const p = periodFlow.get(it.id) ?? { sold: 0, received: 0, adj: 0, soldValue: 0, receivedValue: 0 };
+        const a = afterFlow.get(it.id) ?? { sold: 0, received: 0, adj: 0, soldValue: 0, receivedValue: 0 };
+        sold = p.sold;
+        received = p.received;
+        netAdj = p.adj;
+        soldAfter = a.sold;
+        recvAfter = a.received;
+        adjAfter = a.adj;
+        // Table displays the ledger's own figures.
+        row.sold = sold;
+        row.received = received;
+        row.soldValue = p.soldValue;
+        row.receivedValue = p.receivedValue;
+        row.adjustPositive = Math.max(0, netAdj);
+        row.adjustNegative = Math.max(0, -netAdj);
+      } else {
+        for (const s of sales) {
+          if (s.voidedAt) continue;
+          const d = localISODate(s.createdAt);
+          if (d <= to) continue;
+          for (const { id, delta } of stockDeltasForLines(s.lines, items, conversions)) {
+            if (id === it.id) soldAfter += Math.abs(delta);
           }
         }
-      }
-      for (const p of pos) {
-        const ra = p.receivedAt || p.updatedAt;
-        if (!ra || ra.slice(0, 10) <= to || p.status !== "received") continue;
-        for (const line of p.lines) {
-          if (line.materialId !== it.id) continue;
-          recvAfter += Number(line.receivedQty ?? line.qty ?? 0);
+        for (const p of pos) {
+          if (p.status === "cancelled") continue;
+          const ra = p.receivedAt || p.updatedAt;
+          if (!ra || ra.slice(0, 10) <= to) continue;
+          for (const line of p.lines) {
+            if (line.materialId !== it.id) continue;
+            recvAfter += Number(line.receivedBaseQty ?? line.receivedQty ?? 0);
+          }
         }
+        for (const a of allAdjustments) {
+          if (a.itemId !== it.id) continue;
+          if (a.adjustmentDate <= to) continue;
+          adjAfter += a.qtyChange;
+        }
+        sold = row.sold;
+        received = row.received;
+        netAdj = row.adjustPositive - row.adjustNegative;
+        row.soldValue = row.sold * it.cost;
+        row.receivedValue = row.received * it.cost;
       }
-      for (const a of allAdjustments) {
-        if (a.itemId !== it.id) continue;
-        if (a.adjustmentDate <= to) continue;
-        adjAfter += a.qtyChange;
-      }
-      // Closing = Now + soldAfter - receivedAfter - adjustmentsAfter
-      const closing = Math.max(0, nowStock + soldAfter - recvAfter - adjAfter);
-      // Opening = Closing + sold - received - (positive - negative)
-      const netAdj = row.adjustPositive - row.adjustNegative;
-      const opening = Math.max(0, closing + row.sold - row.received - netAdj);
+
+      // Opening/closing are reverse-computed and may legitimately be negative
+      // (an oversold item); clamping would invent stock that does not exist.
+      const { opening, closing } = reconcileItem({
+        nowStock,
+        sold,
+        received,
+        adjustments: netAdj,
+        soldAfter,
+        receivedAfter: recvAfter,
+        adjustmentsAfter: adjAfter,
+      });
       row.closing = closing;
       row.opening = opening;
     }
@@ -227,7 +339,7 @@ export default function StockTaking() {
     return Array.from(map.values()).sort((a, b) =>
       a.item.name.localeCompare(b.item.name)
     );
-  }, [stocked, sales, pos, adjustments, allAdjustments, items, from, to]);
+  }, [stocked, sales, pos, adjustments, allAdjustments, items, conversions, movements, ledgerActivatedAt, from, to]);
 
   const filteredRows = useMemo(() => {
     return perItem.filter((r) => {
@@ -243,10 +355,10 @@ export default function StockTaking() {
       0
     );
     const purchases = filteredRows.reduce(
-      (s, r) => s + r.received * r.item.cost,
+      (s, r) => s + r.receivedValue,
       0
     );
-    const sold = filteredRows.reduce((s, r) => s + r.sold * r.item.cost, 0);
+    const sold = filteredRows.reduce((s, r) => s + r.soldValue, 0);
     const adjustments = filteredRows.reduce(
       (s, r) => s + (r.adjustPositive - r.adjustNegative) * r.item.cost,
       0
@@ -298,8 +410,8 @@ export default function StockTaking() {
             r.closing.toString(),
             r.item.cost.toFixed(2),
             (r.opening * r.item.cost).toFixed(2),
-            (r.received * r.item.cost).toFixed(2),
-            (r.sold * r.item.cost).toFixed(2),
+            r.receivedValue.toFixed(2),
+            r.soldValue.toFixed(2),
             (r.closing * r.item.cost).toFixed(2),
           ];
         }),
@@ -810,6 +922,99 @@ export default function StockTaking() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Ledger proof: every quantity that moved stock, newest first. */}
+      <div className="paper-card overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setMovementsOpen((o) => !o)}
+          aria-expanded={movementsOpen}
+          className="w-full flex items-center justify-between gap-2 p-2.5 md:p-3 text-left"
+        >
+          <span className="inline-flex items-center gap-1.5 text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">
+            <History className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            Stock ledger · latest {recentMovements.length}
+          </span>
+          <ChevronDown
+            className={cn("w-3.5 h-3.5 md:w-4 md:h-4 text-ink-mute transition", movementsOpen && "rotate-180")}
+          />
+        </button>
+        {movementsOpen && (
+          <div className="border-t">
+            {recentMovements.length === 0 ? (
+              <div className="p-4 text-[11px] md:text-sm text-ink-mute text-center">
+                No movements recorded yet. Run the stock_movements migration to start the ledger.
+              </div>
+            ) : (
+              <>
+                {/* Desktop ledger table */}
+                <div className="hidden md:block overflow-auto max-h-[40vh] scroll-lined">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="text-left text-[9px] uppercase tracking-widest text-ink-mute bg-paper sticky top-0">
+                        <th className="p-2 pl-3">When</th>
+                        <th className="p-2">Source</th>
+                        <th className="p-2">Item</th>
+                        <th className="p-2 text-right">Qty</th>
+                        <th className="p-2">Reason</th>
+                        <th className="p-2 pr-3">By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentMovements.map((m) => (
+                        <tr key={m.id} className="border-t">
+                          <td className="p-2 pl-3 text-ink-mute whitespace-nowrap num">
+                            {formatDate(m.occurredAt)}
+                          </td>
+                          <td className="p-2 whitespace-nowrap">
+                            <span className={cn("chip border text-[9px] px-1.5", MOVEMENT_TONE[m.sourceType])}>
+                              {MOVEMENT_LABEL[m.sourceType]}
+                            </span>
+                          </td>
+                          <td className="p-2 truncate max-w-[200px]">
+                            {m.itemId ? itemNameById.get(m.itemId) ?? m.itemId.slice(0, 8) : "Deleted item"}
+                          </td>
+                          <td className={cn("p-2 text-right num font-bold", m.qtyBase >= 0 ? "text-success" : "text-danger")}>
+                            {m.qtyBase > 0 ? "+" : ""}
+                            {m.qtyBase.toLocaleString()}
+                          </td>
+                          <td className="p-2 truncate max-w-[240px] text-ink-mute">{m.reason || "—"}</td>
+                          <td className="p-2 pr-3 text-ink-mute truncate max-w-[120px]">
+                            {m.actorName || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Mobile ledger rows */}
+                <div className="md:hidden divide-y">
+                  {recentMovements.map((m) => (
+                    <div key={m.id} className="flex items-start gap-1.5 px-2 py-1 text-[10px] leading-tight">
+                      <span className={cn("chip border text-[8px] px-1 shrink-0 mt-px", MOVEMENT_TONE[m.sourceType])}>
+                        {MOVEMENT_LABEL[m.sourceType]}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="font-semibold truncate block">
+                          {m.itemId ? itemNameById.get(m.itemId) ?? m.itemId.slice(0, 8) : "Deleted item"}
+                        </span>
+                        <span className="text-ink-mute block truncate">
+                          {formatDate(m.occurredAt)}
+                          {m.reason ? ` · ${m.reason}` : m.actorName ? ` · ${m.actorName}` : ""}
+                        </span>
+                      </span>
+                      <span className={cn("num font-bold shrink-0", m.qtyBase >= 0 ? "text-success" : "text-danger")}>
+                        {m.qtyBase > 0 ? "+" : ""}
+                        {m.qtyBase.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {adjustItem && (

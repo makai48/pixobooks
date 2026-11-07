@@ -230,7 +230,7 @@ export default function Quotes() {
           <FileText className="w-8 h-8 md:w-10 md:h-10 text-ink-mute mx-auto" />
           <div className="font-display font-bold text-base md:text-lg mt-2 md:mt-3">No quotes</div>
           <div className="text-ink-mute text-[11px] md:text-sm mt-1">
-            Create quotes for large print jobs and convert accepted ones into
+             Create quotes for large jobs and convert accepted ones into
             proforma invoices or sales.
           </div>
         </div>
@@ -385,7 +385,7 @@ export default function Quotes() {
                         <button
                           onClick={() =>
                             confirm(
-                              `Delete quote ${qu.number}? Only Admins/Owner can perform this. A permanent audit record will be kept.`
+                              `Delete quote ${qu.number}? Only Admins/Admin can perform this. A permanent audit record will be kept.`
                             ) &&
                             del.mutate(qu.id, {
                               onSuccess: () =>
@@ -413,7 +413,7 @@ export default function Quotes() {
                     <button
                       onClick={() =>
                         confirm(
-                          `Delete ${qu.number}? Only Admins/Owner can perform this. A permanent audit record will be kept.`
+                          `Delete ${qu.number}? Only Admins/Admin can perform this. A permanent audit record will be kept.`
                         ) &&
                         del.mutate(qu.id, {
                           onSuccess: () =>

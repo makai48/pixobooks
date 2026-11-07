@@ -153,7 +153,7 @@ export default function Expenses() {
         </div>
         {byCat.length === 0 ? (
           <div className="text-[10px] md:text-sm text-ink-mute mt-1 md:mt-2">
-            {tab === "drawings" ? "No owner drawings in range yet." : "No expenses in range."}
+            {tab === "drawings" ? "No admin drawings in range yet." : "No expenses in range."}
           </div>
         ) : (
           <div className="mt-1.5 md:mt-3 space-y-1 md:space-y-2">
@@ -177,8 +177,8 @@ export default function Expenses() {
         )}
       </div>
 
-      <div className="paper-card p-2.5 md:p-4 flex flex-wrap items-center gap-x-1.5 gap-y-1.5 md:gap-3">
-        <div className="relative flex-1 min-w-[130px]">
+      <div className="paper-card p-2.5 md:p-4 flex flex-wrap md:flex-nowrap items-center gap-x-1.5 gap-y-1.5 md:gap-3">
+        <div className="relative flex-1 min-w-[130px] md:min-w-[180px] md:basis-0">
           <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
           <input
             value={q}
@@ -187,7 +187,7 @@ export default function Expenses() {
             className="input input-sm pl-7 md:pl-9"
           />
         </div>
-        <div className="flex items-center gap-1 md:gap-2 min-w-0 max-md:order-last max-md:w-full max-md:overflow-x-auto">
+        <div className="flex items-center gap-1 md:gap-2 min-w-0 md:flex-none max-md:order-last max-md:w-full max-md:overflow-x-auto">
           <label htmlFor="ex-from" className="label text-[9px] md:text-xs whitespace-nowrap">From</label>
           <GlassDatePicker
             id="ex-from"
@@ -216,14 +216,14 @@ export default function Expenses() {
                   .filter((c) => c !== DRAWINGS_CATEGORY)
                   .map((c) => ({ value: c, label: c })),
               ]}
-              className="input input-sm select-glass min-w-0 shrink-0 max-md:px-1.5"
+              className="input input-sm select-glass min-w-0 shrink-0 md:w-[148px] max-md:px-1.5"
             />
           )}
         </div>
         {can("expenses.manage") && (
           <button
             onClick={() => openNew(tab === "drawings")}
-            className="btn btn-primary btn-sm shrink-0"
+            className="btn btn-primary btn-sm shrink-0 md:ml-auto md:min-w-[128px]"
           >
             <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
             <span className="hidden sm:inline">{tab === "drawings" ? "New drawing" : "New expense"}</span>

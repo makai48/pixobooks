@@ -5,7 +5,7 @@
 //
 // One random separator letter (3 per document, A–Z excluding H/I/O)
 // separates prefix/date, date/time, and terminates the number. The random
-// separators were added with explicit owner approval. Milliseconds were
+// separators were added with explicit admin approval. Milliseconds were
 // deliberately dropped, so same-second uniqueness rests on the letters:
 // a same-device repeat redraws them (bounded loop below), and a
 // cross-device repeat is caught by the sales.number unique constraint

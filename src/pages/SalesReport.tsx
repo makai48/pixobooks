@@ -37,7 +37,7 @@ export default function SalesReport() {
   const { can, canViewCosts, profile } = useAuth();
   // Paint instantly from the persisted 500-row feed while the full report
   // feed (5000 rows, all transaction dates) resolves in the background.
-  const { data: recentSales = [] } = useSales();
+  const { data: recentSales = [] } = useSales(500);
   const { data: fullSales = [], isLoading: fullLoading } = useSales(5000);
   const sales = fullSales.length > 0 ? fullSales : recentSales;
   const isLoading = fullLoading && recentSales.length === 0;
@@ -186,18 +186,22 @@ export default function SalesReport() {
   }, [sales, q, from, to, method, status, cashier]);
 
   const totals = useMemo(() => {
-    return filtered.reduce(
-      (acc, s) => {
-        acc.total += s.total;
-        acc.paid += s.amountPaid;
-        acc.due += s.amountDue;
-        acc.cost += s.cost;
-        acc.profit += s.profit;
-        acc.tax += s.tax;
-        return acc;
-      },
-      { total: 0, paid: 0, due: 0, cost: 0, profit: 0, tax: 0 }
-    );
+    // Voided documents are reversal pairs: they remain in the list for the
+    // audit trail but contribute nothing to revenue, cash or margin.
+    return filtered
+      .filter((s) => !s.voidedAt)
+      .reduce(
+        (acc, s) => {
+          acc.total += s.total;
+          acc.paid += s.amountPaid;
+          acc.due += s.amountDue;
+          acc.cost += s.cost;
+          acc.profit += s.profit;
+          acc.tax += s.tax;
+          return acc;
+        },
+        { total: 0, paid: 0, due: 0, cost: 0, profit: 0, tax: 0 }
+      );
   }, [filtered]);
 
   const exportCsv = () => {
@@ -217,7 +221,7 @@ export default function SalesReport() {
           s.cashierName,
           s.customerName || "Walk-in",
           s.paymentMethod,
-          s.paymentStatus,
+          s.voidedAt ? "VOIDED" : s.paymentStatus,
           s.subtotal.toFixed(2),
           s.tax.toFixed(2),
           s.total.toFixed(2),
@@ -265,7 +269,10 @@ export default function SalesReport() {
           tone={totals.due > 0 ? "danger" : undefined}
         />
         <div className="hidden md:block">
-          <Stat label="Sales in period" value={String(filtered.length)} />
+          <Stat
+            label="Sales in period"
+            value={String(filtered.filter((s) => !s.voidedAt).length)}
+          />
         </div>
       </div>
 
@@ -432,12 +439,21 @@ export default function SalesReport() {
                 canViewCosts={canViewCosts}
                 canVoid={can("sales.void")}
                 onClick={() => setViewSale(s)}
-                onVoid={() =>
-                  confirm(`Void sale ${s.number}?`) &&
-                  voidSale.mutate(s.id, {
-                    onSuccess: () => toast.success("Sale voided"),
-                  })
-                }
+                onVoid={() => {
+                  const reason = window.prompt(
+                    `Void sale ${s.number}?\n\nStock is returned to inventory and the document is marked VOID (kept for audit).\n\nReason (optional):`,
+                    ""
+                  );
+                  if (reason === null) return;
+                  voidSale.mutate(
+                    { id: s.id, reason },
+                    {
+                      onSuccess: () => toast.success("Sale voided — stock returned"),
+                      onError: (e) =>
+                        toast.error(e instanceof Error ? e.message : "Void failed"),
+                    }
+                  );
+                }}
               />
             ))}
           </div>
@@ -449,7 +465,7 @@ export default function SalesReport() {
           sale={viewSale}
           onClose={() => setViewSale(null)}
           settings={settings}
-          canCollect={can("pos.credit") || can("pos.sell")}
+          canCollect={(can("pos.credit") || can("pos.sell")) && !viewSale.voidedAt}
           cashier={{
             id: profile?.id || null,
             name: profile?.name || "Unknown",
@@ -540,6 +556,14 @@ function TransactionRow({
         <span className="font-semibold truncate text-ink shrink-0 max-w-[110px] hidden md:inline">
           {sale.cashierName}
         </span>
+        {sale.voidedAt && (
+          <span
+            className="chip border border-danger/40 bg-danger/10 text-danger shrink-0 text-[8px] md:text-[9px] px-1 md:px-1.5 py-px uppercase tracking-wide font-bold"
+            title={`Voided ${new Date(sale.voidedAt).toLocaleString()}${sale.voidedByName ? ` by ${sale.voidedByName}` : ""}${sale.voidReason ? ` — ${sale.voidReason}` : ""}`}
+          >
+            void
+          </span>
+        )}
         <span
           className="shrink-0 md:hidden inline-flex items-center justify-start text-[11px] font-bold text-ink max-md:leading-none max-md:mr-1"
           title={sale.cashierName}
@@ -565,10 +589,15 @@ function TransactionRow({
           {dayLabel}
           <span className="text-[9px] text-ink-mute/80">· {timeAgo(sale.createdAt)}</span>
         </span>
-        <span className="num font-bold text-ink shrink-0 md:min-w-[70px] text-right max-md:leading-none">
+        <span
+          className={cn(
+            "num font-bold shrink-0 md:min-w-[70px] text-right max-md:leading-none",
+            sale.voidedAt ? "text-ink-mute line-through" : "text-ink"
+          )}
+        >
           {formatCurrency(sale.total, currency)}
         </span>
-        {sale.amountDue > 0 && (
+        {sale.amountDue > 0 && !sale.voidedAt && (
           <span className="num text-danger shrink-0 hidden md:inline text-[10px]">
             ({formatCurrency(sale.amountDue, currency)} due)
           </span>
@@ -585,14 +614,14 @@ function TransactionRow({
           </span>
         )}
       </button>
-      {canVoid && (
+      {canVoid && !sale.voidedAt && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             onVoid();
           }}
           className="px-1.5 h-6 max-md:h-full max-md:w-4 max-md:px-0 shrink-0 inline-flex items-center justify-center text-danger hover:bg-danger/10 rounded"
-          title="Void"
+          title="Void sale (returns stock, reverses the document)"
         >
           <Trash2 className="w-3 h-3 max-md:w-2.5 max-md:h-2.5" />
         </button>
@@ -629,6 +658,10 @@ function TransactionViewer({
         paymentMethod: payMethod,
         receivedBy: cashier.id,
         receivedByName: cashier.name,
+        idempotencyKey:
+          typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       });
       if (updated.amountDue <= 0) {
         toast.success("Balance cleared — final receipt issued");
@@ -656,7 +689,7 @@ function TransactionViewer({
           <div className="p-3 sm:p-4 border-b flex items-center justify-between shrink-0">
             <div>
               <div className="text-[10px] sm:text-[11px] uppercase tracking-widest text-gray-500">
-                {isInvoice ? "Credit invoice" : "Sales receipt"}
+                {sale.voidedAt ? "Voided document" : isInvoice ? "Credit invoice" : "Sales receipt"}
               </div>
               <div className="font-display text-base sm:text-lg font-bold text-gray-900">{sale.number}</div>
             </div>
@@ -667,6 +700,20 @@ function TransactionViewer({
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {sale.voidedAt && (
+            <div className="border-b border-danger/30 bg-danger/10 px-3 sm:px-4 py-2 text-[11px] text-danger shrink-0">
+              <span className="font-semibold uppercase tracking-wide">Voided</span>
+              {" · "}
+              {new Date(sale.voidedAt).toLocaleString()}
+              {sale.voidedByName ? ` · ${sale.voidedByName}` : ""}
+              {sale.voidReason ? ` · ${sale.voidReason}` : ""}
+              <div className="text-[10px] text-danger/80">
+                Stock returned to inventory. This document is excluded from revenue
+                {sale.amountDue > 0 ? " and no further payment can be collected." : "."}
+              </div>
+            </div>
+          )}
 
           <div className="overflow-auto bg-gray-100">
             <DocumentView sale={sale} settings={settings} payments={payments} />

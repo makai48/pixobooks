@@ -1,7 +1,6 @@
 // Shared stock-adjustment writer — online hook AND offline replay share it.
 import { supabase } from "./supabase";
 import { mapStockAdjustment } from "./mappers";
-import { logAudit } from "./audit";
 import { currentBusinessId } from "./tenant";
 import type { StockAdjustment } from "@/types";
 
@@ -16,6 +15,8 @@ export type StockAdjustmentInput = {
   actor?: { id: string; name: string; role?: string };
   /** Business captured when the adjustment was started (offline replay). */
   businessId?: string | null;
+  /** Stable operation identity across retries/offline replay. */
+  operationId?: string;
 };
 
 export type BuiltStockAdjustment = {
@@ -51,30 +52,22 @@ export function buildStockWrite(p: StockAdjustmentInput): BuiltStockAdjustment {
 }
 
 export async function executeStockWrite(p: StockAdjustmentInput): Promise<StockAdjustment> {
-  const built = buildStockWrite(p);
-  const { error: itemErr } = await supabase
-    .from("items")
-    .update({ stock: built.newStock, updated_at: built.now })
-    .eq("id", p.itemId);
-  if (itemErr) throw itemErr;
-
-  const { data, error } = await supabase
-    .from("stock_adjustments")
-    .insert(built.row)
-    .select()
-    .single();
+  const operationId = p.operationId ??
+    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const { data, error } = await supabase.rpc("adjust_stock", {
+    p_item_id: p.itemId,
+    p_new_stock: Math.max(0, Number(p.newStock || 0)),
+    p_reason: p.reason ?? null,
+    p_adjustment_type: p.adjustmentType || "manual",
+    p_effective_at: p.adjustmentDate
+      ? `${p.adjustmentDate}T00:00:00.000Z`
+      : new Date().toISOString(),
+    p_operation_id: operationId,
+    p_actor_id: p.actor?.id ?? null,
+    p_actor_name: p.actor?.name ?? null,
+  });
   if (error) throw error;
-
-  if (p.actor) {
-    await logAudit(p.actor, "stock.adjust", "item", p.itemId, {
-      item: p.itemName,
-      delta: built.delta,
-      old: Number(p.oldStock || 0),
-      new: built.newStock,
-      reason: p.reason,
-      type: p.adjustmentType,
-    });
-  }
-
-  return mapStockAdjustment(data);
+  return mapStockAdjustment(data as Record<string, unknown>);
 }

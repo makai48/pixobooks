@@ -74,24 +74,63 @@ export function useUpsertItem() {
       }
       const payload = withBusiness(buildItemRow(item));
       if (item.id) {
+        // Stock edits made in the item form are inventory movements, not a
+        // silent field write: strip the value here and post the delta through
+        // the ledger below so history and on-hand stay reconcilable.
+        const { data: before } = await supabase
+          .from("items")
+          .select("stock, name")
+          .eq("id", item.id)
+          .maybeSingle();
+        const desiredStock = Number(item.stock ?? before?.stock ?? 0);
+        const currentStock = Number(before?.stock ?? 0);
+        const { stock: _stock, ...rest } = payload;
         const { data, error } = await supabase
           .from("items")
-          .update(payload)
+          .update(rest)
           .eq("id", item.id)
           .select()
           .single();
         if (error) throw error;
+        if (Number.isFinite(desiredStock) && Math.abs(desiredStock - currentStock) > 1e-9) {
+          const { executeStockWrite } = await import("@/lib/stockWrite");
+          await executeStockWrite({
+            itemId: item.id,
+            itemName: String(item.name || before?.name || "Item"),
+            oldStock: currentStock,
+            newStock: desiredStock,
+            reason: "Item form stock correction",
+            adjustmentType: "correction",
+          });
+        }
         return mapItem(data);
       }
+      const initial = Number(payload.stock ?? 0);
+      const { stock: _initialStock, ...catalogPayload } = payload;
       const { data, error } = await supabase
         .from("items")
-        .insert(payload)
+        .insert({ ...catalogPayload, stock: 0 })
         .select()
         .single();
       if (error) throw error;
+      // Record the initial quantity as an opening movement so the ledger
+      // starts from the same balance the item was created with.
+      if (initial !== 0) {
+        const { error: openingError } = await supabase.rpc("adjust_stock", {
+          p_item_id: data.id,
+          p_new_stock: initial,
+          p_reason: "Opening stock at item creation",
+          p_adjustment_type: "opening",
+          p_operation_id: `item:${data.id}`,
+        });
+        if (openingError) throw openingError;
+      }
       return mapItem(data);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["items"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stock_movements"] });
+    },
   });
 }
 
@@ -102,7 +141,10 @@ export function useDeleteItem() {
       const { error } = await supabase.from("items").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["items"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stock_movements"] });
+    },
   });
 }
 
@@ -161,7 +203,7 @@ export function useSeedSampleData() {
         category: m.category,
         price: m.price,
         cost: m.cost,
-        stock: m.stock,
+         stock: 0,
         base_unit: m.baseUnit,
         units: m.units,
         bom: null,
@@ -193,7 +235,7 @@ export function useSeedSampleData() {
         category: p.category,
         price: p.price,
         cost: p.cost,
-        stock: p.stock,
+         stock: 0,
         base_unit: p.baseUnit,
         units: p.units,
         bom: p.bomKeys
@@ -208,9 +250,10 @@ export function useSeedSampleData() {
         low_stock_threshold: 10,
       }));
 
-      const { error: prodErr } = await supabase
+      const { data: prodRows, error: prodErr } = await supabase
         .from("items")
-        .insert(withBusinessAll(prodInserts));
+        .insert(withBusinessAll(prodInserts))
+        .select("id, sku");
       if (prodErr) throw prodErr;
 
       const custInserts = seedCustomers.map((c) => ({
@@ -224,6 +267,42 @@ export function useSeedSampleData() {
         .from("customers")
         .insert(withBusinessAll(custInserts));
       if (custErr) throw custErr;
+
+       // Sample stock is real inventory: seed an opening ledger movement per
+       // item. The ledger is the only writer of the cached balance.
+      const { buildAdjustmentMovement } = await import("@/lib/stockLedger");
+        const openingMovements = [] as ReturnType<typeof buildAdjustmentMovement>;
+        const addOpenings = (
+          rows: { id: string; sku: string }[] | null,
+          source: { sku: string; stock: number }[]
+        ) => {
+          for (const r of rows || []) {
+            const seed = source.find((s) => s.sku === r.sku);
+            const qty = Number(seed?.stock ?? 0);
+            if (qty === 0) continue;
+            openingMovements.push(
+              ...buildAdjustmentMovement({
+                itemId: r.id,
+                delta: qty,
+                sourceType: "opening",
+                sourceId: `item:${r.id}`,
+                reason: "Opening stock — sample data",
+              })
+            );
+          }
+        };
+        addOpenings(matRows, materials);
+        addOpenings(prodRows, sellables);
+      for (const movement of openingMovements) {
+        const { error: openingError } = await supabase.rpc("adjust_stock", {
+          p_item_id: movement.itemId,
+          p_new_stock: movement.qtyBase,
+          p_reason: movement.reason,
+          p_adjustment_type: "opening",
+          p_operation_id: movement.sourceId,
+        });
+        if (openingError) throw openingError;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries();

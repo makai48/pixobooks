@@ -4,7 +4,7 @@ import { Clock3, LogOut, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
- * Landing screen shown to users whose account is awaiting owner approval.
+ * Landing screen shown to users whose account is awaiting admin approval.
  * The main entry point is via the Login form's blocked panel, but this
  * page is exposed so users can be linked directly (deep link / bookmark).
  */
@@ -39,7 +39,7 @@ export default function PendingApproval() {
         </h2>
         <p className="text-sm text-ink-mute mt-3 leading-relaxed">
           Thanks — your first sign-in has been logged. An approval request has
-          been sent to the shop owner. As soon as they approve, sign in again
+          been sent to the shop admin. As soon as they approve, sign in again
           and you'll be asked to set a permanent password.
         </p>
 

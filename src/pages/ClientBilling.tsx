@@ -96,7 +96,7 @@ export default function ClientBilling() {
   const { profile, can } = useAuth();
   const { data: settings } = useShopSettings();
   const currency = settings?.currency || "USD";
-  const canManage = can("finance.manage") || profile?.role?.toLowerCase() === "owner";
+  const canManage = can("finance.manage") || profile?.role?.toLowerCase() === "admin";
   const canView = can("finance.view") || canManage;
 
   const actor = profile
@@ -719,7 +719,7 @@ function StatusPill({ status }: { status: string }) {
  * unpaid client invoices; creditors read supplier-side invoice rows.
  */
 function DebtorsTab({ invoices, currency }: { invoices: ClientInvoice[]; currency: string }) {
-  const { data: sales = [] } = useSales(1000);
+  const { data: sales = [] } = useSales(5000);
   const { data: suppliers = [] } = useSuppliers();
   const today = todayISO();
   const { data: creditorRows = [] } = useQuery({
@@ -741,6 +741,7 @@ function DebtorsTab({ invoices, currency }: { invoices: ClientInvoice[]; currenc
   const posDebtors = useMemo(() => {
     const m = new Map<string, { name: string; phone?: string | null; outstanding: number; overdue: number; count: number; last: string }>();
     for (const s of sales) {
+      if (s.voidedAt) continue;
       if (!["credit", "partial"].includes(s.paymentStatus) || !(s.amountDue > 0)) continue;
       const key = s.customerId || s.customerName || "Walk-in";
       const cur = m.get(key) || { name: s.customerName || "Walk-in", phone: null, outstanding: 0, overdue: 0, count: 0, last: s.createdAt };

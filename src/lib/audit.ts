@@ -4,7 +4,7 @@ import type { Employee } from "@/types";
 
 /**
  * Fire-and-forget audit trail write. Never blocks the caller and never throws.
- * Use for owner-observable actions: password reset approvals, shop/user
+ * Use for admin-observable actions: password reset approvals, shop/user
  * invites, sales voids, salary changes, etc.
  */
 export async function logAudit(

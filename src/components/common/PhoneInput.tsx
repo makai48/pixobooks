@@ -17,6 +17,7 @@ export default function PhoneInput({
   id,
   ariaLabel,
   inputClassName,
+  keepDialWhenEmpty,
 }: {
   value: string;
   onChange: (full: string) => void;
@@ -26,6 +27,8 @@ export default function PhoneInput({
   id?: string;
   ariaLabel?: string;
   inputClassName?: string;
+  /** Keep the dial code in the emitted value while the number is still empty. */
+  keepDialWhenEmpty?: boolean;
 }) {
   const { dial: storedDial, number } = splitPhone(value || "");
   const generatedId = `phone-${useId().replace(/[^A-Za-z0-9-_]/g, "")}`;
@@ -47,6 +50,11 @@ export default function PhoneInput({
     if (text.replace(/\D/g, "") !== number.replace(/\D/g, "")) setText(number);
   }, [number, text]);
 
+  const compose = (d: string, n: string) => {
+    const full = joinPhone(d, n);
+    return full || (keepDialWhenEmpty && d ? `+${d}` : "");
+  };
+
   return (
     <div>
       {label && (
@@ -59,7 +67,7 @@ export default function PhoneInput({
           dial={dial}
           onChange={(d) => {
             setDial(d);
-            const full = joinPhone(d, text);
+            const full = compose(d, text);
             clearedByEdit.current = !full;
             onChange(full);
           }}
@@ -74,7 +82,7 @@ export default function PhoneInput({
           onChange={(e) => {
             const next = e.target.value.replace(/[^\d ]/g, "");
             setText(next);
-            const full = joinPhone(dial, next);
+            const full = compose(dial, next);
             clearedByEdit.current = !full;
             onChange(full);
           }}

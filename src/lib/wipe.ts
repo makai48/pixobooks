@@ -39,7 +39,7 @@ export type WipeScope = {
 /**
  * Canonical child-first delete order for every business table the app owns.
  * Config tables (`shop_settings`, `branches`, `uoms`, `business_members`, …)
- * are deliberately absent — a data wipe must never lock the owner out.
+ * are deliberately absent — a data wipe must never lock the admin out.
  */
 export const WIPE_TABLE_ORDER = [
   "sale_payments",
@@ -158,7 +158,7 @@ const SCOPE_DEFS: Record<WipeScopeKey, Omit<WipeScope, "key">> = {
   },
   audit: {
     label: "Audit log",
-    description: "The owner-visible audit trail of who did what, and when.",
+    description: "The admin-visible audit trail of who did what, and when.",
     tables: ["audit_logs"],
   },
 };

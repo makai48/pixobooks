@@ -28,9 +28,9 @@ export default function AuditLogPage() {
       <div className="p-8 max-w-lg mx-auto text-center">
         <div className="paper-card p-8">
           <Shield className="w-8 h-8 mx-auto text-ink-mute" />
-          <h2 className="font-display text-xl font-bold mt-3">Owner only</h2>
+          <h2 className="font-display text-xl font-bold mt-3">Admin only</h2>
           <p className="text-sm text-ink-mute mt-1">
-            The audit log is restricted to the shop owner.
+            The audit log is restricted to the shop admin.
           </p>
         </div>
       </div>
@@ -50,7 +50,7 @@ export default function AuditLogPage() {
       />
       <div className="paper-card p-2.5 md:p-4 flex items-center gap-1.5 md:gap-3">
         <div className="flex-1 min-w-0">
-          <h1 className="font-display text-sm md:text-lg font-bold leading-tight truncate">Owner audit log</h1>
+          <h1 className="font-display text-sm md:text-lg font-bold leading-tight truncate">Admin audit log</h1>
           <p className="hidden md:block text-[10px] md:text-xs text-ink-mute mt-0.5">
             Chronological trail of privileged actions across your shop.
           </p>

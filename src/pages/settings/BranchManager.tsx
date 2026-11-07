@@ -51,7 +51,7 @@ function BranchManager({ onNotice }: { onNotice?: (msg: string) => void }) {
     <div>
       <p className="field-hint" style={{ marginTop: 0, marginBottom: 12 }}>
         Branches appear in the TopBar switcher; new sales, held tickets, expenses and purchase
-        orders are tagged with the active branch. Assign staff to a branch from the owner dashboard.
+        orders are tagged with the active branch. Assign staff to a branch from the admin dashboard.
       </p>
       <SField label="Registered Locations">
         <div className="data-table-card">

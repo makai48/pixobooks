@@ -57,7 +57,7 @@ export function resolveSignInGate(
 
   if (status === "pending_approval") {
     // Approval refreshes the temp-password window, so there is nothing the
-    // employee can do (and no reset to request) until the owner acts.
+    // employee can do (and no reset to request) until the admin acts.
     return {
       type: "pending_approval",
       requestedAt: profile.approvalRequestedAt ?? null,
@@ -83,13 +83,13 @@ export function describeSignInError(err: unknown): string {
   if (!raw) return "Sign in failed";
 
   if (msg.includes("database error querying schema")) {
-    return "This account's sign-in record is incomplete, so PixoBooks could not finish the login. Ask the shop owner to re-issue your temporary password.";
+    return "This account's sign-in record is incomplete, so PixoBooks could not finish the login. Ask the shop admin to re-issue your temporary password.";
   }
   if (msg.includes("email not confirmed")) {
-    return "This email is not confirmed yet. Ask the shop owner to re-issue your temporary password.";
+    return "This email is not confirmed yet. Ask the shop admin to re-issue your temporary password.";
   }
   if (msg.includes("invalid login credentials")) {
-    return "Email or temporary password is incorrect. Temporary passwords are case-sensitive — copy it exactly as it was shared.";
+    return "Wrong Email/Password combination. Passwords are case-sensitive.";
   }
   if (msg.includes("failed to fetch") || msg.includes("networkerror")) {
     return "Could not reach PixoBooks. Check your connection and try again.";

@@ -32,22 +32,20 @@ export default function ReceivePOModal({ po, onClose }: Props) {
   const receive = useReceivePO();
   const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
-  // Seed each line with receivedQty === ordered qty; recipient overrides.
-  // `unit` is the RECEIVING unit (defaults to the item's purchase UOM);
-  // stock math converts it into base units via the central engine.
+  // Seed each line with the quantity REMAINING to receive, typed in the
+  // receiving unit. Partially received lines keep their earlier receipts:
+  // the field shows what is still outstanding, and submit adds to the
+  // cumulative totals instead of overwriting them.
   const [lines, setLines] = useState<POLine[]>(
     po.lines.map((l) => {
+      const it = l.materialId ? itemsById.get(l.materialId) : undefined;
+      const already = Number(l.receivedEnteredQty ?? 0);
+      const remaining = Math.max(0, Number(l.qty || 0) - already);
       const seeded: POLine = {
         ...l,
-        receivedQty:
-          typeof l.receivedQty === "number" && l.receivedQty >= 0
-            ? l.receivedQty
-            : Number(l.qty || 0),
+        receivedQty: remaining,
+        unit: l.unit || l.receivedUnit || it?.purchaseUnit || it?.baseUnit || "pc",
       };
-      if (!seeded.unit) {
-        const it = l.materialId ? itemsById.get(l.materialId) : undefined;
-        seeded.unit = it?.purchaseUnit || it?.baseUnit || "pc";
-      }
       return seeded;
     })
   );
@@ -71,7 +69,7 @@ export default function ReceivePOModal({ po, onClose }: Props) {
   };
 
   const hasDiscrepancy = lines.some(
-    (l) => Number(l.receivedQty || 0) !== Number(l.qty || 0)
+    (l) => Number(l.receivedEnteredQty ?? 0) + Number(l.receivedQty || 0) < Number(l.qty || 0)
   );
   const zeroReceipts = lines.every((l) => Number(l.receivedQty || 0) === 0);
 
@@ -81,37 +79,52 @@ export default function ReceivePOModal({ po, onClose }: Props) {
         "Enter received quantity for at least one line before confirming receipt."
       );
     }
-    // Central UOM gate: validate in receiving units, persist base units.
+    // Central UOM gate: validate in receiving units, persist CUMULATIVE base
+    // totals so a second delivery only posts the new delta.
     const converted: POLine[] = [];
     for (const l of lines) {
       const it = l.materialId ? itemsById.get(l.materialId) : undefined;
       const recvUnit = l.unit || it?.purchaseUnit || it?.baseUnit || "pc";
       const baseUnit = it?.baseUnit || recvUnit;
-      const entered = Number(l.receivedQty || 0);
-      if (entered > 0) {
-        const check = validateTransactionQty(entered, recvUnit, uoms, {
+      const enteredNow = Number(l.receivedQty || 0);
+      const alreadyEntered = Number(l.receivedEnteredQty ?? 0);
+      if (enteredNow > 0) {
+        const check = validateTransactionQty(enteredNow, recvUnit, uoms, {
           itemAllowDecimalQty: it?.allowDecimalQty,
           label: `${l.name} received qty`,
         });
         if (!check.ok) return toast.error(check.reason);
       }
-      const baseQty =
-        convertQuantity(entered, recvUnit, baseUnit, conversions)?.value ?? entered;
-      // Movement-level unit cost (§10-13): total paid ÷ converted base qty.
-      // Stored verbatim on the line so history never changes meaning (§21).
-      const lineTotal = entered * Number(l.unitCost || 0);
+      const baseNow =
+        convertQuantity(enteredNow, recvUnit, baseUnit, conversions)?.value ?? enteredNow;
+      const cumulativeBase = Number(l.receivedBaseQty ?? 0) + baseNow;
+      const orderedBase =
+        convertQuantity(Number(l.qty || 0), recvUnit, baseUnit, conversions)?.value ??
+        Number(l.qty || 0);
+      // Movement-level unit cost (§10-13): total paid this delivery ÷ the base
+      // quantity it bought. Stored verbatim so history never changes meaning.
+      const lineTotal = enteredNow * Number(l.unitCost || 0);
       converted.push({
         ...l,
         unit: recvUnit,
-        receivedEnteredQty: entered,
+        receivedEnteredQty: alreadyEntered + enteredNow,
         receivedUnit: recvUnit,
-        receivedQty: baseQty,
-        derivedUnitCost: baseQty > 0 ? lineTotal / baseQty : null,
+        receivedBaseQty: cumulativeBase,
+        receivedQty: cumulativeBase,
+        orderedBaseQty: orderedBase,
+        derivedUnitCost: baseNow > 0 ? lineTotal / baseNow : null,
       });
     }
     try {
       await receive.mutateAsync({ id: po.id, lines: converted });
-      toast.success(`PO ${po.number} received. Stock updated.`);
+      const fully = converted.every(
+        (l) => Number(l.receivedBaseQty ?? 0) >= Number(l.orderedBaseQty ?? 0)
+      );
+      toast.success(
+        fully
+          ? `PO ${po.number} fully received. Stock updated.`
+          : `Partial receipt recorded for ${po.number}. Receive the balance later.`
+      );
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Receive failed");
@@ -137,9 +150,10 @@ export default function ReceivePOModal({ po, onClose }: Props) {
 
         <div className="p-5 space-y-3 overflow-auto scroll-lined">
           <p className="text-xs text-ink-mute">
-            Enter the actual quantity received for each item in its receiving
-            unit. Quantities convert into base units automatically when stock
-            balances are updated.
+            Enter the quantity arriving in this delivery, in its receiving
+            unit. Quantities convert into base units automatically. Leaving a
+            line below its remaining quantity records a partial receipt — the
+            balance can be received later.
           </p>
 
           <div className="border rounded-md overflow-hidden">
@@ -148,7 +162,7 @@ export default function ReceivePOModal({ po, onClose }: Props) {
                 <tr className="text-left text-[10px] uppercase tracking-widest text-ink-mute">
                   <th className="p-2 pl-3">Material</th>
                   <th className="p-2 text-right w-20">Ordered</th>
-                  <th className="p-2 text-right w-28">Received</th>
+                  <th className="p-2 text-right w-28">Receive now</th>
                   <th className="p-2 text-right w-24">Unit cost</th>
                   <th className="p-2 text-right w-16">Δ</th>
                 </tr>
@@ -156,8 +170,10 @@ export default function ReceivePOModal({ po, onClose }: Props) {
               <tbody>
                 {lines.map((l, idx) => {
                   const ordered = Number(l.qty || 0);
+                  const already = Number(l.receivedEnteredQty ?? 0);
+                  const remaining = Math.max(0, ordered - already);
                   const received = Number(l.receivedQty || 0);
-                  const diff = received - ordered;
+                  const diff = received - remaining;
                   return (
                     <tr key={idx} className="border-t">
                       <td className="p-2 pl-3">
@@ -170,6 +186,16 @@ export default function ReceivePOModal({ po, onClose }: Props) {
                       </td>
                       <td className="p-2 text-right num text-ink-mute">
                         {ordered.toLocaleString()}
+                        {already > 0 && (
+                          <div className="text-[9px] text-success font-semibold">
+                            {already.toLocaleString()} received
+                          </div>
+                        )}
+                        {already > 0 && (
+                          <div className="text-[9px] text-ink-mute">
+                            {remaining.toLocaleString()} left
+                          </div>
+                        )}
                       </td>
                       <td className="p-2 text-right">
                         <input

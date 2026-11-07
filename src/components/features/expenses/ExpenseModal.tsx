@@ -384,7 +384,7 @@ export default function ExpenseModal({
               value={form.vendor}
               onChange={(e) => setForm({ ...form, vendor: e.target.value })}
               className="input mt-1"
-              placeholder="Owner name or purpose (personal, family, etc.)"
+              placeholder="Admin name or purpose (personal, family, etc.)"
             />
             </div>
           )}

@@ -2,7 +2,7 @@ import { Image as ImageIcon } from "lucide-react";
 import CountrySelect from "@/components/common/CountrySelect";
 import PhoneInput from "@/components/common/PhoneInput";
 import GlassSelect from "@/components/ui/GlassSelect";
-import { BUSINESS_TYPES, COUNTRIES, TIMEZONES } from "@/lib/referenceData";
+import { BUSINESS_TYPES, COUNTRIES, TIMEZONES, TIMEZONE_OPTIONS } from "@/lib/referenceData";
 import { Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
 
@@ -71,7 +71,7 @@ export default function BusinessSection() {
                       ...(!TIMEZONES.includes(form.timezone)
                         ? [{ value: form.timezone, label: form.timezone }]
                         : []),
-                      ...TIMEZONES.map((z) => ({ value: z, label: z })),
+                      ...TIMEZONE_OPTIONS,
                     ]}
                     className="input select-glass"
                   />

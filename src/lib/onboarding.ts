@@ -5,7 +5,7 @@ import type { Settings } from "@/types";
 const DISMISSED_KEY = "pixobooks.onboarding.dismissed";
 const BACKUP_KEY = "pixobooks.backup.doneAt";
 
-/** True once the owner has successfully uploaded a backup. */
+/** True once the admin has successfully uploaded a backup. */
 export function hasBackupDone(): boolean {
   try {
     return !!localStorage.getItem(BACKUP_KEY);

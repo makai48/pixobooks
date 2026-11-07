@@ -1,7 +1,7 @@
 # PixoBooks
 
 ## What this is
-PixoBooks is a printshop POS and business-management PWA built with Vite 5, React 18, TypeScript (strict), Tailwind CSS, React Query 5, Supabase, and lucide-react.
+PixoBooks is a multi-business POS and business-management PWA built with Vite 5, React 18, TypeScript (strict), Tailwind CSS, React Query 5, Supabase, and lucide-react.
 
 ## Commands
 - `npm run dev` — local dev server on `http://localhost:8080` (base `/`).
@@ -43,6 +43,11 @@ Run typecheck, lint, build, and tests before calling a non-trivial change done.
 - `docs/stock-design.md` freezes the STOCK page's mobile **Stock Ledger** culture: single-line search+filter+action filter card, ≤15% fit-width glass dropdowns with type-to-search, sticky above-table header, pinned ledger rows, grey-symbol full figures, bottom-sheet modals. Apply it to every dense list page on mobile; restore desktop with `md:` overrides.
 - Use lucide icons with `className="icon"`; scoped CSS controls size/stroke.
 - Do not add comments unless the surrounding code already relies on them.
+- Responsive contract: every new screen must define intentional mobile
+  (`<768px`), tablet (`768–1023px`), laptop (`1024–1279px`), and desktop
+  (`>=1280px`) behavior. Do not assume `md:` means desktop. Prioritize the
+  primary task, keep touch controls usable on touch widths, and restore the
+  full desktop composition only at the large-screen breakpoint.
 
 ## Settings page
 - `src/pages/Settings.tsx` is a full-page settings screen (not a modal). It uses the design's sticky header/nav/footer and 10 sections: Profile, Money & Format, Categories, Receipts & Invoices, Printer & POS, Discounts, Branches, Theme, Billing, Import & Backup.
@@ -62,6 +67,21 @@ Run typecheck, lint, build, and tests before calling a non-trivial change done.
 - Conversion deletion is guarded by `useDeleteUnitConversion`, which refuses when either endpoint unit is configured on inventory items.
 - The modal uses `createPortal` to `document.body`, locks body scroll, and supports Escape/backdrop close. Nested editors use their own Escape handlers.
 - Keep the two panes visible together on desktop; do not reintroduce the old tabbed unit/conversion layout or the old `.st .unit-modal-*` styles.
+
+## Stock integrity (ledger, voids, receipts)
+- Every quantity that moves inventory goes through `stock_movements` (`src/lib/stockLedger.ts` + `public.post_stock_movements`). `items.stock` is only a cache maintained by that RPC. Never write `items.stock` directly: sales use `commit_sale`, voids use `void_sale`, receipts/adjustments/imports/opening stock all post movements.
+- `commit_sale(p_sale, p_payment, p_movements)` inserts the sale, its payment and the stock movements in one transaction and is idempotent on the stamped `number` — a retried checkout returns the existing sale instead of double-selling.
+- `void_sale(p_sale_id, p_reason, p_movements)` verifies `sales.void` (or owner/admin) server-side, marks the document `voided_at` and posts the restoring movements atomically. Voided sales stay in the database; reports exclude them and the cash ledger keeps the original day's cash while posting a negative refund row on the void date.
+- Stock Take computes period flows from the ledger when the ledger covers the period (`src/lib/stockReconcile.ts`), falling back to documents for older periods. Balances may be negative (oversold); never clamp them.
+- Partial PO receipts are cumulative base quantities (`receivedBaseQty`) and post only the delivery delta, keyed `<po>:<n>`. Received/partially received POs are locked for editing and deletion.
+- Deleting an item keeps its movement history (`item_id` becomes NULL).
+- Migration order is `20261103000001`, `20261103000002`,
+  `20261103000003`, `20261103000004_integrity_hardening.sql`,
+  `20261103000005_transactional_inventory_controls.sql`, then
+  `20261103000006_idempotency_and_insert_guards.sql`, then
+  `20261103000007_authoritative_accounting_controls.sql`. The
+  application fails closed until the ledger/RPC contract is installed; never
+  restore a direct `items.stock` or step-by-step void fallback.
 
 ## Data import
 - The import run lives in `src/lib/importJob.ts` (module-level store + `useImportJob`), **not** in `ImportDataModal`. Settings unmounts on navigation, so component-owned state used to lose the progress while the promises kept running. Never move the run back into React state.

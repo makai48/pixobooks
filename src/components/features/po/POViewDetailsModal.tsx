@@ -22,8 +22,12 @@ export default function POViewDetailsModal({
   const totals = po.lines.reduce(
     (acc, l) => {
       const ordered = Number(l.qty || 0);
+      // Prefer the entered (unit-based) receipt so it compares like-for-like
+      // with the ordered quantity; receivedQty is the base-unit total.
       const received =
-        typeof l.receivedQty === "number" && l.receivedQty >= 0
+        typeof l.receivedEnteredQty === "number"
+          ? l.receivedEnteredQty
+          : typeof l.receivedQty === "number" && l.receivedQty >= 0
           ? l.receivedQty
           : po.status === "received"
           ? ordered
@@ -123,7 +127,9 @@ export default function POViewDetailsModal({
                   {po.lines.map((l, i) => {
                     const ordered = Number(l.qty || 0);
                     const received =
-                      typeof l.receivedQty === "number" && l.receivedQty >= 0
+                      typeof l.receivedEnteredQty === "number"
+                        ? l.receivedEnteredQty
+                        : typeof l.receivedQty === "number" && l.receivedQty >= 0
                         ? l.receivedQty
                         : po.status === "received"
                         ? ordered

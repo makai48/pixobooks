@@ -249,12 +249,12 @@ describe("runWipe", () => {
   it("drops offline snapshots, refetches and records the wipe", async () => {
     responses.sales = { count: 1, error: null };
 
-    await runWipe("sales", { id: "u1", name: "Owner" });
+    await runWipe("sales", { id: "u1", name: "Admin" });
 
     expect(clearPersistedSnapshots).toHaveBeenCalledTimes(1);
     expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(1);
     expect(logAudit).toHaveBeenCalledWith(
-      { id: "u1", name: "Owner" },
+      { id: "u1", name: "Admin" },
       "data.wipe",
       "sales",
       null,

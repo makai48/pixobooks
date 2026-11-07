@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeTotals, computeItemCost, producibleFromBOM, decrementStock } from "@/lib/pos";
+import { computeTotals, computeItemCost, producibleFromBOM, decrementStock, restoreStock } from "@/lib/pos";
 import type { Item, SaleLine } from "@/types";
 
 const item = (over: Partial<Item>): Item => ({
@@ -58,6 +58,51 @@ describe("producibleFromBOM", () => {
     const r = producibleFromBOM(p, [a, b, p]);
     expect(r.qty).toBe(2);
     expect(r.limiting?.materialId).toBe("b");
+  });
+});
+
+describe("restoreStock (voided sale)", () => {
+  it("adds a simple line back and mirrors the deduction exactly", () => {
+    const a = item({ id: "a", stock: 10 });
+    const sold = decrementStock([{ itemId: "a", qty: 3 } as SaleLine], [a]);
+    expect(sold).toEqual([{ id: "a", newStock: 7 }]);
+    const back = restoreStock([{ itemId: "a", qty: 3 } as SaleLine], [{ ...a, stock: 7 }]);
+    expect(back).toEqual([{ id: "a", newStock: 10, qty: 3 }]);
+  });
+
+  it("uses the line's stamped unit factor instead of today's conversion table", () => {
+    const a = item({ id: "a", stock: 0, baseUnit: "sheet", saleUnit: "ream" });
+    // 10 reams were sold at a stamped factor of 500; conversions have since
+    // changed to 250 and must not alter what a historical void restores.
+    const back = restoreStock(
+      [{ itemId: "a", qty: 10, unit: "ream", unitFactor: 500 } as SaleLine],
+      [a],
+      [{ fromUnit: "ream", toUnit: "sheet", factor: 250 }]
+    );
+    expect(back).toEqual([{ id: "a", newStock: 5000, qty: 5000 }]);
+  });
+
+  it("returns BOM components, not the assembled product", () => {
+    const mat = item({ id: "m", stock: 0, baseUnit: "sheet" });
+    const prod = item({
+      id: "p",
+      stock: 0,
+      baseUnit: "box",
+      bom: [{ materialId: "m", qty: 1, unit: "ream" }],
+    });
+    const convs = [{ fromUnit: "ream", toUnit: "sheet", factor: 500 }];
+    const back = restoreStock(
+      [{ itemId: "p", qty: 2, unit: "box" } as SaleLine],
+      [mat, prod],
+      convs
+    );
+    expect(back.find((u) => u.id === "m")?.newStock).toBe(1000);
+    expect(back.find((u) => u.id === "p")).toBeUndefined();
+  });
+
+  it("ignores lines whose item no longer exists", () => {
+    const back = restoreStock([{ itemId: "gone", qty: 4 } as SaleLine], []);
+    expect(back).toEqual([]);
   });
 });
 

@@ -62,7 +62,10 @@ type View = "overview" | "analytics";
 /** Statistics page — Traditional design: compact chrome, dense rows. */
 export default function Statistics() {
   const { canViewCosts } = useAuth();
-  const { data: sales = [] } = useSales();
+  const { data: allSales = [] } = useSales(5000);
+  // Statistics is a revenue view: voided reversal documents never count, and
+  // every memo below reads the same filtered feed.
+  const sales = useMemo(() => allSales.filter((s) => !s.voidedAt), [allSales]);
   const { data: expenses = [] } = useExpenses();
   const { data: customers = [] } = useCustomers();
   const { data: settings } = useShopSettings();
@@ -157,6 +160,7 @@ export default function Statistics() {
 
   const stats = useMemo(() => {
     const salesInRange = sales.filter((s) => {
+      if (s.voidedAt) return false;
       const t = new Date(s.createdAt).getTime();
       return t >= range.from.getTime() && t <= range.to.getTime();
     });

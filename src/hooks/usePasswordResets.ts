@@ -38,7 +38,7 @@ export function usePasswordResetRequests() {
       if (error) throw error;
       return (data || []).map(map);
     },
-    // Poll frequently so the owner sees new requests within seconds.
+    // Poll frequently so the admin sees new requests within seconds.
     refetchInterval: 8000,
     refetchOnWindowFocus: true,
   });
@@ -49,7 +49,7 @@ export function usePasswordResetRequests() {
  * function. The Login page is anonymous — RLS blocks it from reading
  * user_profiles directly — so the edge function uses the service role to
  * validate the email and insert the request. This is what fixes "reset
- * requests never reach the owner" issue.
+ * requests never reach the admin" issue.
  */
 export function useCreatePasswordResetRequest() {
   const qc = useQueryClient();
@@ -109,7 +109,7 @@ export type PasswordResetApprovalResult = {
  * function, (c) flagging the account with must_change_password + an
  * expiry, (d) unlocking the account, and (e) stamping the request row
  * with status='approved' + storing the temp password briefly so the
- * owner can re-view / re-share it inside the secure result modal.
+ * admin can re-view / re-share it inside the secure result modal.
  *
  * This replaces the previous approve-flow which only wrote the temp
  * password to the request table but never applied it to auth.users —
@@ -218,7 +218,7 @@ export function useRejectPasswordReset() {
 
 /**
  * Immediately clear the stored temp password from a request row —
- * called after the owner dismisses the secure result modal so the
+ * called after the admin dismisses the secure result modal so the
  * password is not left permanently in the database.
  */
 export function useClearStoredTempPassword() {

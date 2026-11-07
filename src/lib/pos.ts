@@ -92,10 +92,74 @@ export function decrementStock(
   allItems: Item[],
   conversions: Pick<UnitConversion, "fromUnit" | "toUnit" | "factor">[] = []
 ): { id: string; newStock: number }[] {
-  // Line qtys are expressed in the line's own unit (sale UOM at POS).
-  // Convert into each item's base unit via the CENTRAL engine; when the
-  // units match (or no path exists) this is the identity — legacy 1:1
-  // behavior is preserved exactly for all existing data.
+  // Single source of truth: the same signed deltas the stock ledger posts.
+  // This keeps the legacy "new balance" helper from drifting away from what
+  // checkout actually writes (it clamps only because a display balance has no
+  // negative state — the ledger keeps the true signed quantity).
+  return stockDeltasForLines(lines, allItems, conversions).map(({ id, delta }) => {
+    const item = allItems.find((i) => i.id === id);
+    return { id, newStock: Math.max(0, (item?.stock ?? 0) + delta) };
+  });
+}
+
+/**
+ * Unclamped, signed quantities a sale removes from inventory, one entry per
+ * affected item (BOM components included). This is the value that goes into
+ * the stock_movements ledger; `decrementStock` keeps the legacy clamped
+ * "new balance" shape for callers that still need it.
+ */
+export function stockDeltasForLines(
+  lines: SaleLine[],
+  allItems: Item[],
+  conversions: Pick<UnitConversion, "fromUnit" | "toUnit" | "factor">[] = []
+): { id: string; delta: number }[] {
+  const toBase = (qty: number, fromUOM: string | undefined, it: Item, fallback: string): number => {
+    const from = fromUOM || fallback;
+    if (normUom(from) === normUom(it.baseUnit)) return qty;
+    const edges = (it.units || [])
+      .filter((u) => Number.isFinite(u.ratio) && u.ratio > 0)
+      .map((u) => ({ from: u.code, to: it.baseUnit, factor: u.ratio }));
+    return convertQuantity(qty, from, it.baseUnit, conversions, edges)?.value ?? qty;
+  };
+  const deltas = new Map<string, number>();
+  const take = (id: string, qty: number) => {
+    if (!(qty > 0)) return;
+    deltas.set(id, (deltas.get(id) ?? 0) - qty);
+  };
+  for (const line of lines) {
+    const item = allItems.find((i) => i.id === line.itemId);
+    if (!item) continue;
+    const stampedFactor = Number(line.unitFactor);
+    const baseQty =
+      Number.isFinite(stampedFactor) && stampedFactor > 0
+        ? line.qty * stampedFactor
+        : toBase(line.qty, line.unit || item.saleUnit || undefined, item, item.baseUnit);
+    if (item.bom && item.bom.length) {
+        for (const b of item.bom) {
+          const mat = allItems.find((i) => i.id === b.materialId);
+          if (mat) take(mat.id, toBase(b.qty * baseQty, b.unit, mat, mat.baseUnit));
+      }
+      if (item.itemType === "intermediate") take(item.id, baseQty);
+    } else {
+      take(item.id, baseQty);
+    }
+  }
+  return [...deltas.entries()].map(([id, delta]) => ({ id, delta }));
+}
+
+/**
+ * Inverse of `decrementStock`: quantity to ADD back to `items.stock` when a
+ * sale is voided. Mirrors the checkout rules exactly (line unit → base unit,
+ * BOM exploded into its components, tracked intermediates included) so the
+ * restoration cannot drift from the original deduction. Uses the sale line's
+ * stamped `unitFactor` when present, so a later conversion-table edit cannot
+ * change what a historical void restores.
+ */
+export function restoreStock(
+  lines: SaleLine[],
+  allItems: Item[],
+  conversions: Pick<UnitConversion, "fromUnit" | "toUnit" | "factor">[] = []
+): { id: string; newStock: number; qty: number }[] {
   const toBase = (qty: number, fromUOM: string | undefined, it: Item, fallback: string): number => {
     const from = fromUOM || fallback;
     if (normUom(from) === normUom(it.baseUnit)) return qty;
@@ -105,32 +169,33 @@ export function decrementStock(
     return convertQuantity(qty, from, it.baseUnit, conversions, edges)?.value ?? qty;
   };
   const updates = new Map<string, number>();
+  const bump = (item: Item, qty: number) => {
+    if (!(qty > 0)) return;
+    const curr = updates.get(item.id) ?? item.stock;
+    updates.set(item.id, curr + qty);
+  };
   for (const line of lines) {
     const item = allItems.find((i) => i.id === line.itemId);
     if (!item) continue;
-    const baseQty = toBase(line.qty, line.unit || item.saleUnit || undefined, item, item.baseUnit);
+    const factor = Number(line.unitFactor);
+    const baseQty =
+      Number.isFinite(factor) && factor > 0
+        ? line.qty * factor
+        : toBase(line.qty, line.unit || item.saleUnit || undefined, item, item.baseUnit);
     if (item.bom && item.bom.length) {
       for (const b of item.bom) {
         const mat = allItems.find((i) => i.id === b.materialId);
-        if (mat) {
-          // b.qty is material (in b.unit, else mat base) per ONE line unit.
-          // Scale in transaction units first, then convert once to base.
-          const dec = toBase(b.qty * line.qty, b.unit, mat, mat.baseUnit);
-          const curr = updates.get(mat.id) ?? mat.stock;
-          updates.set(mat.id, Math.max(0, curr - dec));
-        }
+          if (mat) bump(mat, toBase(b.qty * baseQty, b.unit, mat, mat.baseUnit));
       }
-      // Intermediate items also decrement their own stock if tracked
-      if (item.itemType === "intermediate" && item.stock > 0) {
-        const curr = updates.get(item.id) ?? item.stock;
-        updates.set(item.id, Math.max(0, curr - baseQty));
-      }
+      if (item.itemType === "intermediate") bump(item, baseQty);
     } else {
-      const curr = updates.get(item.id) ?? item.stock;
-      updates.set(item.id, Math.max(0, curr - baseQty));
+      bump(item, baseQty);
     }
   }
-  return [...updates.entries()].map(([id, newStock]) => ({ id, newStock }));
+  return [...updates.entries()].map(([id, newStock]) => {
+    const item = allItems.find((i) => i.id === id);
+    return { id, newStock, qty: item ? newStock - item.stock : 0 };
+  });
 }
 
 import { convertQuantity, normUom } from "./uom";

@@ -30,9 +30,15 @@ export function useStockAdjustments(fromDate?: string, toDate?: string, itemId?:
       if (fromDate) q = q.gte("adjustment_date", fromDate);
       if (toDate) q = q.lte("adjustment_date", toDate);
       if (itemId) q = q.eq("item_id", itemId);
-      const { data, error } = await q.limit(2000);
-      if (error) throw error;
-      return (data || []).map(mapStockAdjustment);
+      const rows: Record<string, unknown>[] = [];
+      for (let offset = 0; offset < 1000000; offset += 1000) {
+        const { data, error } = await q.range(offset, offset + 999);
+        if (error) throw error;
+        const page = (data || []) as Record<string, unknown>[];
+        rows.push(...page);
+        if (page.length < 1000) break;
+      }
+      return rows.map(mapStockAdjustment);
     },
     refetchInterval: 30000,
   });
@@ -47,24 +53,28 @@ export function useCreateStockAdjustment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: StockAdjustmentInput) => {
+      const operationId = p.operationId ??
+        (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      const prepared = { ...p, operationId };
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         const { OfflineQueue } = await import("@/lib/offlineQueue");
         const id = await OfflineQueue.enqueue(
           "stock.adjust",
-          { ...p, businessId: p.businessId ?? currentBusinessId() },
+          { ...prepared, businessId: p.businessId ?? currentBusinessId() },
           {
             item: p.itemName,
           }
         );
         throw new Error(`OFFLINE_QUEUED:${id}`);
       }
-      return executeStockWrite(p);
+      return executeStockWrite(prepared);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["stock_adjustments"] });
       qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stock_movements"] });
     },
   });
 }
-
-

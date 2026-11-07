@@ -358,7 +358,7 @@ export const CURRENCIES: Currency[] = [
 ];
 
 export const BUSINESS_TYPES = [
-  "Printshop",
+  "Retail",
   "Retail Shop",
   "Wholesale",
   "Grocery / Supermarket",
@@ -416,6 +416,34 @@ export const TIMEZONES = [
   "Europe/Stockholm", "Europe/Vienna", "Europe/Warsaw", "Europe/Zurich",
   "Pacific/Auckland", "Pacific/Fiji", "Pacific/Guam", "Pacific/Honolulu", "Pacific/Port_Moresby",
 ];
+
+/** "GMT+03:00 Africa/Kampala" — GMT prefix first, IANA name second. */
+export function timezoneLabel(tz: string): string {
+  if (tz === "UTC") return "GMT+00:00 UTC";
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      timeZoneName: "shortOffset",
+    }).formatToParts(new Date());
+    const name = parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+    if (name === "GMT") return `GMT+00:00 ${tz}`;
+    const m = /GMT([+-]\d{1,2})(?::(\d{2}))?/.exec(name);
+    if (m) {
+      const sign = m[1][0];
+      const h = Math.abs(parseInt(m[1], 10));
+      const mm = m[2] ?? "00";
+      return `GMT${sign}${String(h).padStart(2, "0")}:${mm} ${tz}`;
+    }
+  } catch {
+    /* unknown zone — fall through */
+  }
+  return tz;
+}
+
+export const TIMEZONE_OPTIONS = TIMEZONES.map((z) => ({
+  value: z,
+  label: timezoneLabel(z),
+}));
 
 // ---------- helpers (used by onboarding + settings) ----------
 

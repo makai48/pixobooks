@@ -416,7 +416,7 @@ export type AccountApprovalRequest = {
   notes?: string | null;
 };
 
-/** Default temp-password validity when the owner invites a new user. */
+/** Default temp-password validity when the admin invites a new user. */
 export const DEFAULT_TEMP_PASSWORD_HOURS = 72;
 export const TEMP_PASSWORD_HOUR_PRESETS = [24, 48, 72, 168, 336, 720];
 
@@ -518,6 +518,45 @@ export type Sale = {
   loyaltyRedeemed: number;
   /** Branch context this sale was rung under (null = all-branches / legacy). */
   branchId?: string | null;
+  /** Set when the document was voided. The row is retained as the reversal
+   *  counter-document: stock has been returned, revenue excluded, and the
+   *  original number stays resolvable for audit. */
+  voidedAt?: string | null;
+  voidedBy?: string | null;
+  voidedByName?: string | null;
+  voidReason?: string | null;
+};
+
+/** A voided document is retained but must never count as revenue. */
+export function isSaleVoided(sale: Pick<Sale, "voidedAt"> | null | undefined): boolean {
+  return !!(sale && sale.voidedAt);
+}
+
+/** Append-only inventory movement (the stock ledger). */
+export type StockMovementSourceType =
+  | "sale"
+  | "sale_void"
+  | "po_receipt"
+  | "po_return"
+  | "adjustment"
+  | "stocktake"
+  | "opening";
+
+export type StockMovement = {
+  id: string;
+  /** Null when the item was deleted; the movement keeps its history. */
+  itemId: string | null;
+  qtyBase: number;
+  unitCost?: number | null;
+  sourceType: StockMovementSourceType;
+  sourceId?: string | null;
+  sourceLine: number;
+  occurredAt: string;
+  actorId?: string | null;
+  actorName?: string | null;
+  reason?: string | null;
+  reversalOf?: string | null;
+  createdAt: string;
 };
 
 export type HeldTicket = {
@@ -594,6 +633,11 @@ export type POLine = {
    *  figure and the converted base figure persist for audit. */
   receivedUnit?: string;
   receivedEnteredQty?: number;
+  /** Cumulative base-unit quantity received to date (across receipts). */
+  receivedBaseQty?: number;
+  /** Ordered quantity converted to base units, used to decide whether the
+   *  PO is fully received. */
+  orderedBaseQty?: number;
   /** Derived base-unit cost for this receipt (total ÷ converted qty, §10).
    *  The movement-level unit cost (§13); history keeps it verbatim. */
   derivedUnitCost?: number | null;
@@ -836,7 +880,7 @@ export type TransactionAllowancePolicy = {
   requireApproval: boolean;
   /** Who may approve a pending award. */
   approverRole: "manager" | "accountant";
-  /** `<employeeId>:<periodKey>` entries the owner has dismissed. */
+  /** `<employeeId>:<periodKey>` entries the admin has dismissed. */
   dismissed: string[];
 };
 
@@ -980,28 +1024,50 @@ export const THEME_PRESETS: Record<
 };
 
 /**
- * Legacy supreme-owner email (kept for back-compat: still honored by the
- * backend trigger + RLS helpers). Ownership itself is now ROLE-based: the
- * FIRST-EVER registered user (any email) becomes the shop Owner, and branches
- * / team members join via owner invite or owner approval.
+ * Legacy supreme-admin email (kept for back-compat: still honored by the
+ * backend trigger + RLS helpers). Access itself is now ROLE-based: the
+ * FIRST-EVER registered user (any email) becomes the shop Admin, and branches
+ * / team members join via admin invite or admin approval.
  */
-export const OWNER_EMAIL = "me.makai48@gmail.com";
+export const ADMIN_EMAIL = "me.makai48@gmail.com";
+/** @deprecated Use ADMIN_EMAIL. */
+export const OWNER_EMAIL = ADMIN_EMAIL;
 
-/** Max failed login attempts before an account is locked (owners exempt). */
+/** Max failed login attempts before an account is locked (admins exempt). */
 export const MAX_FAILED_LOGINS = 3;
 
+export function isAdminEmail(email?: string | null): boolean {
+  return (email || "").trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+}
+
+/** @deprecated Use isAdminEmail. */
 export function isOwnerEmail(email?: string | null): boolean {
-  return (email || "").trim().toLowerCase() === OWNER_EMAIL.toLowerCase();
+  return isAdminEmail(email);
 }
 
-/** Role-based ownership: true for any Owner, regardless of email. */
+/**
+ * Role-based admin check: true for any Admin, regardless of email.
+ * Also accepts the legacy "Owner" role string so pre-rename profiles
+ * keep their access without a data migration.
+ */
+export function isAdminRole(role?: string | null): boolean {
+  const r = (role || "").trim().toLowerCase();
+  return r === "admin" || r === "admin";
+}
+
+/** @deprecated Use isAdminRole. */
 export function isOwnerRole(role?: string | null): boolean {
-  return (role || "").trim().toLowerCase() === "owner";
+  return isAdminRole(role);
 }
 
-/** Full ownership check: legacy supreme email OR Owner role. */
+/** Full admin check: legacy supreme email OR Admin role. */
+export function isShopAdmin(email?: string | null, role?: string | null): boolean {
+  return isAdminEmail(email) || isAdminRole(role);
+}
+
+/** @deprecated Use isShopAdmin. */
 export function isShopOwner(email?: string | null, role?: string | null): boolean {
-  return isOwnerEmail(email) || isOwnerRole(role);
+  return isShopAdmin(email, role);
 }
 
 /** Compute the total monthly-equivalent salary from an EmployeeSalary payload. */

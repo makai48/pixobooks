@@ -100,6 +100,7 @@
     font-size: 16px;
   }
   input::placeholder, textarea::placeholder { color: hsl(var(--ink-mute)); }
+  img[alt*="logo" i], img[alt*="avatar" i] { border-radius: 50%; }
   ::selection { background: hsl(var(--reg-magenta) / 0.25); }
 
   /* ---------- Quiet native scrollbars (never draw rails over content) ---------- */

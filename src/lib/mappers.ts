@@ -180,6 +180,10 @@ export function mapSale(r: DbRow): Sale {
     loyaltyEarned: n(r.loyalty_earned),
     loyaltyRedeemed: n(r.loyalty_redeemed),
     branchId: r.branch_id || null,
+    voidedAt: r.voided_at || null,
+    voidedBy: r.voided_by || null,
+    voidedByName: r.voided_by_name || null,
+    voidReason: r.void_reason || null,
   };
 }
 

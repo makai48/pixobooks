@@ -72,9 +72,9 @@ export default function PasswordResetsPage() {
       <div className="p-8 max-w-lg mx-auto text-center">
         <div className="paper-card p-8">
           <ShieldQuestion className="w-8 h-8 mx-auto text-ink-mute" />
-          <h2 className="font-display text-xl font-bold mt-3">Owner only</h2>
+          <h2 className="font-display text-xl font-bold mt-3">Admin only</h2>
           <p className="text-sm text-ink-mute mt-1">
-            Password reset approvals are restricted to the shop owner.
+            Password reset approvals are restricted to the shop admin.
           </p>
         </div>
       </div>
@@ -88,12 +88,12 @@ export default function PasswordResetsPage() {
         request: req,
         approver: {
           id: profile?.id || "",
-          name: profile?.name || "Owner",
+          name: profile?.name || "Admin",
           role: profile?.role,
         },
         expirationHours,
       });
-      // Show the temp password in a secure result modal — the owner
+      // Show the temp password in a secure result modal — the admin
       // shares it via email / WhatsApp / manual delivery to the employee.
       setResult(res);
       toast.success(`Approved — ${req.employeeName || req.email} unlocked.`);
@@ -111,7 +111,7 @@ export default function PasswordResetsPage() {
         request: req,
         approver: {
           id: profile?.id || "",
-          name: profile?.name || "Owner",
+          name: profile?.name || "Admin",
           role: profile?.role,
         },
         notes,
@@ -432,7 +432,7 @@ function StatusBadge({
 }
 
 /**
- * Secure result modal — mirrors the invite-result flow so the owner
+ * Secure result modal — mirrors the invite-result flow so the admin
  * gets the same professional presentation with copy / mail / WhatsApp
  * delivery shortcuts. The temp password is cleared from the DB row
  * when this modal is dismissed.
