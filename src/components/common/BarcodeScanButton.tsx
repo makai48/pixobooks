@@ -156,10 +156,22 @@ export default function BarcodeScanButton({
         const capabilities = track?.getCapabilities?.() as
           | (MediaTrackCapabilities & { torch?: boolean; zoom?: number })
           | undefined;
-        setTorchSupported(capabilities?.torch === true);
+        setTorchSupported(
+          capabilities?.torch === true ||
+            Object.prototype.hasOwnProperty.call(capabilities ?? {}, "torch")
+        );
         if (capabilities?.zoom !== undefined) {
+          const maxZoom = capabilities.zoom;
+          const minZoom = Number(
+            (capabilities as MediaTrackCapabilities & { minZoom?: number }).minZoom ?? 1
+          );
+          const defaultZoom = Math.min(2, maxZoom);
           void track.applyConstraints({
-            advanced: [{ zoom: 1 } as MediaTrackConstraintSet],
+            advanced: [
+              {
+                zoom: Math.max(minZoom, defaultZoom),
+              } as MediaTrackConstraintSet,
+            ],
           }).catch(() => undefined);
         }
         if (cancelled) {
@@ -228,9 +240,15 @@ export default function BarcodeScanButton({
     if (!track || !torchSupported) return;
     const next = !torchOn;
     try {
-      await track.applyConstraints({
-        advanced: [{ torch: next } as MediaTrackConstraintSet],
-      });
+      try {
+        await track.applyConstraints({
+          advanced: [{ torch: next } as MediaTrackConstraintSet],
+        });
+      } catch {
+        // A few Chromium camera implementations expose torch as a direct
+        // constraint but reject the advanced form.
+        await track.applyConstraints({ torch: next } as MediaTrackConstraints);
+      }
       setTorchOn(next);
     } catch {
       setNote("This camera could not switch its light.");
