@@ -41,6 +41,71 @@ function cameraMessage(err: unknown): string {
   return "Scanning could not be started. Upload a barcode photo or use your handheld scanner.";
 }
 
+type ScanCapabilities = MediaTrackCapabilities & {
+  torch?: boolean;
+  zoom?: number;
+  minZoom?: number;
+  focusMode?: string[];
+  exposureMode?: string[];
+  whiteBalanceMode?: string[];
+};
+
+/** Tune the native camera/ISP rather than trying to improve a blurry frame in
+ * CSS. Native scanner apps use this same class of controls: continuous focus,
+ * exposure and white balance, a detail-oriented stream, native zoom and torch. */
+async function optimizeCameraTrack(track: MediaStreamTrack): Promise<{
+  torchOn: boolean;
+  zoom: number | null;
+}> {
+  const capabilities = track.getCapabilities?.() as ScanCapabilities | undefined;
+  const supported = (key: keyof ScanCapabilities, value: string) =>
+    Array.isArray(capabilities?.[key]) &&
+    (capabilities?.[key] as string[]).includes(value);
+  const advanced: MediaTrackConstraintSet[] = [];
+
+  if (supported("focusMode", "continuous")) {
+    advanced.push({ focusMode: "continuous" } as MediaTrackConstraintSet);
+  }
+  if (supported("exposureMode", "continuous")) {
+    advanced.push({ exposureMode: "continuous" } as MediaTrackConstraintSet);
+  }
+  if (supported("whiteBalanceMode", "continuous")) {
+    advanced.push({ whiteBalanceMode: "continuous" } as MediaTrackConstraintSet);
+  }
+
+  let zoom: number | null = null;
+  if (typeof capabilities?.zoom === "number") {
+    const min = Number(capabilities.minZoom ?? 1);
+    zoom = Math.max(min, Math.min(2, capabilities.zoom));
+    advanced.push({ zoom } as MediaTrackConstraintSet);
+  }
+
+  if (advanced.length) {
+    await track.applyConstraints({ advanced }).catch(() => undefined);
+  }
+  if ("contentHint" in track) {
+    (track as MediaStreamTrack & { contentHint?: string }).contentHint = "detail";
+  }
+
+  // Torch is attempted automatically for the same low-noise, high-contrast
+  // conditions a native barcode scanner creates. Some browsers accept only
+  // the direct form, others only the advanced form.
+  if (capabilities?.torch === true || "torch" in (capabilities ?? {})) {
+    try {
+      await track.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] });
+      return { torchOn: true, zoom };
+    } catch {
+      try {
+        await track.applyConstraints({ torch: true } as MediaTrackConstraints);
+        return { torchOn: true, zoom };
+      } catch {
+        // Continue with focus/exposure/white balance if torch is unavailable.
+      }
+    }
+  }
+  return { torchOn: false, zoom };
+}
+
 /**
  * Barcode scanner: live camera -> animated target -> decoded success ->
  * automatic apply.
@@ -61,6 +126,7 @@ export default function BarcodeScanButton({
   const [note, setNote] = useState("Starting scanner…");
   const [view, setView] = useState<View>("camera");
   const [torchOn, setTorchOn] = useState(false);
+  const [nativeZoom, setNativeZoom] = useState<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
@@ -78,6 +144,7 @@ export default function BarcodeScanButton({
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setTorchOn(false);
+    setNativeZoom(null);
     if (watchdogRef.current) {
       window.clearTimeout(watchdogRef.current);
       watchdogRef.current = undefined;
@@ -141,75 +208,44 @@ export default function BarcodeScanButton({
       }
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        });
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { exact: "environment" },
+              width: { min: 1280, ideal: 1920 },
+              height: { min: 720, ideal: 1080 },
+              frameRate: { ideal: 30, max: 60 },
+            },
+            audio: false,
+          });
+        } catch (err) {
+          if (
+            err instanceof DOMException &&
+            !["OverconstrainedError", "NotFoundError"].includes(err.name)
+          ) {
+            throw err;
+          }
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+              frameRate: { ideal: 30 },
+            },
+            audio: false,
+          });
+        }
         streamRef.current = stream;
         const track = stream.getVideoTracks?.()[0];
-        const capabilities = track?.getCapabilities?.() as
-          | (MediaTrackCapabilities & {
-              torch?: boolean;
-              zoom?: number;
-              minZoom?: number;
-              focusMode?: string[];
-              exposureMode?: string[];
-              whiteBalanceMode?: string[];
-            })
-          | undefined;
         if (track) {
-          // Prioritise barcode clarity: continuous autofocus plus continuous
-          // exposure/white balance where the device exposes those controls.
-          void track.applyConstraints({
-            advanced: [
-              {
-                ...(capabilities?.focusMode?.includes("continuous")
-                  ? { focusMode: "continuous" }
-                  : {}),
-                ...(capabilities?.exposureMode?.includes("continuous")
-                  ? { exposureMode: "continuous" }
-                  : {}),
-                ...(capabilities?.whiteBalanceMode?.includes("continuous")
-                  ? { whiteBalanceMode: "continuous" }
-                  : {}),
-              } as MediaTrackConstraintSet,
-            ],
-          }).catch(() => undefined);
-
-          // Turn the rear light on automatically for low-light barcode
-          // scanning. The manual flashlight control remains available when
-          // the browser/device supports torch constraints.
-          void track
-            .applyConstraints({
-              advanced: [{ torch: true } as MediaTrackConstraintSet],
-            })
-            .then(() => setTorchOn(true))
-            .catch(() =>
-              track
-                .applyConstraints({ torch: true } as MediaTrackConstraints)
-                .then(() => setTorchOn(true))
-                .catch(() => undefined)
-            );
-        }
-        if (capabilities?.zoom !== undefined) {
-          const maxZoom = capabilities.zoom;
-          const minZoom = Number(
-            (capabilities as MediaTrackCapabilities & { minZoom?: number }).minZoom ?? 1
+          const optimized = await optimizeCameraTrack(track);
+          setTorchOn(optimized.torchOn);
+          setNativeZoom(
+            optimized.zoom !== null && optimized.zoom >= 2
+              ? optimized.zoom
+              : null
           );
-          // Use a close-up barcode view by default, while respecting the
-          // physical camera's supported range.
-          const defaultZoom = Math.min(2, maxZoom);
-          void track.applyConstraints({
-            advanced: [
-              {
-                zoom: Math.max(minZoom, defaultZoom),
-              } as MediaTrackConstraintSet,
-            ],
-          }).catch(() => undefined);
         }
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -418,7 +454,7 @@ export default function BarcodeScanButton({
                   <div className="scan-stage">
                     <video
                       ref={videoRef}
-                      className="scan-video is-zoomed"
+                      className={cn("scan-video", nativeZoom === null && "is-zoomed")}
                       playsInline
                       muted
                       autoPlay
