@@ -102,6 +102,13 @@
   filter: contrast(1.16) saturate(1.28) brightness(1.06);
 }
 
+/* If Android exposes no native zoom constraint, keep the requested 2× view
+   effective visually rather than silently leaving the camera at 1×. */
+.scan-video.is-zoomed {
+  transform: scale(2);
+  transform-origin: center;
+}
+
 .scan-flash-btn {
   position: absolute;
   top: 10px;

@@ -79,6 +79,7 @@ type ScanCapabilities = MediaTrackCapabilities & {
  * exposure and white balance, a detail-oriented stream, native zoom and torch. */
 async function optimizeCameraTrack(track: MediaStreamTrack): Promise<{
   torchOn: boolean;
+  nativeZoom: boolean;
 }> {
   const capabilities = track.getCapabilities?.() as ScanCapabilities | undefined;
   const supported = (key: keyof ScanCapabilities, value: string) =>
@@ -96,16 +97,23 @@ async function optimizeCameraTrack(track: MediaStreamTrack): Promise<{
     advanced.push({ whiteBalanceMode: "continuous" } as MediaTrackConstraintSet);
   }
 
-  // Prefer the camera's real optical/digital zoom control. This keeps the
-  // image in the camera/ISP pipeline instead of magnifying a CSS preview.
-  if (typeof capabilities?.zoom === "number") {
-    const minZoom = Number(capabilities.minZoom ?? 1);
-    const nativeZoom = Math.max(minZoom, Math.min(2, capabilities.zoom));
-    advanced.push({ zoom: nativeZoom } as MediaTrackConstraintSet);
-  }
-
   if (advanced.length) {
     await track.applyConstraints({ advanced }).catch(() => undefined);
+  }
+  // Try the native zoom independently. Some Samsung/Chromium builds support
+  // the constraint but omit it from getCapabilities(); combining it with
+  // focus constraints can also cause the whole request to be rejected.
+  let nativeZoom = false;
+  const maxZoom = typeof capabilities?.zoom === "number" ? capabilities.zoom : 2;
+  const minZoom = Number(capabilities?.minZoom ?? 1);
+  const targetZoom = Math.max(minZoom, Math.min(2, maxZoom));
+  try {
+    await track.applyConstraints({
+      advanced: [{ zoom: targetZoom } as MediaTrackConstraintSet],
+    });
+    nativeZoom = targetZoom >= 2;
+  } catch {
+    nativeZoom = false;
   }
   if ("contentHint" in track) {
     (track as MediaStreamTrack & { contentHint?: string }).contentHint = "detail";
@@ -117,17 +125,17 @@ async function optimizeCameraTrack(track: MediaStreamTrack): Promise<{
   if (capabilities?.torch === true || "torch" in (capabilities ?? {})) {
     try {
       await track.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] });
-      return { torchOn: true };
+      return { torchOn: true, nativeZoom };
     } catch {
       try {
         await track.applyConstraints({ torch: true } as MediaTrackConstraints);
-        return { torchOn: true };
+        return { torchOn: true, nativeZoom };
       } catch {
         // Continue with focus/exposure/white balance if torch is unavailable.
       }
     }
   }
-  return { torchOn: false };
+  return { torchOn: false, nativeZoom };
 }
 
 /**
@@ -150,6 +158,7 @@ export default function BarcodeScanButton({
   const [note, setNote] = useState("Starting scanner…");
   const [view, setView] = useState<View>("camera");
   const [torchOn, setTorchOn] = useState(false);
+  const [zoomFallback, setZoomFallback] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
@@ -169,6 +178,7 @@ export default function BarcodeScanButton({
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setTorchOn(false);
+    setZoomFallback(false);
     if (focusTimerRef.current) {
       window.clearInterval(focusTimerRef.current);
       focusTimerRef.current = undefined;
@@ -273,6 +283,7 @@ export default function BarcodeScanButton({
         if (track) {
           const optimized = await optimizeCameraTrack(track);
           setTorchOn(optimized.torchOn);
+          setZoomFallback(!optimized.nativeZoom);
           // Re-assert continuous centre autofocus every 250ms. The browser
           // does not expose a portable focus-point API; continuous focus is
           // the supported way to keep the scan target sharp on Android.
@@ -529,7 +540,7 @@ export default function BarcodeScanButton({
                   <div className="scan-stage">
                     <video
                       ref={videoRef}
-                      className="scan-video"
+                      className={cn("scan-video", zoomFallback && "is-zoomed")}
                       playsInline
                       muted
                       autoPlay
