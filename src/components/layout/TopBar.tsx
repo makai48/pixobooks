@@ -52,7 +52,7 @@ export default function TopBar({ onOpenMenu, collapsed, onToggleCollapse }: Prop
       <div className="flex items-center gap-2 min-w-0">
         <button
           onClick={onOpenMenu}
-          className="md:hidden btn btn-ghost h-9 w-9 p-0 shrink-0"
+          className="lg:hidden btn btn-ghost h-9 w-9 p-0 shrink-0"
           aria-label="Open menu"
         >
           <Menu className="w-6 h-6" />
@@ -60,7 +60,7 @@ export default function TopBar({ onOpenMenu, collapsed, onToggleCollapse }: Prop
         {onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
-            className="hidden md:flex btn btn-ghost h-9 w-9 p-0 shrink-0"
+            className="hidden lg:flex btn btn-ghost h-9 w-9 p-0 shrink-0"
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? (

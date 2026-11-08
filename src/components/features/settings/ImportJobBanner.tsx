@@ -27,7 +27,7 @@ export default function ImportJobBanner() {
       : 0;
 
   return (
-    <div className="fixed bottom-20 md:bottom-4 right-3 md:right-4 z-40 w-[min(92vw,360px)] paper-card border p-3 shadow-xl">
+    <div className="fixed bottom-20 lg:bottom-4 right-3 md:right-4 z-40 w-[min(92vw,360px)] paper-card border p-3 shadow-xl">
       {job.phase === "running" && (
         <>
           <div className="flex items-center gap-2 text-sm">

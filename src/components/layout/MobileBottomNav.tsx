@@ -1,25 +1,25 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Boxes,
-  Receipt,
+  ScanBarcode,
+  ShoppingBag,
   Wallet,
+  Boxes,
   MoreHorizontal,
   Users,
   BarChart3,
   Landmark,
   UserCog,
   BookOpen,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import type { Permission } from "@/types";
-import type { ComponentType, CSSProperties } from "react";
 
 type Tab = {
   to: string;
   label: string;
-  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
+  icon: LucideIcon;
   perm: Permission;
   anyPerm?: Permission[];
   end?: boolean;
@@ -29,10 +29,10 @@ type Tab = {
 // Suppliers, Held Tickets, Payroll History and Password Requests are
 // reached from within their parent tab's sub-navigation.
 const ALL_TABS: Tab[] = [
-  { to: "/", label: "POS", icon: LayoutDashboard, perm: "pos.sell", end: true },
-  { to: "/inventory", label: "Inventory", icon: Boxes, perm: "inventory.view" },
-  { to: "/sales-report", label: "Sales", icon: Receipt, perm: "sales.view" },
+  { to: "/", label: "POS", icon: ScanBarcode, perm: "pos.sell", end: true },
+  { to: "/sales-report", label: "Sales", icon: ShoppingBag, perm: "sales.view" },
   { to: "/expenses", label: "Expenses", icon: Wallet, perm: "expenses.view" },
+  { to: "/inventory", label: "Inventory", icon: Boxes, perm: "inventory.view" },
   { to: "/financial-statements", label: "Finance", icon: Landmark, perm: "finance.view", anyPerm: ["finance.cashbook.view", "finance.bank.view", "finance.bank.manage", "finance.bank.delete", "finance.pnl.view", "finance.orders.view", "finance.orders.manage", "finance.orders.delete"] },
   { to: "/client-billing", label: "Billing", icon: BookOpen, perm: "finance.view" },
   { to: "/customers", label: "Customers", icon: Users, perm: "customers.manage" },
@@ -48,52 +48,76 @@ export default function MobileBottomNav({ onOpenMore }: { onOpenMore: () => void
   const primary = visible.slice(0, 4);
 
   return (
-    <nav
-      className="fixed bottom-0 inset-x-0 z-30 border-t bg-ink text-white no-print"
-      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
-    >
+    <nav aria-label="Primary" className="no-print">
+      {/* The black glass surface is its own layer so the multiply blend darkens
+          the page behind it without tinting the icons and labels. */}
       <div
-        className="grid"
-        style={{ gridTemplateColumns: `repeat(${primary.length + 1}, minmax(0, 1fr))` }}
-      >
-        {primary.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) =>
-              cn(
-                "flex flex-col items-center justify-center gap-0.5 pt-1.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider relative transition min-h-[56px]",
-                isActive ? "text-magenta-reg" : "text-white/85 active:text-white"
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Icon
-                  className={cn(
-                    "w-6 h-6",
-                    isActive ? "text-magenta-reg" : "text-white"
-                  )}
-                  style={!isActive ? { color: "#FFFFFF" } : undefined}
-                />
-                <span>{label}</span>
-                {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-magenta-reg rounded-b" />
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
+        aria-hidden
+        className="pointer-events-none fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 h-12 w-[calc(100%-0.5rem)] max-w-[349px] -translate-x-1/2 rounded-full bg-black/85 shadow-[0_40px_80px_-30px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.06)] outline outline-1 -outline-offset-1 outline-white/10 mix-blend-multiply"
+      />
+
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex h-12 w-[calc(100%-0.5rem)] max-w-[349px] -translate-x-1/2 items-stretch rounded-full p-1.5">
+        <div className="grid flex-1 grid-cols-2 gap-1.5">
+          {primary.slice(0, 2).map((tab) => (
+            <NavItem key={tab.to} tab={tab} />
+          ))}
+        </div>
+
+        <div className="w-11 shrink-0" aria-hidden />
+
+        <div className="grid flex-1 grid-cols-2 gap-1.5">
+          {primary.slice(2).map((tab) => (
+            <NavItem key={tab.to} tab={tab} />
+          ))}
+        </div>
+
         <button
+          type="button"
           onClick={onOpenMore}
-          className="flex flex-col items-center justify-center gap-0.5 pt-1.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white active:opacity-80 min-h-[56px]"
           aria-label="More"
+          className="group absolute left-1/2 top-0 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full focus-visible:outline-none"
         >
-          <MoreHorizontal className="w-6 h-6" style={{ color: "#FFFFFF" }} />
-          <span>More</span>
+          <span className="grid h-10 w-10 place-items-center rounded-full border-[3px] border-paper bg-[#FFCC08] text-[#111111] shadow-[0_8px_20px_-8px_rgba(255,204,8,0.6)] transition-transform duration-200 group-hover:scale-105 group-active:scale-95 group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-[#FFCC08]">
+            <MoreHorizontal size={17.6} strokeWidth={2.25} />
+          </span>
         </button>
       </div>
     </nav>
+  );
+}
+
+function NavItem({ tab }: { tab: Tab }) {
+  const { to, label, icon: Icon, end } = tab;
+
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className="group flex h-full min-w-0 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFCC08]"
+    >
+      {({ isActive }) => (
+        <span
+          className={cn(
+            "flex min-w-[58px] flex-col items-center justify-center gap-[2px] rounded-[8px] px-1.5 py-1",
+            isActive
+              ? "bg-[#FFCC08] text-[#111111]"
+              : "text-white/85 group-hover:bg-white/15 group-hover:text-white"
+          )}
+        >
+          <Icon
+            className="h-[17.6px] w-[17.6px] shrink-0"
+            strokeWidth={isActive ? 2.25 : 1.75}
+          />
+          <span
+            className={cn(
+              "whitespace-nowrap text-[8.8px] leading-[1.15]",
+              isActive ? "font-bold" : "font-medium"
+            )}
+          >
+            {label}
+          </span>
+        </span>
+      )}
+    </NavLink>
   );
 }

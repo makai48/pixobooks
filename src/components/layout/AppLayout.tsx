@@ -96,21 +96,21 @@ export default function AppLayout() {
     <div className="h-[100dvh] w-screen overflow-hidden flex flex-col md:flex-row bg-paper text-ink">
       {activeBusiness !== "none" && <CorePrefetch />}
       {/* Desktop sidebar */}
-      <div className="hidden md:flex">
+      <div className="hidden lg:flex">
         <Sidebar
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed(!collapsed)}
         />
       </div>
 
-      {/* Mobile drawer overlay */}
+      {/* Mobile / tablet drawer overlay */}
       {mobileOpen && (
         <>
           <div
-            className="md:hidden fixed inset-0 z-40 bg-ink/60 backdrop-blur-sm animate-fade-in"
+            className="lg:hidden fixed inset-0 z-40 bg-ink/60 backdrop-blur-sm animate-fade-in"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="md:hidden fixed inset-y-0 left-0 z-50 w-72 animate-fade-in">
+          <div className="lg:hidden fixed inset-y-0 left-0 z-50 w-72 md:w-64 animate-fade-in">
             <Sidebar onNavigate={() => setMobileOpen(false)} />
           </div>
         </>
@@ -123,11 +123,11 @@ export default function AppLayout() {
           onToggleCollapse={() => setCollapsed(!collapsed)}
         />
         <InventoryTabs />
-        <main className="flex-1 overflow-auto pb-20 md:pb-0 scroll-lined">
+        <main className="flex-1 overflow-auto pb-24 lg:pb-0 scroll-lined">
           <Outlet context={{ collapsed, setCollapsed } satisfies AppOutletContext} />
         </main>
         <ImportJobBanner />
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <MobileBottomNav onOpenMore={() => setMobileOpen(true)} />
         </div>
       </div>
