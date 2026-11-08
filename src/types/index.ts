@@ -732,6 +732,15 @@ export type SupplierItem = {
   notes?: string;
 };
 
+export type WeekStart =
+  | "sunday"
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday";
+
 export type Settings = {
   shopName: string;
   currency: string;
@@ -741,6 +750,8 @@ export type Settings = {
   phone: string;
   email: string;
   categories: string[];
+  /** Weekday that opens the business week. Defaults to Monday when unset. */
+  weekStart?: WeekStart;
   /** Custom expense-category list. When empty the fallback constant
    *  `EXPENSE_CATEGORIES` is used app-wide. Renaming/deleting an entry
    *  reassigns affected expenses to "General" so no orphan rows exist. */
@@ -781,6 +792,11 @@ export type Settings = {
     bluetoothMac?: string;
     autoPrint: boolean;
     openDrawer: boolean;
+    /** How long the sale-complete circle stays on screen, in milliseconds. */
+    successPopupMs?: number;
+    /** Receipt preview auto-close delay in milliseconds.
+     *  0 = do not open the preview, -1 = keep it open until closed. */
+    receiptPreviewMs?: number;
     bridgeUrl?: string;
     bridgeToken?: string;
     bluetoothService?: string;
@@ -1270,13 +1286,14 @@ export type BillingPeriod = {
   createdAt: string;
 };
 
-export type StatsPeriod = "day" | "week" | "month" | "year";
+export type StatsPeriod = "day" | "week" | "lastWeek" | "month" | "year";
 
 export const STATS_PERIOD_META: Record<StatsPeriod, { label: string; days: number }> = {
   day: { label: "Today", days: 1 },
-  week: { label: "This week", days: 7 },
-  month: { label: "This month", days: 30 },
-  year: { label: "This year", days: 365 },
+  week: { label: "This Week", days: 7 },
+  lastWeek: { label: "Last Week", days: 7 },
+  month: { label: "This Month", days: 30 },
+  year: { label: "This Year", days: 365 },
 };
 
 /** Default statistics reporting period. "day" = Today. */

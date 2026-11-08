@@ -28,10 +28,12 @@ import {
   formatDate,
   formatMoney,
   localISODate,
-  startOfMonth,
-  startOfWeek,
-  startOfYear,
 } from "@/lib/utils";
+import {
+  DEFAULT_WEEK_START,
+  resolveRange,
+  type RangePreset,
+} from "@/lib/week";
 import {
   clientBalances,
   debtAgeing,
@@ -52,7 +54,7 @@ import MoneyText from "@/components/ui/MoneyText";
 import BarChart from "@/components/charts/BarChart";
 import LineChart from "@/components/charts/LineChart";
 import PieChart from "@/components/charts/PieChart";
-import { chartColor } from "@/components/charts/palette";
+import { expenseMixColor } from "@/components/charts/palette";
 import type { StatsPeriod } from "@/types";
 import { STATS_PERIOD_META, MONTH_NAMES, DEFAULT_STATS_PERIOD } from "@/types";
 
@@ -100,9 +102,8 @@ export default function Statistics() {
     const nowD = new Date();
     const to = new Date(nowD);
     to.setHours(23, 59, 59, 999);
-    let from: Date;
     if (rangeMode === "custom" && customFrom && customTo) {
-      from = new Date(customFrom + "T00:00:00");
+      const from = new Date(customFrom + "T00:00:00");
       const t = new Date(customTo + "T00:00:00");
       t.setHours(23, 59, 59, 999);
       return { from, to: t };
@@ -113,12 +114,30 @@ export default function Statistics() {
       end.setHours(23, 59, 59, 999);
       return { from: start, to: end };
     }
-    if (period === "day") { from = new Date(nowD); from.setHours(0, 0, 0, 0); }
-    else if (period === "week") { from = startOfWeek(); }
-    else if (period === "month") { from = startOfMonth(); }
-    else { from = startOfYear(); }
-    return { from, to };
-  }, [period, rangeMode, customFrom, customTo, pickedMonth, pickedYear]);
+    const preset: RangePreset =
+      period === "day"
+        ? "today"
+        : period === "week"
+          ? "thisWeek"
+          : period === "lastWeek"
+            ? "lastWeek"
+            : period === "month"
+              ? "thisMonth"
+              : "thisYear";
+    return resolveRange(
+      preset,
+      settings?.weekStart ?? DEFAULT_WEEK_START,
+      nowD
+    );
+  }, [
+    period,
+    rangeMode,
+    customFrom,
+    customTo,
+    pickedMonth,
+    pickedYear,
+    settings?.weekStart,
+  ]);
 
   const itemRows = useMemo(
     () => itemPerformance(sales, purchaseOrders, range),
@@ -670,7 +689,7 @@ export default function Statistics() {
                 data={expenseCats.slice(0, 8).map((e, i) => ({
                   label: e.label,
                   value: e.value,
-                  color: chartColor(i),
+                  color: expenseMixColor(i),
                 }))}
                 formatValue={money}
               />

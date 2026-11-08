@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   X,
   PauseCircle,
-  ScanLine,
   Gift,
   RotateCcw,
   LayoutGrid,
@@ -60,6 +59,8 @@ import {
 import { cn, formatCurrency, formatNumber, formatIntegerWithCommas, formatAmountInput, wrapByWords, toErrorMessage } from "@/lib/utils";
 import { currencyByCode } from "@/lib/referenceData";
 import { computeTotals, producibleFromBOM } from "@/lib/pos";
+import { holdHint } from "@/lib/businessClues";
+import BarcodeScanButton from "@/components/common/BarcodeScanButton";
 import {
   clearPosDraft,
   loadPosDraft,
@@ -70,6 +71,7 @@ import { describePrintError, printSaleReceipt } from "@/lib/printing";
 import DocumentView from "@/components/features/receipts/DocumentView";
 import PrintablePortal from "@/components/features/receipts/PrintablePortal";
 import ReceiptActions from "@/components/features/receipts/ReceiptActions";
+import SaleCompletion from "@/components/features/receipts/SaleCompletion";
 import CustomerCombobox from "@/components/features/customers/CustomerCombobox";
 import GlassSelect from "@/components/ui/GlassSelect";
 import MoneyText from "@/components/ui/MoneyText";
@@ -89,7 +91,7 @@ export default function Dashboard() {
   const { data: items = [], isLoading: itemsLoading } = useItems();
   const { data: uoms = [] } = useUoms();
   const { data: conversions = [] } = useUnitConversions();
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [], isSuccess: customersLoaded } = useCustomers();
   const { data: settings } = useShopSettings();
   const { data: heldTickets = [] } = useHeldTickets();
   const { data: employees = [] } = useEmployees();
@@ -147,6 +149,7 @@ export default function Dashboard() {
   const [rawQtyMap, setRawQtyMap] = useState<Record<string, string>>({});
   const [rawDiscountMap, setRawDiscountMap] = useState<Record<string, string>>({});
   const [lastReceipt, setLastReceipt] = useState<Sale | null>(null);
+  const [completedSale, setCompletedSale] = useState<Sale | null>(null);
   const [partialOpen, setPartialOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
@@ -199,6 +202,21 @@ export default function Dashboard() {
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const availablePoints = selectedCustomer?.loyaltyPoints || 0;
+
+  /**
+   * A POS draft or held ticket saved by an older build can carry a customer id
+   * that no longer exists (or was never a uuid, e.g. "cust-mtn"). The combobox
+   * then shows "Walk-in Customer" while the stale id is still attached, and
+   * checkout dies in Postgres with 22P02. Once the live customer list has
+   * loaded, drop any id it does not contain.
+   */
+  useEffect(() => {
+    if (!customersLoaded || !customerId) return;
+    if (customers.some((c) => c.id === customerId)) return;
+    setCustomerId("");
+    setLoyaltyRedeem(0);
+    toast.info("The saved customer is not available — switched to Walk-in.");
+  }, [customersLoaded, customers, customerId]);
 
   const add = (item: Item) => {
     setCart((c) => {
@@ -259,6 +277,23 @@ export default function Dashboard() {
       sellable.find((i) => i.sku.toLowerCase() === q);
     if (direct) { add(direct); setQuery(""); toast.success(`Added ${direct.name}`); return; }
     if (filtered.length === 1) { add(filtered[0]); setQuery(""); toast.success(`Added ${filtered[0].name}`); }
+  };
+
+  /** Camera/manual scan: add an exact barcode/SKU match, else show matches. */
+  const handleScan = (code: string) => {
+    const q = code.trim().toLowerCase();
+    if (!q) return;
+    const direct =
+      sellable.find((i) => (i.barcode || "").toLowerCase() === q) ||
+      sellable.find((i) => i.sku.toLowerCase() === q);
+    if (direct) {
+      add(direct);
+      setQuery("");
+      toast.success(`Added ${direct.name}`);
+      return;
+    }
+    setQuery(code);
+    toast.info("No exact match — showing similar items");
   };
 
   const setQty = (id: string, value: number) =>
@@ -358,7 +393,15 @@ export default function Dashboard() {
     try {
       stampedInput = stampCheckoutInput(checkoutInput);
       const sale = await completeSale.mutateAsync(stampedInput);
-      setLastReceipt(sale);
+      setCompletedSale(sale);
+      // Open the existing receipt preview behind the success circle. "No
+      // preview" (0) still mounts it invisibly when auto-print needs a portal.
+      if (
+        (settings.printer.receiptPreviewMs ?? 2000) !== 0 ||
+        settings.printer.autoPrint
+      ) {
+        setLastReceipt(sale);
+      }
       // Transaction confirmed: safe to release the resumed held ticket.
       if (resumedHeldTicketId) {
         deleteHeld.mutate(resumedHeldTicketId);
@@ -372,7 +415,7 @@ export default function Dashboard() {
       setShowCartMobile(false);
       setPartialOpen(false);
       clearPosDraft(draftStorage);
-      toast.success(`Sale ${sale.number} · ${formatCurrency(sale.total, settings.currency)}`);
+      // The premium completion surface replaces the old success toast.
       // Transaction-allowance policy (Item 7): evaluate the cashier's
       // period count in the background — never blocks the receipt.
       if (settings?.transactionAllowancePolicy?.enabled && actor.id) {
@@ -407,8 +450,14 @@ export default function Dashboard() {
       if (queueId) {
         // Offline: open the receipt instantly from the same numbers the
         // server write will produce — the customer doesn't wait for internet.
-        setLastReceipt(buildLocalSale(stampedInput, queueId));
-        toast.success("Sale queued — receipt ready, will sync when you're back online");
+        const local = buildLocalSale(stampedInput, queueId);
+        setCompletedSale(local);
+        if (
+          (settings.printer.receiptPreviewMs ?? 2000) !== 0 ||
+          settings.printer.autoPrint
+        ) {
+          setLastReceipt(local);
+        }
         setCart([]);
         setOrderDiscountPct(0);
         setOrderDiscountAmount(0);
@@ -577,16 +626,20 @@ export default function Dashboard() {
         </div>
         <div className="paper-card p-2 md:p-4 space-y-1.5 md:space-y-3">
           <div className="relative">
-            <ScanLine className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-mute" />
+            <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <input
               ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleSearchKeydown}
               placeholder="Scan barcode or search products, SKUs and press Enter..."
-              className="pos-search"
+              className="pos-search pr-16"
             />
-            <Search className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-mute" />
+            <BarcodeScanButton
+              onScan={handleScan}
+              label="Scan barcode into the sales counter"
+              className="absolute right-2 top-1/2 -translate-y-1/2"
+            />
           </div>
 
           <div className="flex items-center gap-1.5 md:gap-2 md:hidden">
@@ -1249,7 +1302,7 @@ export default function Dashboard() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <input autoFocus value={holdLabel} onChange={(e) => setHoldLabel(e.target.value)} placeholder="e.g. Amy's business cards" className="input mt-2 md:mt-4" onKeyDown={(e) => e.key === "Enter" && hold()} />
+            <input autoFocus value={holdLabel} onChange={(e) => setHoldLabel(e.target.value)} placeholder={holdHint(settings?.businessType)} className="input mt-2 md:mt-4" onKeyDown={(e) => e.key === "Enter" && hold()} />
             <div className="mt-2 md:mt-4 flex justify-end gap-1.5 md:gap-2">
               <button onClick={() => setHoldDialogOpen(false)} className="btn btn-outline">Cancel</button>
               <button onClick={hold} disabled={holdTicket.isPending} className="btn btn-primary">Hold ticket</button>
@@ -1268,8 +1321,22 @@ export default function Dashboard() {
         />
       )}
 
+      {completedSale && (
+        <SaleCompletion
+          sale={completedSale}
+          currency={settings?.currency}
+          delayMs={settings?.printer.successPopupMs ?? 1500}
+          onDone={() => setCompletedSale(null)}
+        />
+      )}
+
       {lastReceipt && (
-        <ReceiptModal sale={lastReceipt} onClose={() => setLastReceipt(null)} />
+        <ReceiptModal
+          sale={lastReceipt}
+          onClose={() => setLastReceipt(null)}
+          preview={(settings?.printer.receiptPreviewMs ?? 2000) !== 0}
+          paused={!!completedSale}
+        />
       )}
 
       {customerModalOpen && (
@@ -1359,29 +1426,83 @@ function PartialPaymentModal({ total, currency, onClose, onConfirm, pending }: {
   );
 }
 
-function ReceiptModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
+function ReceiptModal({
+  sale,
+  onClose,
+  preview,
+  paused,
+}: {
+  sale: Sale;
+  onClose: () => void;
+  /** false = auto-print headless (no receipt preview shown). */
+  preview: boolean;
+  /** true while the sale-complete circle is still on screen. */
+  paused: boolean;
+}) {
   const { data: settings } = useShopSettings();
   const { data: payments = [] } = useSalePayments(sale.id);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const autoPrinted = useRef(false);
+  const [held, setHeld] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
 
+  // Automatic printing (unchanged pipeline): once per successful sale,
+  // independent of whether the receipt preview is shown or how long it stays.
   useEffect(() => {
     if (!settings || autoPrinted.current || !settings.printer.autoPrint) return;
     autoPrinted.current = true;
     if (settings.printer.printerType === "system") {
-      window.setTimeout(() => window.print(), 400);
+      window.setTimeout(() => {
+        window.print();
+        // Headless mode exists only to print; the receipt portal can go now.
+        if (!preview) onCloseRef.current();
+      }, 400);
       return;
     }
     void printSaleReceipt(sale, settings, payments)
-      .then((outcome) => toast.success(`Auto-printed to ${outcome.label}`))
-      .catch((err) => setPrintError(describePrintError(err)));
-  }, [settings, sale, payments]);
+      .then((outcome) => {
+        toast.success(`Auto-printed to ${outcome.label}`);
+        if (!preview) onCloseRef.current();
+      })
+      .catch((err) => {
+        const message = describePrintError(err);
+        setPrintError(message);
+        toast.error(message);
+        if (!preview) onCloseRef.current();
+      });
+  }, [settings, sale, payments, preview]);
+
+  // Receipt preview delay. It starts only after the success circle is gone,
+  // and any pointer/key interaction keeps the receipt on screen.
+  useEffect(() => {
+    if (!settings || !preview || paused || held) return;
+    const delay = settings.printer.receiptPreviewMs ?? 2000;
+    if (delay <= 0) return; // -1 keep open
+    const timer = window.setTimeout(() => onCloseRef.current(), delay);
+    return () => window.clearTimeout(timer);
+  }, [preview, paused, held, settings]);
 
   if (!settings) return null;
+
+  // Headless print host: no preview UI, only the printable receipt.
+  if (!preview) {
+    return (
+      <PrintablePortal>
+        <DocumentView sale={sale} settings={settings} payments={payments} />
+      </PrintablePortal>
+    );
+  }
+
   const isInvoice = sale.documentType === "invoice" || sale.amountDue > 0;
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4 animate-fade-in no-print">
+      <div
+        className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4 animate-fade-in no-print"
+        onPointerDown={() => setHeld(true)}
+        onFocusCapture={() => setHeld(true)}
+        onWheel={() => setHeld(true)}
+      >
         <div className={cn("bg-white rounded-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[95dvh]", isInvoice ? "max-w-3xl" : "max-w-md")}>
           <div className="p-4 border-b flex items-center justify-between shrink-0">
             <div>

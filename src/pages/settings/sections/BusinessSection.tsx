@@ -3,6 +3,13 @@ import CountrySelect from "@/components/common/CountrySelect";
 import PhoneInput from "@/components/common/PhoneInput";
 import GlassSelect from "@/components/ui/GlassSelect";
 import { BUSINESS_TYPES, COUNTRIES, TIMEZONES, TIMEZONE_OPTIONS } from "@/lib/referenceData";
+import { DEFAULT_WEEK_START, WEEK_START_OPTIONS } from "@/lib/week";
+import {
+  addressHint,
+  businessNameHint,
+  emailHint,
+} from "@/lib/businessClues";
+import type { WeekStart } from "@/types";
 import { Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
 
@@ -25,7 +32,7 @@ export default function BusinessSection() {
                     className="input"
                     value={form.shopName}
                     onChange={(e) => setForm({ ...form, shopName: e.target.value })}
-                    placeholder="e.g. Acme Printing Services"
+                    placeholder={businessNameHint(form.businessType)}
                   />
                 </SField>
                 <SField label="Commercial Category" htmlFor="set-business-type" req>
@@ -76,6 +83,22 @@ export default function BusinessSection() {
                     className="input select-glass"
                   />
                 </SField>
+                <SField label="Week Starts On" htmlFor="set-week-start">
+                  <GlassSelect
+                    id="set-week-start"
+                    value={form.weekStart ?? DEFAULT_WEEK_START}
+                    onChange={(v) => setForm({ ...form, weekStart: v as WeekStart })}
+                    ariaLabel="Week starts on"
+                    options={WEEK_START_OPTIONS}
+                    className="input select-glass"
+                  />
+                  <div className="field-hint" style={{ marginTop: 4 }}>
+                    Drives This Week and Last Week in reports. Defaults to Monday.
+                  </div>
+                </SField>
+              </div>
+
+              <div className="grid-2" style={{ marginTop: 14 }}>
                 <SField label="Support Email" htmlFor="set-email" req>
                   <input
                     id="set-email"
@@ -83,7 +106,16 @@ export default function BusinessSection() {
                     className="input"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="billing@shop.com"
+                    placeholder={emailHint(form.shopName)}
+                  />
+                </SField>
+                <SField label="Physical Shop Address" htmlFor="set-address">
+                  <input
+                    id="set-address"
+                    className="input"
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    placeholder={addressHint(form.businessType, form.country)}
                   />
                 </SField>
               </div>
@@ -117,18 +149,6 @@ export default function BusinessSection() {
                     value={form.whatsapp}
                     onChange={(whatsapp) => setForm({ ...form, whatsapp })}
                     placeholder="712 345 678"
-                  />
-                </SField>
-              </div>
-
-              <div style={{ marginTop: 14 }}>
-                <SField label="Physical Shop Address" htmlFor="set-address">
-                  <input
-                    id="set-address"
-                    className="input"
-                    value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    placeholder="Plot 42 Printing House Arcade, 1st Floor, Kampala"
                   />
                 </SField>
               </div>

@@ -59,6 +59,7 @@ export function useUpdateShopSettings() {
       if (patch.phone !== undefined) payload.phone = patch.phone;
       if (patch.email !== undefined) payload.email = patch.email;
       if (patch.categories !== undefined) payload.categories = patch.categories;
+      if (patch.weekStart !== undefined) payload.week_start = patch.weekStart;
       if (patch.expenseCategories !== undefined)
         payload.expense_categories = patch.expenseCategories;
       if (patch.country !== undefined) payload.country = patch.country;
@@ -84,9 +85,27 @@ export function useUpdateShopSettings() {
       if (patch.pendingTxnAllowances !== undefined)
         payload.pending_txn_allowances = patch.pendingTxnAllowances;
 
-      const { error } = await supabase
+      const row = await settingsRow(payload);
+      let { error } = await supabase
         .from("shop_settings")
-        .upsert(await settingsRow(payload), { onConflict: "id" });
+        .upsert(row, { onConflict: "id" });
+
+      // Older deployments may not have run the week_start migration yet.
+      // Never block an unrelated settings save because of one new column;
+      // retry without it and keep the rest of the form intact.
+      if (error && /week_start/i.test(error.message)) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            "[settings] week_start column missing — applying migration 20261108000001_shop_week_start.sql"
+          );
+        }
+        const fallback = { ...row } as Record<string, unknown>;
+        delete fallback.week_start;
+        ({ error } = await supabase
+          .from("shop_settings")
+          .upsert(fallback, { onConflict: "id" }));
+      }
+
       if (error) {
         console.error("shop_settings save failed", error);
         throw toError(error, "Save failed");

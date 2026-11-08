@@ -45,6 +45,7 @@ import {
   type PendingTxnAllowance,
   type TransactionAllowancePolicy,
 } from "@/types";
+import { receiptHeaderHint } from "@/lib/businessClues";
 
 const n = (v: unknown, d = 0) => (v == null ? d : Number(v));
 
@@ -356,6 +357,14 @@ export function mapSettings(r: DbRow): Settings {
     phone: r.phone || "",
     email: r.email || "",
     categories: Array.isArray(r.categories) ? r.categories : [],
+    weekStart: (() => {
+      const v = String(r.week_start || "").toLowerCase();
+      return (
+        ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].includes(v)
+          ? v
+          : "monday"
+      ) as Settings["weekStart"];
+    })(),
     expenseCategories: Array.isArray(r.expense_categories) ? r.expense_categories : [],
     country: r.country || "",
     timezone: r.timezone || "UTC",
@@ -372,7 +381,7 @@ export function mapSettings(r: DbRow): Settings {
     termsVersion: r.terms_version || "",
     privacyVersion: r.privacy_version || "",
     receipt: {
-      header: receipt.header || "Thanks for printing with us!",
+      header: receipt.header || receiptHeaderHint(r.business_type),
       footer: receipt.footer || "",
       showLogo: receipt.showLogo !== false,
       paperWidthMm: ([58, 80, 99].includes(Number(receipt.paperWidthMm)) ? Number(receipt.paperWidthMm) : 80) as 58 | 80 | 99,
@@ -399,6 +408,21 @@ export function mapSettings(r: DbRow): Settings {
       codepage: (["cp437", "cp850", "cp858", "cp1252"].includes(printer.codepage) ? printer.codepage : "cp1252"),
       autoPrint: !!printer.autoPrint,
       openDrawer: !!printer.openDrawer,
+      successPopupMs: (() => {
+        const raw = printer.successPopupMs;
+        if (raw === undefined || raw === null) return 1500;
+        const v = Number(raw);
+        if (!Number.isFinite(v)) return 1500;
+        return Math.min(10000, Math.max(400, Math.round(v)));
+      })(),
+      receiptPreviewMs: (() => {
+        const raw = printer.receiptPreviewMs;
+        if (raw === undefined || raw === null) return 2000;
+        const v = Number(raw);
+        if (!Number.isFinite(v)) return 2000;
+        if (v < 0) return -1;
+        return Math.min(60000, Math.round(v));
+      })(),
     },
     loyalty: {
       enabled: loyalty.enabled !== false,

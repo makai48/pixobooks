@@ -40,6 +40,7 @@ import {
   splitPhone,
   joinPhone,
 } from "@/lib/referenceData";
+import { businessNameHint } from "@/lib/businessClues";
 import "@/styles/auth.css";
 
 type Step = "details" | "otp";
@@ -422,7 +423,7 @@ export default function Register() {
                         required
                         value={businessName}
                         onChange={(e) => setBusinessName(e.target.value)}
-                        placeholder="e.g. Pixo Business"
+                        placeholder={businessNameHint(businessType)}
                         autoComplete="organization"
                         className="input reg-input reg-with-icon"
                       />

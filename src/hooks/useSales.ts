@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { mapSale, mapSalePayment } from "@/lib/mappers";
-import { movementPayload } from "@/lib/stockLedger";
+import { movementPayload, type StockMovementInput } from "@/lib/stockLedger";
+import { toErrorMessage } from "@/lib/utils";
 import type {
   Item,
   PaymentMethod,
@@ -103,6 +104,10 @@ export type CheckoutInput = {
   /** Document number stamped once at creation (R/I + prefix + timestamp).
    *  Carried verbatim through offline queue, retries, and sync replay. */
   documentNumber?: string | null;
+  /** Sale timestamp stamped once at creation. The authoritative RPC inserts
+   *  every column of the payload explicitly, so this must always be present;
+   *  keeping it stable also preserves the real time of a queued offline sale. */
+  createdAt?: string | null;
   /** Business captured when the sale was started. Keeps offline replay in the
    *  right workspace even if the user switches business before reconnecting. */
   businessId?: string | null;
@@ -212,14 +217,29 @@ export function useVoidSale() {
       // browser must not reconstruct stock using today's BOM/UOM catalogue.
       const { data: originalMovements, error: movementReadError } = await supabase
         .from("stock_movements")
-        .select("item_id, qty_base")
+        .select("item_id, qty_base, source_line, unit_cost, business_id, branch_id")
         .eq("source_type", "sale")
         .eq("source_id", id);
       if (movementReadError) throw movementReadError;
-      const movements = (originalMovements || []).map((m) => ({
-        itemId: m.item_id as string,
-        qtyBase: Number(m.qty_base || 0),
-      }));
+      // Reverse exactly what the sale removed. This is a fallback for older
+      // installs whose void_sale still posts the browser payload; the newer
+      // server function rebuilds the same rows itself and ignores this list.
+      const movements: StockMovementInput[] = (originalMovements || [])
+        .filter((m) => !!m.item_id)
+        .map((m) => ({
+          itemId: m.item_id as string,
+          qtyBase: -Number(m.qty_base || 0),
+          unitCost: m.unit_cost == null ? null : Number(m.unit_cost),
+          sourceType: "sale_void",
+          sourceId: id,
+          sourceLine: Number(m.source_line || 0),
+          occurredAt: new Date().toISOString(),
+          actorId: profile?.id ?? null,
+          actorName: profile?.name ?? null,
+          reason: `Voided sale ${sale.number} - stock returned`,
+          businessId: m.business_id ?? null,
+          branchId: m.branch_id ?? null,
+        }));
 
       // Preferred path: the server verifies `sales.void` AND marks the
       // document voided in the same transaction as the stock return, so the
@@ -227,10 +247,10 @@ export function useVoidSale() {
       const rpc = await supabase.rpc("void_sale", {
         p_sale_id: id,
         p_reason: reason ?? null,
-        p_movements: movementPayload([]),
+        p_movements: movementPayload(movements),
       });
       if (rpc.error) {
-        throw rpc.error;
+        throw new Error(toErrorMessage(rpc.error, "Could not void this sale"));
       }
 
       await logAudit(

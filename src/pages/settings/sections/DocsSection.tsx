@@ -1,5 +1,6 @@
 import type { ReceiptWidthMm } from "@/types";
 import GlassSelect from "@/components/ui/GlassSelect";
+import { receiptFooterHint, receiptHeaderHint } from "@/lib/businessClues";
 import { safeNum } from "../constants";
 import { CheckboxRow, Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
@@ -23,6 +24,7 @@ export default function DocsSection() {
                       id="set-receipt-header"
                       className="input"
                       value={form.receipt.header}
+                      placeholder={receiptHeaderHint(form.businessType)}
                       onChange={(e) =>
                         setForm({
                           ...form,
@@ -36,6 +38,7 @@ export default function DocsSection() {
                       id="set-receipt-footer"
                       className="input"
                       value={form.receipt.footer}
+                      placeholder={receiptFooterHint(form.businessType)}
                       onChange={(e) =>
                         setForm({
                           ...form,

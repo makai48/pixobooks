@@ -17,6 +17,7 @@ import { cn, formatCurrency, formatMoney } from "@/lib/utils";
 import { computeItemCost, producibleFromBOM } from "@/lib/pos";
 import { ITEM_TYPE_META, type Item, type ItemType } from "@/types";
 import ItemModal from "@/components/features/inventory/ItemModal";
+import BarcodeScanButton from "@/components/common/BarcodeScanButton";
 import GlassSelect from "@/components/ui/GlassSelect";
 import MoneyText from "@/components/ui/MoneyText";
 import StatCard from "@/components/ui/StatCard";
@@ -181,7 +182,12 @@ export default function Inventory() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search SKU, name, or barcode"
             aria-label="Search inventory"
-            className="input input-sm pl-7 md:pl-9"
+            className="input input-sm pl-7 pr-10 md:pl-9"
+          />
+          <BarcodeScanButton
+            onScan={(code) => setQ(code)}
+            label="Scan barcode into inventory search"
+            className="absolute right-0.5 top-1/2 -translate-y-1/2"
           />
         </div>
         <GlassSelect

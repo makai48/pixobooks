@@ -1,0 +1,499 @@
+/* ------------------------------------------------------------------ */
+/* Barcode scanner — V3 dialog, transparent target, sweep, success     */
+/* ------------------------------------------------------------------ */
+
+.scan-dialog {
+  --scan-bg: #ffffff;
+  --scan-fg: oklch(0.18 0 0);
+  --scan-muted: oklch(0.56 0 0);
+  --scan-border: oklch(0.925 0.004 106);
+  --scan-field: oklch(0.18 0 0 / 0.5);
+  --scan-brand: oklch(0.86 0.175 92);
+  --scan-brand-fg: oklch(0.18 0 0);
+  --scan-success: oklch(0.72 0.15 155);
+  --scan-font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --scan-font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--scan-border);
+  border-radius: 20px;
+  background: var(--scan-bg);
+  color: var(--scan-fg);
+  font-family: var(--scan-font-sans);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.03),
+    0 24px 64px -20px oklch(0 0 0 / 0.35);
+}
+
+[data-theme="dark"] .scan-dialog,
+.dark .scan-dialog {
+  --scan-bg: oklch(0.208 0.042 265.755);
+  --scan-fg: oklch(0.984 0.003 247.858);
+  --scan-muted: oklch(0.704 0.04 256.788);
+  --scan-border: oklch(1 0 0 / 0.1);
+  --scan-field: oklch(0.984 0.003 247.858 / 0.32);
+}
+
+.scan-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--scan-border);
+}
+
+.scan-dialog-kicker {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--scan-muted);
+}
+
+.scan-dialog-title {
+  margin-top: 2px;
+  font-family: var(--scan-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.scan-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* ---- Live camera stage --------------------------------------------- */
+
+.scan-stage {
+  position: relative;
+  width: 100%;
+  height: clamp(180px, 34vh, 250px);
+  overflow: hidden;
+  border-radius: 14px;
+  background: #000;
+}
+
+.scan-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  color: var(--scan-muted);
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.scan-icon-btn:hover {
+  color: var(--scan-fg);
+  background: color-mix(in oklch, var(--scan-fg) 6%, transparent);
+}
+
+.scan-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--scan-brand);
+}
+
+/* ---- Target frame ------------------------------------------------- */
+
+.scan-frame {
+  position: relative;
+  width: min(17rem, 86%);
+  aspect-ratio: 8 / 5;
+  border-radius: 10px;
+  /* Dim the live camera around the target without freezing or cropping it. */
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+}
+
+/* Transparent while scanning so the physical barcode stays visible. */
+.scan-area {
+  position: absolute;
+  inset: 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: inset 0 0 22px rgba(255, 204, 8, 0.14),
+    0 0 0 1px rgba(255, 204, 8, 0.45);
+  transition: background-color 220ms ease, box-shadow 220ms ease;
+}
+
+/* White capture surface appears only after a real decode. */
+.scan-frame.is-success .scan-area {
+  background: #ffffff;
+  box-shadow: inset 0 0 26px rgba(34, 197, 94, 0.2),
+    0 0 0 2px rgba(34, 197, 94, 0.85), 0 0 30px rgba(34, 197, 94, 0.45);
+}
+
+/* Yellow crop brackets breathe gently to show the frame is live. */
+.scan-brackets {
+  position: absolute;
+  inset: -5px;
+  pointer-events: none;
+  animation: scan-breathe 2.6s ease-in-out infinite;
+}
+
+.scan-brackets span {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #ffcc08;
+  filter: drop-shadow(0 0 4px rgba(255, 204, 8, 0.55));
+}
+
+.scan-brackets .tl {
+  top: 0;
+  left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-top-left-radius: 6px;
+}
+
+.scan-brackets .tr {
+  top: 0;
+  right: 0;
+  border-left: 0;
+  border-bottom: 0;
+  border-top-right-radius: 6px;
+}
+
+.scan-brackets .bl {
+  bottom: 0;
+  left: 0;
+  border-right: 0;
+  border-top: 0;
+  border-bottom-left-radius: 6px;
+}
+
+.scan-brackets .br {
+  bottom: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 0;
+  border-bottom-right-radius: 6px;
+}
+
+.scan-barcode {
+  position: absolute;
+  inset: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Alignment guide: white bars at 45% until the code is decoded. */
+.scan-barcode.is-scanning {
+  opacity: 0.45;
+  transition: opacity 220ms ease;
+}
+
+.scan-frame.is-success .scan-barcode {
+  opacity: 1;
+}
+
+/* Blue laser sweeping the stationary guide; 45% peak while scanning. */
+.scan-laser {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  top: 8%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #38bdf8 10%,
+    #bae6fd 50%,
+    #38bdf8 90%,
+    transparent
+  );
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.7),
+    0 0 16px rgba(56, 189, 248, 0.35);
+  animation: scan-laser 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* ---- Success overlay ---------------------------------------------- */
+
+.scan-success-pulse {
+  position: absolute;
+  inset: 8px;
+  border-radius: 8px;
+  border: 2px solid rgba(34, 197, 94, 0.55);
+  animation: scan-success-pulse 1.1s ease-out infinite;
+  pointer-events: none;
+}
+
+.scan-tick {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  animation: scan-tick-pop 360ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.scan-tick svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.scan-tick-bg {
+  fill: #22c55e;
+  filter: drop-shadow(0 6px 14px rgba(34, 197, 94, 0.4));
+}
+
+.scan-tick-circle {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: scan-draw-circle 340ms 80ms ease-out forwards;
+}
+
+.scan-tick-check {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: scan-draw-check 300ms 300ms ease-out forwards;
+}
+
+/* ---- V3 action buttons -------------------------------------------- */
+
+.scan-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-family: var(--scan-font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  transition: filter 180ms ease, box-shadow 180ms ease,
+    background-color 160ms ease, border-color 160ms ease,
+    transform 120ms ease, opacity 160ms ease;
+}
+
+.scan-btn:active {
+  transform: scale(0.99);
+}
+
+.scan-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.4);
+}
+
+.scan-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.scan-btn-primary {
+  border: 0;
+  background: var(--scan-brand);
+  color: var(--scan-brand-fg);
+}
+
+.scan-btn-primary:hover:not(:disabled) {
+  filter: brightness(0.96);
+  box-shadow: 0 8px 20px -8px oklch(0.86 0.175 92 / 0.6);
+}
+
+.scan-btn-secondary {
+  border: 1px solid var(--scan-field);
+  background: transparent;
+  color: var(--scan-fg);
+}
+
+.scan-btn-secondary:hover:not(:disabled) {
+  border-color: var(--scan-fg);
+  background: color-mix(in oklch, var(--scan-fg) 4%, transparent);
+}
+
+.scan-btn-ghost {
+  border: 0;
+  background: transparent;
+  color: var(--scan-muted);
+}
+
+.scan-btn-ghost:hover:not(:disabled) {
+  color: var(--scan-fg);
+  background: color-mix(in oklch, var(--scan-fg) 6%, transparent);
+}
+
+.scan-instruction {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--scan-muted);
+}
+
+.scan-instruction.is-success {
+  color: var(--scan-success);
+  font-weight: 600;
+}
+
+.scan-action-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.scan-action-grid.is-pair {
+  grid-template-columns: 1fr 1fr;
+}
+
+.scan-action-grid.is-single {
+  grid-template-columns: 1fr;
+}
+
+/* Success hold: keep the grid's height so the dialog does not jump, but
+   remove the actions from view — the code is applied automatically. */
+.scan-action-grid.is-idle {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.scan-hint {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--scan-muted);
+}
+
+/* ---- Responsive tuning -------------------------------------------- */
+
+/* Short viewports (landscape phones, small laptops): keep both actions visible. */
+@media (max-height: 560px) {
+  .scan-stage {
+    height: clamp(150px, 38vh, 200px);
+  }
+
+  .scan-dialog-head {
+    padding: 12px 16px;
+  }
+
+  .scan-dialog-body {
+    padding: 12px 16px 14px;
+  }
+
+  .scan-dialog-title {
+    font-size: 18px;
+  }
+
+  .scan-hint {
+    margin-top: 6px;
+  }
+}
+
+@media (min-width: 640px) and (min-height: 720px) {
+  .scan-stage {
+    height: 250px;
+  }
+}
+
+/* ---- Keyframes ----------------------------------------------------- */
+
+@keyframes scan-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.022);
+  }
+}
+
+@keyframes scan-laser {
+  0% {
+    top: 8%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.45;
+  }
+  90% {
+    opacity: 0.45;
+  }
+  100% {
+    top: 92%;
+    opacity: 0;
+  }
+}
+
+@keyframes scan-success-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+}
+
+@keyframes scan-tick-pop {
+  from {
+    transform: scale(0.82);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scan-draw-circle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes scan-draw-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-brackets,
+  .scan-laser,
+  .scan-success-pulse,
+  .scan-tick {
+    animation: none;
+  }
+
+  .scan-laser {
+    top: 50%;
+    opacity: 0.45;
+  }
+
+  .scan-tick-circle,
+  .scan-tick-check {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

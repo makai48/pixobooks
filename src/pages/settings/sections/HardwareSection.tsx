@@ -542,6 +542,60 @@ export default function HardwareSection() {
                     label="Fire electronic cash drawer kick pulse on cash sales"
                   />
                 </div>
+
+                <div className="grid-2" style={{ marginTop: 14 }}>
+                  <SField
+                    label="Sale confirmation popup"
+                    htmlFor="set-success-popup"
+                    hint="How long the animated tick stays in front of the receipt."
+                  >
+                    <GlassSelect
+                      id="set-success-popup"
+                      value={String(form.printer.successPopupMs ?? 1500)}
+                      onChange={(v) =>
+                        setForm({
+                          ...form,
+                          printer: { ...form.printer, successPopupMs: Number(v) },
+                        })
+                      }
+                      ariaLabel="Sale confirmation popup duration"
+                      options={[
+                        { value: "800", label: "0.8 seconds" },
+                        { value: "1200", label: "1.2 seconds" },
+                        { value: "1500", label: "1.5 seconds" },
+                        { value: "2000", label: "2 seconds" },
+                        { value: "3000", label: "3 seconds" },
+                      ]}
+                      className="input select-glass"
+                    />
+                  </SField>
+                  <SField
+                    label="Receipt preview"
+                    htmlFor="set-receipt-preview"
+                    hint="How long the receipt stays on screen after the popup, or turn the preview off."
+                  >
+                    <GlassSelect
+                      id="set-receipt-preview"
+                      value={String(form.printer.receiptPreviewMs ?? 2000)}
+                      onChange={(v) =>
+                        setForm({
+                          ...form,
+                          printer: { ...form.printer, receiptPreviewMs: Number(v) },
+                        })
+                      }
+                      ariaLabel="Receipt preview duration"
+                      options={[
+                        { value: "0", label: "No preview" },
+                        { value: "1000", label: "1 second" },
+                        { value: "2000", label: "2 seconds" },
+                        { value: "3000", label: "3 seconds" },
+                        { value: "5000", label: "5 seconds" },
+                        { value: "-1", label: "Keep open" },
+                      ]}
+                      className="input select-glass"
+                    />
+                  </SField>
+                </div>
               </div>
 
               <PrinterDevicePicker

@@ -1,4 +1,5 @@
 import { Plus, X } from "lucide-react";
+import { categoryHint } from "@/lib/businessClues";
 import { Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
 
@@ -49,7 +50,7 @@ export default function CategoriesSection() {
                       addCategory();
                     }
                   }}
-                  placeholder="Enter new category name..."
+                  placeholder={categoryHint(form.businessType)}
                 />
                 <button type="button" className="btn btn-outline" onClick={addCategory}>
                   <Plus className="icon" />

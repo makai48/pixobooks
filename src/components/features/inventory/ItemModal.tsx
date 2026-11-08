@@ -15,8 +15,10 @@ import {
 } from "@/lib/uom";
 import { cn, formatCurrency, uid } from "@/lib/utils";
 import { currencyByCode } from "@/lib/referenceData";
+import { itemHint } from "@/lib/businessClues";
 import { processImageFile } from "@/lib/imageUpload";
 import SearchableSelect from "./SearchableSelect";
+import BarcodeScanButton from "@/components/common/BarcodeScanButton";
 import "./item-modal.css";
 
 type Props = {
@@ -967,7 +969,7 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
                     className="input-control"
                     id="itemName"
                     onChange={(e) => update({ name: e.target.value })}
-                    placeholder="e.g. 80gsm A4 Ream Paper"
+                    placeholder={itemHint(settings?.businessType)}
                     required
                     type="text"
                     value={form.name}
@@ -1006,14 +1008,21 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
                   <label className="label" htmlFor="itemBarcode">
                     Barcode / UPC
                   </label>
-                  <input
-                    className="input-control num"
-                    id="itemBarcode"
-                    onChange={(e) => update({ barcode: e.target.value })}
-                    placeholder="Scan or enter code"
-                    type="text"
-                    value={form.barcode}
-                  />
+                  <div className="relative">
+                    <input
+                      className="input-control num pr-10"
+                      id="itemBarcode"
+                      onChange={(e) => update({ barcode: e.target.value })}
+                      placeholder="Scan or enter code"
+                      type="text"
+                      value={form.barcode}
+                    />
+                    <BarcodeScanButton
+                      onScan={(code) => update({ barcode: code })}
+                      label="Scan into barcode field"
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2"
+                    />
+                  </div>
                 </div>
                 <div className={cn("form-group", isService && "hidden")} id="stockOnHandGroup">
                   <label className="label" htmlFor="stockOnHand">
@@ -1916,22 +1925,32 @@ function CloneSetupModal({
               <label className="label" htmlFor="item-clone-barcode">
                 New barcode / UPC
               </label>
-              <input
-                className="input-control num"
-                id="item-clone-barcode"
-                onChange={(e) => {
-                  setBarcode(e.target.value);
-                  setError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    confirm();
-                  }
-                }}
-                placeholder="Scan or type a new code, or leave blank"
-                value={barcode}
-              />
+              <div className="relative">
+                <input
+                  className="input-control num pr-10"
+                  id="item-clone-barcode"
+                  onChange={(e) => {
+                    setBarcode(e.target.value);
+                    setError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      confirm();
+                    }
+                  }}
+                  placeholder="Scan or type a new code, or leave blank"
+                  value={barcode}
+                />
+                <BarcodeScanButton
+                  onScan={(code) => {
+                    setBarcode(code);
+                    setError(null);
+                  }}
+                  label="Scan into new barcode field"
+                  className="absolute right-0.5 top-1/2 -translate-y-1/2"
+                />
+              </div>
               <div className="helper-text" style={{ fontSize: 10.5 }}>
                 The copy cannot reuse the original barcode or any code already in
                 the catalog.

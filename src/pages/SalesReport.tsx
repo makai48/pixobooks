@@ -11,6 +11,8 @@ import {
   Plus,
   LayoutDashboard,
   PauseCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import SubNav from "@/components/layout/SubNav";
 import { toast } from "sonner";
@@ -25,6 +27,12 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/hooks/useAuth";
 import { cn, download, formatCurrency, formatCompactCurrency, formatDate, localISODate, timeAgo, todayISO } from "@/lib/utils";
 import { byTransactionDateDesc, inDayRange } from "@/lib/salesReport";
+import {
+  DEFAULT_WEEK_START,
+  RANGE_PRESET_OPTIONS,
+  resolveRange,
+  type RangePreset,
+} from "@/lib/week";
 import type { PaymentMethod, Sale } from "@/types";
 import DocumentView from "@/components/features/receipts/DocumentView";
 import PrintablePortal from "@/components/features/receipts/PrintablePortal";
@@ -46,17 +54,23 @@ export default function SalesReport() {
   const voidSale = useVoidSale();
 
   const [q, setQ] = useState("");
-  /** The report opens on Today (per policy). "All" clears both bounds and
-   *  shows every transaction, ordered by the date each sale actually
-   *  happened. Imported sales keep their original `created_at`, so they
+  /** The report opens on Today (per policy). Quick presets are Today,
+   *  This Week, Last Week, This Month, This Year; manual date picks switch
+   *  to "custom". Imported sales keep their original `created_at`, so they
    *  appear on their real days. */
   const [from, setFrom] = useState(todayISO());
   const [to, setTo] = useState(todayISO());
-  const [rangePreset, setRangePreset] = useState<"today" | "7d" | "month" | "all" | "custom">("today");
+  const [rangePreset, setRangePreset] =
+    useState<RangePreset | "custom">("today");
   const [method, setMethod] = useState<"all" | PaymentMethod>("all");
   const [status, setStatus] = useState<"all" | "paid" | "partial" | "credit">("all");
   const [cashier, setCashier] = useState<string>("all");
   const [viewSale, setViewSale] = useState<Sale | null>(null);
+  /** Voided documents stay in the ledger for audit; the list hides them by
+   *  default so revenue rows and reversal rows are not mistaken for each
+   *  other. The toggle reveals them without affecting any total (voided rows
+   *  never contribute, whichever way the toggle is set). */
+  const [showVoided, setShowVoided] = useState(false);
 
   // Canonical cashier identity: sales rows carry free-text cashier names, so
   // "Sheillah K", "sheillah  k" or a renamed profile would otherwise spawn
@@ -138,34 +152,19 @@ export default function SalesReport() {
     return out;
   }, [sales, employees, cashierDisplay]);
 
-  /** Quick range presets — Today is the default. */
-  const applyPreset = (preset: "today" | "7d" | "month" | "all") => {
-    const today = todayISO();
+  /** Quick range presets — Today is the default. "This Week" and
+   *  "Last Week" follow the business week-start setting. */
+  const applyPreset = (preset: RangePreset) => {
+    const range = resolveRange(
+      preset,
+      settings?.weekStart ?? DEFAULT_WEEK_START
+    );
+    setFrom(localISODate(range.from));
+    setTo(localISODate(range.to));
     setRangePreset(preset);
-    if (preset === "today") {
-      setFrom(today);
-      setTo(today);
-      return;
-    }
-    if (preset === "7d") {
-      const d = new Date();
-      d.setDate(d.getDate() - 6);
-      setFrom(localISODate(d));
-      setTo(today);
-      return;
-    }
-    if (preset === "month") {
-      const d = new Date();
-      d.setDate(1);
-      setFrom(localISODate(d));
-      setTo(today);
-      return;
-    }
-    setFrom("");
-    setTo("");
   };
 
-  const filtered = useMemo(() => {
+  const withinFilters = useMemo(() => {
     const rows = sales.filter((s) => {
       if (!inDayRange(s.createdAt, { from, to })) return false;
       if (method !== "all" && s.paymentMethod !== method) return false;
@@ -184,6 +183,17 @@ export default function SalesReport() {
     // Always present newest transaction first, regardless of query order.
     return rows.sort(byTransactionDateDesc);
   }, [sales, q, from, to, method, status, cashier]);
+
+  /** Voided rows matching the current filters but hidden by the toggle. */
+  const hiddenVoidedCount = useMemo(
+    () => withinFilters.reduce((n, s) => n + (s.voidedAt ? 1 : 0), 0),
+    [withinFilters]
+  );
+
+  const filtered = useMemo(
+    () => (showVoided ? withinFilters : withinFilters.filter((s) => !s.voidedAt)),
+    [withinFilters, showVoided]
+  );
 
   const totals = useMemo(() => {
     // Voided documents are reversal pairs: they remain in the list for the
@@ -299,19 +309,14 @@ export default function SalesReport() {
 
       <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
         <span className="label text-[8px] md:text-[9px] text-ink-mute mr-0.5">Range</span>
-        {([
-          { k: "today", label: "Today" },
-          { k: "7d", label: "Last 7 days" },
-          { k: "month", label: "This month" },
-          { k: "all", label: "All time" },
-        ] as const).map((p) => (
+        {RANGE_PRESET_OPTIONS.map((p) => (
           <button
-            key={p.k}
+            key={p.id}
             type="button"
-            onClick={() => applyPreset(p.k)}
+            onClick={() => applyPreset(p.id)}
             className={cn(
               "chip border px-2 h-6 text-[9px] md:text-[10px] transition",
-              rangePreset === p.k
+              rangePreset === p.id
                 ? "bg-ink text-paper border-ink"
                 : "border-line hover:border-ink"
             )}
@@ -319,6 +324,29 @@ export default function SalesReport() {
             {p.label}
           </button>
         ))}
+        <button
+          type="button"
+          aria-pressed={showVoided}
+          onClick={() => setShowVoided((v) => !v)}
+          title={
+            showVoided
+              ? "Hide voided sales from the list"
+              : "Include voided sales in the list"
+          }
+          className={cn(
+            "chip border px-2 h-6 text-[9px] md:text-[10px] transition inline-flex items-center gap-1 ml-auto",
+            showVoided
+              ? "bg-danger/10 text-danger border-danger/40"
+              : "border-line text-ink-mute hover:border-ink hover:text-ink"
+          )}
+        >
+          {showVoided ? (
+            <EyeOff className="w-3 h-3 shrink-0" aria-hidden="true" />
+          ) : (
+            <Eye className="w-3 h-3 shrink-0" aria-hidden="true" />
+          )}
+          {showVoided ? "Hide voided" : "Show voided"}
+        </button>
       </div>
 
       <div className="paper-card p-2.5 md:p-4 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center md:items-end gap-x-1.5 gap-y-1.5 md:grid-cols-6 md:gap-3">
@@ -388,6 +416,11 @@ export default function SalesReport() {
           {filtered.length} of {sales.length}{" "}
           <span className="md:hidden">sales</span>
           <span className="hidden md:inline">transactions · tap any row to view receipt / invoice</span>
+          {!showVoided && hiddenVoidedCount > 0 && (
+            <span className="text-danger/80 whitespace-nowrap">
+              · {hiddenVoidedCount} voided hidden
+            </span>
+          )}
         </div>
         <div className="flex gap-1 md:gap-2 flex-wrap max-md:flex-1 max-md:justify-end">
           <div className="hidden md:block">
@@ -409,6 +442,7 @@ export default function SalesReport() {
               setTo(todayISO());
               setRangePreset("today");
               setMethod("all"); setStatus("all"); setCashier("all");
+              setShowVoided(false);
             }}
             className="btn btn-ghost btn-sm"
           >
@@ -426,7 +460,18 @@ export default function SalesReport() {
           <div className="p-6 md:p-8 text-center text-ink-mute text-sm">Loading...</div>
         ) : filtered.length === 0 ? (
           <div className="p-8 md:p-10 text-center text-ink-mute text-sm">
-            No transactions in this range.
+            <div>No transactions in this range.</div>
+            {!showVoided && hiddenVoidedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowVoided(true)}
+                className="mt-2 inline-flex items-center gap-1.5 text-danger font-semibold hover:underline"
+              >
+                <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+                {hiddenVoidedCount} voided sale
+                {hiddenVoidedCount === 1 ? "" : "s"} hidden — show
+              </button>
+            )}
           </div>
         ) : (
           <div className="divide-y">

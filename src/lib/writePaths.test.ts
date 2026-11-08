@@ -53,6 +53,27 @@ describe("buildSaleWrite", () => {
     expect(b.status).toBe("paid");
   });
 
+  it("stamps created_at so the RPC never inserts a null timestamp", () => {
+    const b = buildSaleWrite(input);
+    const stamp = b.salePayload.created_at as string;
+    expect(typeof stamp).toBe("string");
+    expect(Number.isNaN(Date.parse(stamp))).toBe(false);
+    expect(b.salePayload.updated_at).toBe(stamp);
+    // Payments go through the same field-by-field populate, so they need the
+    // same defaults and an id to survive the insert.
+    expect(b.paymentRow?.created_at).toBe(stamp);
+    expect(typeof b.paymentRow?.id).toBe("string");
+  });
+
+  it("keeps one timestamp through stamping, receipt building and replay", () => {
+    const stamped = stampCheckoutInput(input);
+    expect(stamped.createdAt).toBeTruthy();
+    expect(buildSaleWrite(stamped).salePayload.created_at).toBe(
+      stamped.createdAt
+    );
+    expect(buildLocalSale(stamped, "q9").createdAt).toBe(stamped.createdAt);
+  });
+
   it("requires a customer for credit sales", () => {
     expect(() =>
       buildSaleWrite({ ...input, paymentMethod: "credit" })
@@ -84,10 +105,39 @@ describe("buildSaleWrite", () => {
     const b = buildSaleWrite({
       ...input,
       paymentMethod: "credit",
-      customerId: "c1",
+      customerId: "6f1c2a94-7d3e-4a51-9c2b-8e4f0a1d5b77",
     });
     expect(b.number).toMatch(/^IPB-[A-Z]\d{6}[A-Z]\d{6}[A-Z]$/);
     expect(b.docType).toBe("invoice");
+  });
+
+  it("drops a legacy customer id instead of breaking the uuid column", () => {
+    const b = buildSaleWrite({
+      ...input,
+      customerId: "cust-mtn",
+      customerName: "MTN",
+    });
+    expect(b.salePayload.customer_id).toBeNull();
+    // The receipt still carries the name the cashier selected.
+    expect(b.salePayload.customer_name).toBe("MTN");
+    expect(b.status).toBe("paid");
+  });
+
+  it("cannot record credit against a non-uuid customer", () => {
+    expect(() =>
+      buildSaleWrite({
+        ...input,
+        paymentMethod: "credit",
+        customerId: "cust-mtn",
+      })
+    ).toThrow(/not linked to a valid account/i);
+  });
+
+  it("links a valid uuid customer and earns loyalty", () => {
+    const id = "6f1c2a94-7d3e-4a51-9c2b-8e4f0a1d5b77";
+    const b = buildSaleWrite({ ...input, customerId: id });
+    expect(b.salePayload.customer_id).toBe(id);
+    expect(b.loyaltyEarned).toBeGreaterThan(0);
   });
 
   it("preserves a stamped number verbatim across builds (offline/replay)", () => {

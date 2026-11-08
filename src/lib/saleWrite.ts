@@ -29,6 +29,16 @@ export type BuiltSale = {
   number: string;
 };
 
+/** UUID v1–v5 shape. `sales.customer_id` is a uuid column, so anything else
+ *  (a legacy slug such as "cust-mtn", a stale draft id, or a phone number)
+ *  would abort the whole checkout with Postgres 22P02. */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isCustomerUuid(value: string | null | undefined): value is string {
+  return typeof value === "string" && UUID_RE.test(value.trim());
+}
+
 export function buildSaleWrite(input: CheckoutInput): BuiltSale {
   const {
     lines,
@@ -67,11 +77,19 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
     ? loyaltyRedeemPoints * settings.loyalty.dollarPerPoint
     : 0;
 
+  // `sales.customer_id` is a uuid column. A legacy slug ("cust-mtn"), a stale
+  // POS-draft id, or a phone number would abort the entire checkout with
+  // Postgres 22P02. Keep the printed name, but only link a real uuid.
+  const rawCustomerId = (customerId || "").trim();
+  const linkedCustomerId = isCustomerUuid(rawCustomerId)
+    ? rawCustomerId
+    : null;
+
   const totals = computeTotals(lines, orderDiscountPct, settings, redeemValue);
   const cost = computeCartCost(lines, items);
 
   const loyaltyEarned =
-    settings.loyalty.enabled && customerId
+    settings.loyalty.enabled && linkedCustomerId
       ? Math.floor(totals.total * settings.loyalty.pointsPerDollar)
       : 0;
 
@@ -93,9 +111,17 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
     docType = due <= 0 ? "receipt" : "invoice";
   }
 
-  if ((status === "credit" || status === "partial") && !customerId) {
+  if ((status === "credit" || status === "partial") && !linkedCustomerId) {
     throw new Error(
-      "Credit and partial sales require a registered customer so the balance can be tracked."
+      rawCustomerId
+        ? "That customer is not linked to a valid account, so credit cannot be tracked. Re-select the customer or add them again."
+        : "Credit and partial sales require a registered customer so the balance can be tracked."
+    );
+  }
+
+  if (settings.loyalty.enabled && loyaltyRedeemPoints > 0 && !linkedCustomerId) {
+    throw new Error(
+      "Loyalty points can only be redeemed for a registered customer."
     );
   }
 
@@ -122,9 +148,15 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
   const salePayload = {
     number,
     business_id: input.businessId ?? currentBusinessId() ?? undefined,
+    // The authoritative RPC inserts via `jsonb_populate_record`, which fills
+    // every column omitted from the payload with NULL — including columns
+    // whose DEFAULT would otherwise apply. Stamp the transaction time here so
+    // `created_at` is never null (and offline replay keeps the real sale time).
+    created_at: input.createdAt || new Date().toISOString(),
+    updated_at: input.createdAt || new Date().toISOString(),
     cashier_id: cashierId,
     cashier_name: cashierName,
-    customer_id: customerId || null,
+    customer_id: linkedCustomerId,
     customer_name: customerName || null,
     lines: snapLines,
     subtotal: totals.subtotal,
@@ -149,6 +181,11 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
   const paymentRow =
     paid > 0
       ? {
+          // `commit_sale_authoritative` populates the payment row field by
+          // field, so a missing id / timestamp would insert NULL instead of
+          // letting the table defaults run.
+          id: newUuid(),
+          created_at: input.createdAt || new Date().toISOString(),
           business_id: input.businessId ?? currentBusinessId() ?? undefined,
           amount: paid,
           payment_method: paymentMethod === "partial" ? "cash" : paymentMethod,
@@ -184,9 +221,14 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
  * May throw the same validation errors as buildSaleWrite.
  */
 export function stampCheckoutInput(input: CheckoutInput): CheckoutInput {
-  const stamped: CheckoutInput = input.businessId
+  const withBusiness: CheckoutInput = input.businessId
     ? input
     : { ...input, businessId: currentBusinessId() };
+  // The sale timestamp is stamped at creation too, so a queued sale keeps the
+  // moment it actually happened instead of the eventual replay time.
+  const stamped: CheckoutInput = withBusiness.createdAt
+    ? withBusiness
+    : { ...withBusiness, createdAt: new Date().toISOString() };
   if ((stamped.documentNumber || "").trim()) return stamped;
   return { ...stamped, documentNumber: buildSaleWrite(stamped).number };
 }
@@ -206,7 +248,7 @@ export function buildLocalSale(input: CheckoutInput, queueId: string): Sale {
   return {
     id: `offline-${queueId}`,
     number: str(p.number),
-    createdAt: new Date().toISOString(),
+    createdAt: str(p.created_at, new Date().toISOString()),
     cashierId: (p.cashier_id as string | null) ?? null,
     cashierName: str(p.cashier_name, "Unknown"),
     customerId: (p.customer_id as string | null) ?? null,
@@ -232,6 +274,20 @@ export function buildLocalSale(input: CheckoutInput, queueId: string): Sale {
   };
 }
 
+/** RFC 4122 v4 id, with fallbacks for browsers without `crypto.randomUUID`. */
+function newUuid(): string {
+  const c = typeof crypto !== "undefined" ? crypto : undefined;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  if (c && typeof c.getRandomValues === "function") {
+    const b = c.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export async function executeSaleWrite(input: CheckoutInput): Promise<Sale> {
   const {
     customerName,
@@ -244,21 +300,8 @@ export async function executeSaleWrite(input: CheckoutInput): Promise<Sale> {
   // sale before it is committed. Together with the stamped document number it
   // makes checkout idempotent: a retried request finds the same sale row and
   // returns it without touching stock again.
-  const newId = () => {
-    const c = typeof crypto !== "undefined" ? crypto : undefined;
-    if (c && typeof c.randomUUID === "function") return c.randomUUID();
-    if (c && typeof c.getRandomValues === "function") {
-      const b = c.getRandomValues(new Uint8Array(16));
-      b[6] = (b[6] & 0x0f) | 0x40;
-      b[8] = (b[8] & 0x3f) | 0x80;
-      const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
-      return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-    }
-    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  };
-
   const built = buildSaleWrite(input);
-  built.salePayload.id = newId();
+  built.salePayload.id = newUuid();
   let saleData: Record<string, unknown> | null = null;
   let duplicate = false;
 
