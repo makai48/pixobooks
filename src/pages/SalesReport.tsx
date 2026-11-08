@@ -580,13 +580,20 @@ function TransactionRow({
       >
         <span
           className={cn(
-            "shrink-0 rounded-full border px-1.5 py-px text-[8px] uppercase tracking-widest font-bold max-md:justify-self-start max-md:leading-none",
-            sale.paymentMethod === "transfer" && sale.paymentStatus === "paid"
+          "shrink-0 rounded-full border px-1.5 py-px text-[8px] uppercase tracking-widest font-bold max-md:justify-self-start max-md:leading-none",
+            sale.voidedAt
+              ? "bg-danger/10 text-danger border-danger/40"
+              : sale.paymentMethod === "transfer" && sale.paymentStatus === "paid"
               ? "bg-cyan-reg/10 text-cyan-reg border-cyan-reg/30"
               : statusMeta
           )}
+          title={
+            sale.voidedAt
+              ? `Voided${sale.voidReason ? `: ${sale.voidReason}` : ""}`
+              : methodLabel
+          }
         >
-          {methodLabel.slice(0, 4)}
+          {sale.voidedAt ? "VOID" : methodLabel.slice(0, 4)}
         </span>
         <span
           className="shrink-0 text-ink-mute hidden md:inline-flex items-center gap-0.5"
@@ -603,7 +610,7 @@ function TransactionRow({
         </span>
         {sale.voidedAt && (
           <span
-            className="chip border border-danger/40 bg-danger/10 text-danger shrink-0 text-[8px] md:text-[9px] px-1 md:px-1.5 py-px uppercase tracking-wide font-bold"
+            className="chip hidden lg:inline-flex border border-danger/40 bg-danger/10 text-danger shrink-0 text-[8px] md:text-[9px] px-1 md:px-1.5 py-px uppercase tracking-wide font-bold"
             title={`Voided ${new Date(sale.voidedAt).toLocaleString()}${sale.voidedByName ? ` by ${sale.voidedByName}` : ""}${sale.voidReason ? ` — ${sale.voidReason}` : ""}`}
           >
             void
