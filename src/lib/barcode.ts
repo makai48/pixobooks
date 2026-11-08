@@ -42,6 +42,31 @@ export function zxingFormatName(
   return typeof name === "string" ? name : "CODE128";
 }
 
+/**
+ * Numeric ZXing BarcodeFormat values for the retail symbologies the scanner
+ * supports. Used when the enum object itself is not imported.
+ */
+const ZXING_BY_VALUE: Record<number, string> = {
+  1: "CODABAR",
+  2: "CODE_39",
+  3: "CODE_93",
+  4: "CODE_128",
+  6: "EAN_8",
+  7: "EAN_13",
+  8: "ITF",
+  14: "UPC_A",
+  15: "UPC_E",
+};
+
+export function zxingFormatFromValue(value?: number): string {
+  return ZXING_BY_VALUE[value ?? -1] ?? "CODE128";
+}
+
+/** BarcodeDetector reports lowercase names such as "ean_13". */
+export function detectorFormatName(format?: string | null): string {
+  return (format || "").toUpperCase() || "CODE128";
+}
+
 /** Friendly label shown under the result barcode. */
 export function barcodeLabel(format?: string | null): string {  const key = (format || "").toUpperCase();
   if (key === "EAN_13") return "EAN-13";

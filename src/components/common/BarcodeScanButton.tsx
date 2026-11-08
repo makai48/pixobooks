@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { playScanBeep, primeScanAudio } from "@/lib/sounds";
-import { SAMPLE_BARCODE } from "@/lib/barcode";
+import {
+  detectorFormatName,
+  toJsBarcodeFormat,
+  zxingFormatFromValue,
+} from "@/lib/barcode";
 import BarcodeImage from "@/components/common/BarcodeImage";
 import "./barcode-scan.css";
 
@@ -27,13 +31,16 @@ type Props = {
 type Status = "starting" | "scanning" | "fallback";
 type View = "camera" | "success";
 
-type NativeBarcode = { rawValue?: string };
+type NativeBarcode = { rawValue?: string; format?: string };
 type NativeBarcodeDetector = {
   detect: (source: HTMLVideoElement) => Promise<NativeBarcode[]>;
 };
 type NativeBarcodeDetectorConstructor = new (options?: {
   formats?: string[];
 }) => NativeBarcodeDetector;
+type TorchCapture = {
+  setOptions: (options: { fillLightMode: "torch" | "off" }) => Promise<void>;
+};
 
 const NATIVE_BARCODE_FORMATS = [
   "aztec",
@@ -73,6 +80,26 @@ type ScanCapabilities = MediaTrackCapabilities & {
   exposureMode?: string[];
   whiteBalanceMode?: string[];
 };
+
+/** Switch the camera torch using either constraint shape the browser accepts. */
+async function applyTrackTorch(
+  track: MediaStreamTrack,
+  on: boolean
+): Promise<boolean> {
+  try {
+    await track.applyConstraints({
+      advanced: [{ torch: on } as MediaTrackConstraintSet],
+    });
+    return true;
+  } catch {
+    try {
+      await track.applyConstraints({ torch: on } as MediaTrackConstraints);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
 
 /** Tune the native camera/ISP rather than trying to improve a blurry frame in
  * CSS. Native scanner apps use this same class of controls: continuous focus,
@@ -121,21 +148,10 @@ async function optimizeCameraTrack(track: MediaStreamTrack): Promise<{
 
   // Torch is attempted automatically for the same low-noise, high-contrast
   // conditions a native barcode scanner creates. Some browsers accept only
-  // the direct form, others only the advanced form.
-  if (capabilities?.torch === true || "torch" in (capabilities ?? {})) {
-    try {
-      await track.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] });
-      return { torchOn: true, nativeZoom };
-    } catch {
-      try {
-        await track.applyConstraints({ torch: true } as MediaTrackConstraints);
-        return { torchOn: true, nativeZoom };
-      } catch {
-        // Continue with focus/exposure/white balance if torch is unavailable.
-      }
-    }
-  }
-  return { torchOn: false, nativeZoom };
+  // the direct form, others only the advanced form, and some Samsung builds
+  // support torch without listing it in getCapabilities(), so try both
+  // unconditionally instead of trusting capability reporting.
+  return { torchOn: await applyTrackTorch(track, true), nativeZoom };
 }
 
 /**
@@ -157,6 +173,8 @@ export default function BarcodeScanButton({
   const [status, setStatus] = useState<Status>("starting");
   const [note, setNote] = useState("Starting scanner…");
   const [view, setView] = useState<View>("camera");
+  const [decodedValue, setDecodedValue] = useState<string | null>(null);
+  const [decodedFormat, setDecodedFormat] = useState<string>("CODE128");
   const [torchOn, setTorchOn] = useState(false);
   const [zoomFallback, setZoomFallback] = useState(false);
 
@@ -167,6 +185,9 @@ export default function BarcodeScanButton({
   const watchdogRef = useRef<number | undefined>(undefined);
   const focusTimerRef = useRef<number | undefined>(undefined);
   const nativeScanFrameRef = useRef<number | undefined>(undefined);
+  const torchCaptureRef = useRef<TorchCapture | null>(null);
+  const torchDesiredRef = useRef(false);
+  const torchRetryRef = useRef<number[]>([]);
   const successTimerRef = useRef<number | undefined>(undefined);
   const doneRef = useRef(false);
   const onScanRef = useRef(onScan);
@@ -178,6 +199,10 @@ export default function BarcodeScanButton({
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setTorchOn(false);
+    torchCaptureRef.current = null;
+    torchDesiredRef.current = false;
+    torchRetryRef.current.forEach((id) => window.clearTimeout(id));
+    torchRetryRef.current = [];
     setZoomFallback(false);
     if (focusTimerRef.current) {
       window.clearInterval(focusTimerRef.current);
@@ -201,10 +226,12 @@ export default function BarcodeScanButton({
   }
 
   /** Real decode only: beep instantly, green success, then apply the code. */
-  function handleDecoded(code: string) {
+  function handleDecoded(code: string, format?: string) {
     const value = code.trim();
     if (!value || doneRef.current) return;
     doneRef.current = true;
+    setDecodedValue(value);
+    setDecodedFormat(format || "CODE128");
     // Fire the confirmation tone before any teardown work so it is immediate.
     playScanBeep();
     stopCamera();
@@ -223,6 +250,8 @@ export default function BarcodeScanButton({
     if (!open) return;
     let cancelled = false;
     doneRef.current = false;
+    setDecodedValue(null);
+    setDecodedFormat("CODE128");
     setView("camera");
     setStatus("starting");
     setNote("Starting scanner…");
@@ -281,8 +310,33 @@ export default function BarcodeScanButton({
         streamRef.current = stream;
         const track = stream.getVideoTracks?.()[0];
         if (track) {
+          // Some Samsung Chromium builds expose the light through ImageCapture
+          // rather than MediaStreamTrack torch constraints.
+          const ImageCaptureCtor = (
+            window as unknown as {
+              ImageCapture?: new (track: MediaStreamTrack) => unknown;
+            }
+          ).ImageCapture;
+          if (ImageCaptureCtor) {
+            try {
+              const imageCapture = new ImageCaptureCtor(track) as TorchCapture & {
+                getPhotoCapabilities?: () => Promise<{
+                  fillLightMode?: string[];
+                }>;
+              };
+              const photoCapabilities = await imageCapture.getPhotoCapabilities?.();
+              if (photoCapabilities?.fillLightMode?.includes("torch")) {
+                torchCaptureRef.current = imageCapture;
+                await imageCapture.setOptions({ fillLightMode: "torch" });
+                setTorchOn(true);
+              }
+            } catch {
+              torchCaptureRef.current = null;
+            }
+          }
           const optimized = await optimizeCameraTrack(track);
-          setTorchOn(optimized.torchOn);
+          // Never clear a torch the ImageCapture path already switched on.
+          setTorchOn(optimized.torchOn || torchCaptureRef.current !== null);
           setZoomFallback(!optimized.nativeZoom);
           // Re-assert continuous centre autofocus every 250ms. The browser
           // does not expose a portable focus-point API; continuous focus is
@@ -332,9 +386,12 @@ export default function BarcodeScanButton({
               try {
                 if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
                   const results = await detector.detect(video);
-                  const value = results.find((item) => item.rawValue)?.rawValue;
-                  if (value) {
-                    handleDecodedRef.current(value);
+                  const hit = results.find((item) => item.rawValue);
+                  if (hit?.rawValue) {
+                    handleDecodedRef.current(
+                      hit.rawValue,
+                      detectorFormatName(hit.format)
+                    );
                     return;
                   }
                 }
@@ -359,7 +416,10 @@ export default function BarcodeScanButton({
               if (doneRef.current) return;
               const text = result?.getText?.();
               if (!text) return;
-              handleDecodedRef.current(text);
+              handleDecodedRef.current(
+                text,
+                zxingFormatFromValue(result?.getBarcodeFormat?.())
+              );
             }
           );
           if (cancelled) {
@@ -367,6 +427,21 @@ export default function BarcodeScanButton({
             return;
           }
           controlsRef.current = controls;
+
+          // Re-assert the torch once the preview is actually playing. Some
+          // Android builds reject torch before a video element consumes the
+          // stream, so retry a few times while the scanner stays open.
+          torchDesiredRef.current = true;
+          [0, 400, 1000].forEach((delay) => {
+            const id = window.setTimeout(() => {
+              if (cancelled || doneRef.current || !torchDesiredRef.current) return;
+              if (torchCaptureRef.current) return;
+              void applyTrackTorch(track, true).then((ok) => {
+                if (ok && torchDesiredRef.current) setTorchOn(true);
+              });
+            }, delay);
+            torchRetryRef.current.push(id);
+          });
 
           watchdogRef.current = window.setTimeout(() => {
             if (!cancelled && !doneRef.current) {
@@ -401,18 +476,26 @@ export default function BarcodeScanButton({
       return;
     }
     const next = !torchOn;
-    try {
+    torchDesiredRef.current = next;
+    let switched = false;
+    if (torchCaptureRef.current) {
       try {
-        await track.applyConstraints({
-          advanced: [{ torch: next } as MediaTrackConstraintSet],
+        await torchCaptureRef.current.setOptions({
+          fillLightMode: next ? "torch" : "off",
         });
+        switched = true;
       } catch {
-        // A few Chromium camera implementations expose torch as a direct
-        // constraint but reject the advanced form.
-        await track.applyConstraints({ torch: next } as MediaTrackConstraints);
+        // Some builds report fillLightMode but reject setOptions; fall back
+        // to the MediaStreamTrack torch constraint below.
       }
+    }
+    if (!switched) {
+      switched = await applyTrackTorch(track, next);
+    }
+    if (switched) {
       setTorchOn(next);
-    } catch {
+    } else {
+      torchDesiredRef.current = torchOn;
       setNote("This camera could not switch its light.");
     }
   };
@@ -437,7 +520,7 @@ export default function BarcodeScanButton({
         const result = await reader.decodeFromImageUrl(url);
         const text = result?.getText?.()?.trim();
         if (text) {
-          handleDecoded(text);
+          handleDecoded(text, zxingFormatFromValue(result?.getBarcodeFormat?.()));
           return;
         }
       } finally {
@@ -474,7 +557,7 @@ export default function BarcodeScanButton({
       const result = new BrowserMultiFormatReader().decodeFromCanvas(canvas);
       const text = result?.getText?.()?.trim();
       if (text) {
-        handleDecoded(text);
+        handleDecoded(text, zxingFormatFromValue(result?.getBarcodeFormat?.()));
         return;
       }
     } catch {
@@ -492,6 +575,8 @@ export default function BarcodeScanButton({
         onClick={() => {
           primeScanAudio();
           setView("camera");
+          setDecodedValue(null);
+          setDecodedFormat("CODE128");
           setStatus("starting");
           setNote("Starting scanner…");
           setOpen(true);
@@ -583,13 +668,13 @@ export default function BarcodeScanButton({
                               view === "camera" && "is-scanning"
                             )}
                           >
-                            {view === "success" && (
+                            {view === "success" && decodedValue && (
                               <BarcodeImage
-                                value={SAMPLE_BARCODE}
-                                format="EAN_13"
-                                height={70}
-                                width={2}
-                                margin={10}
+                                value={decodedValue}
+                                format={toJsBarcodeFormat(decodedFormat)}
+                                height={110}
+                                width={2.5}
+                                margin={16}
                                 background="#ffffff"
                                 lineColor="#000000"
                                 className="h-full w-full"
