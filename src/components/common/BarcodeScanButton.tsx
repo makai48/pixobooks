@@ -5,6 +5,8 @@ import {
   CheckCircle2,
   ImageUp,
   Loader2,
+  Flashlight,
+  FlashlightOff,
   ScanBarcode,
   X,
 } from "lucide-react";
@@ -31,12 +33,12 @@ const SUCCESS_HOLD_MS = 1200;
 function cameraMessage(err: unknown): string {
   const name = err instanceof DOMException ? err.name : "";
   if (name === "NotAllowedError" || name === "SecurityError") {
-    return "Camera permission was blocked. Allow camera access and try again, or upload a barcode photo.";
+      return "Access was blocked. Allow access or upload a barcode photo.";
   }
   if (name === "NotFoundError" || name === "OverconstrainedError") {
-    return "No camera was found on this device. Upload a barcode photo or use your handheld scanner.";
+    return "No scanning device was found. Upload a barcode photo or use your handheld scanner.";
   }
-  return "The camera could not be started. Upload a barcode photo or use your handheld scanner.";
+  return "Scanning could not be started. Upload a barcode photo or use your handheld scanner.";
 }
 
 /**
@@ -56,8 +58,10 @@ export default function BarcodeScanButton({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>("starting");
-  const [note, setNote] = useState("Starting camera…");
+  const [note, setNote] = useState("Starting scanner…");
   const [view, setView] = useState<View>("camera");
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
@@ -74,6 +78,8 @@ export default function BarcodeScanButton({
     controlsRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    setTorchOn(false);
+    setTorchSupported(false);
     if (watchdogRef.current) {
       window.clearTimeout(watchdogRef.current);
       watchdogRef.current = undefined;
@@ -112,7 +118,7 @@ export default function BarcodeScanButton({
     doneRef.current = false;
     setView("camera");
     setStatus("starting");
-    setNote("Starting camera…");
+    setNote("Starting scanner…");
 
     const fallback = (message: string) => {
       if (cancelled) return;
@@ -124,14 +130,14 @@ export default function BarcodeScanButton({
     const start = async () => {
       if (typeof window !== "undefined" && !window.isSecureContext) {
         fallback(
-          "Camera access requires HTTPS or localhost. Upload a barcode photo, or keep using your handheld scanner."
+          "Scanning is unavailable here. Upload a barcode photo or use your handheld scanner."
         );
         return;
       }
 
       if (!navigator.mediaDevices?.getUserMedia) {
         fallback(
-          "Camera access is unavailable in this browser. Upload a barcode photo or keep using your handheld scanner."
+          "Scanning is unavailable here. Upload a barcode photo or use your handheld scanner."
         );
         return;
       }
@@ -146,6 +152,16 @@ export default function BarcodeScanButton({
           audio: false,
         });
         streamRef.current = stream;
+        const track = stream.getVideoTracks?.()[0];
+        const capabilities = track?.getCapabilities?.() as
+          | (MediaTrackCapabilities & { torch?: boolean; zoom?: number })
+          | undefined;
+        setTorchSupported(capabilities?.torch === true);
+        if (capabilities?.zoom !== undefined) {
+          void track.applyConstraints({
+            advanced: [{ zoom: 1 } as MediaTrackConstraintSet],
+          }).catch(() => undefined);
+        }
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           streamRef.current = null;
@@ -154,7 +170,7 @@ export default function BarcodeScanButton({
         const video = videoRef.current;
         if (!video) {
           fallback(
-            "The camera preview could not be created. Upload a barcode photo."
+            "The scanner preview could not be created. Upload a barcode photo."
           );
           return;
         }
@@ -190,7 +206,7 @@ export default function BarcodeScanButton({
           }, 12000);
         } catch {
           fallback(
-            "The camera reader could not start. Upload a barcode photo, or keep using your handheld scanner."
+            "The scanner could not start. Upload a barcode photo or use your handheld scanner."
           );
         }
       } catch (err) {
@@ -206,6 +222,20 @@ export default function BarcodeScanButton({
       stopCamera();
     };
   }, [open]);
+
+  const toggleTorch = async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track || !torchSupported) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: next } as MediaTrackConstraintSet],
+      });
+      setTorchOn(next);
+    } catch {
+      setNote("This camera could not switch its light.");
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -244,7 +274,7 @@ export default function BarcodeScanButton({
   const captureFrame = async () => {
     const video = videoRef.current;
     if (!video || video.readyState < 2 || !video.videoWidth) {
-      setNote("The camera is still starting — wait a moment and try again.");
+      setNote("The scanner is still starting — wait a moment and try again.");
       return;
     }
     const canvas = document.createElement("canvas");
@@ -253,7 +283,7 @@ export default function BarcodeScanButton({
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       setNote(
-        "This browser could not read the camera frame. Upload a barcode photo instead."
+        "This browser could not read the frame. Upload a barcode photo instead."
       );
       return;
     }
@@ -283,7 +313,7 @@ export default function BarcodeScanButton({
           primeScanAudio();
           setView("camera");
           setStatus("starting");
-          setNote("Starting camera…");
+          setNote("Starting scanner…");
           setOpen(true);
         }}
         aria-label={label}
@@ -330,11 +360,44 @@ export default function BarcodeScanButton({
                   <div className="scan-stage">
                     <video
                       ref={videoRef}
-                      className="h-full w-full object-contain"
+                      className="scan-video"
                       playsInline
                       muted
                       autoPlay
                     />
+                    {status === "scanning" && view === "camera" && (
+                      <button
+                        type="button"
+                        className={cn(
+                          "scan-flash-btn",
+                          torchOn && "is-on",
+                          !torchSupported && "is-unavailable"
+                        )}
+                        onClick={() => void toggleTorch()}
+                        disabled={!torchSupported}
+                        aria-label={
+                          !torchSupported
+                            ? "Flashlight unavailable"
+                            : torchOn
+                              ? "Turn flashlight off"
+                              : "Turn flashlight on"
+                        }
+                        aria-pressed={torchSupported ? torchOn : undefined}
+                        title={
+                          !torchSupported
+                            ? "Flashlight is not available on this device"
+                            : torchOn
+                              ? "Turn flashlight off"
+                              : "Turn flashlight on"
+                        }
+                      >
+                        {torchOn ? (
+                          <FlashlightOff className="h-4 w-4" aria-hidden="true" />
+                        ) : (
+                          <Flashlight className="h-4 w-4" aria-hidden="true" />
+                        )}
+                      </button>
+                    )}
                     {status === "starting" && (
                       <div className="absolute inset-0 grid place-items-center bg-ink/40 text-paper">
                         <Loader2 className="h-6 w-6 animate-spin" />
@@ -354,20 +417,18 @@ export default function BarcodeScanButton({
                               view === "camera" && "is-scanning"
                             )}
                           >
-                            <BarcodeImage
-                              value={SAMPLE_BARCODE}
-                              format="EAN_13"
-                              height={70}
-                              width={2}
-                              margin={10}
-                              background={
-                                view === "success" ? "#ffffff" : "transparent"
-                              }
-                              lineColor={
-                                view === "success" ? "#000000" : "#ffffff"
-                              }
-                              className="h-full w-full"
-                            />
+                            {view === "success" && (
+                              <BarcodeImage
+                                value={SAMPLE_BARCODE}
+                                format="EAN_13"
+                                height={70}
+                                width={2}
+                                margin={10}
+                                background="#ffffff"
+                                lineColor="#000000"
+                                className="h-full w-full"
+                              />
+                            )}
                             {view === "camera" && status === "scanning" && (
                               <span className="scan-laser" aria-hidden="true" />
                             )}
@@ -458,11 +519,6 @@ export default function BarcodeScanButton({
                     </button>
                   )}
                 </div>
-                <p className="scan-hint">
-                  {view === "success"
-                    ? "Applying barcode…"
-                    : "Works without a camera or HTTPS."}
-                </p>
                 <input
                   ref={uploadRef}
                   type="file"

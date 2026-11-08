@@ -83,6 +83,60 @@
   background: #000;
 }
 
+/* The camera fills the complete mobile scan stage. `object-cover` avoids the
+   letterboxed strips produced by object-contain while the browser keeps the
+   native 1x camera stream and ZXing still receives the full video frame. */
+.scan-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  background: #000;
+}
+
+.scan-flash-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.58);
+  color: #ffffff;
+  backdrop-filter: blur(8px);
+  transition: background-color 160ms ease, color 160ms ease,
+    transform 120ms ease;
+}
+
+.scan-flash-btn:hover {
+  background: rgba(17, 17, 17, 0.78);
+}
+
+.scan-flash-btn.is-on {
+  background: #ffcc08;
+  border-color: #ffcc08;
+  color: #111111;
+}
+
+.scan-flash-btn.is-unavailable {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.scan-flash-btn:active {
+  transform: scale(0.96);
+}
+
+.scan-flash-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 204, 8, 0.55);
+}
+
 .scan-icon-btn {
   display: grid;
   place-items: center;
@@ -199,24 +253,24 @@
   opacity: 1;
 }
 
-/* Blue laser sweeping the stationary guide; 45% peak while scanning. */
+/* Familiar red barcode scanner laser sweeping the empty target. */
 .scan-laser {
   position: absolute;
   left: 3%;
   right: 3%;
   top: 8%;
-  height: 2px;
+  height: 4px;
   border-radius: 999px;
   background: linear-gradient(
     90deg,
     transparent,
-    #38bdf8 10%,
-    #bae6fd 50%,
-    #38bdf8 90%,
+    #ff0000 10%,
+    #ff0000 90%,
     transparent
   );
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.7),
-    0 0 16px rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 4px rgba(255, 250, 250, 1),
+    0 0 10px rgba(255, 0, 0, 1),
+    0 0 28px rgba(201, 0, 0, 0.9);
   animation: scan-laser 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
@@ -433,10 +487,10 @@
     opacity: 0;
   }
   10% {
-    opacity: 0.45;
+    opacity: 0.8;
   }
   90% {
-    opacity: 0.45;
+    opacity: 0.8;
   }
   100% {
     top: 92%;
@@ -488,7 +542,7 @@
 
   .scan-laser {
     top: 50%;
-    opacity: 0.45;
+    opacity: 0.8;
   }
 
   .scan-tick-circle,
