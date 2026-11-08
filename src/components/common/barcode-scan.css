@@ -95,6 +95,14 @@
   background: #000;
 }
 
+/* Software fallback for browsers that expose no camera zoom constraint. The
+   video element is enlarged visually while the stream remains native 1x; this
+   makes the target usable even when getCapabilities().zoom is unavailable. */
+.scan-video.is-zoomed {
+  transform: scale(4);
+  transform-origin: center;
+}
+
 .scan-flash-btn {
   position: absolute;
   top: 10px;

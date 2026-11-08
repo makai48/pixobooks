@@ -60,7 +60,6 @@ export default function BarcodeScanButton({
   const [status, setStatus] = useState<Status>("starting");
   const [note, setNote] = useState("Starting scanner…");
   const [view, setView] = useState<View>("camera");
-  const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -79,7 +78,6 @@ export default function BarcodeScanButton({
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setTorchOn(false);
-    setTorchSupported(false);
     if (watchdogRef.current) {
       window.clearTimeout(watchdogRef.current);
       watchdogRef.current = undefined;
@@ -156,10 +154,6 @@ export default function BarcodeScanButton({
         const capabilities = track?.getCapabilities?.() as
           | (MediaTrackCapabilities & { torch?: boolean; zoom?: number })
           | undefined;
-        setTorchSupported(
-          capabilities?.torch === true ||
-            Object.prototype.hasOwnProperty.call(capabilities ?? {}, "torch")
-        );
         if (capabilities?.zoom !== undefined) {
           const maxZoom = capabilities.zoom;
           const minZoom = Number(
@@ -239,7 +233,10 @@ export default function BarcodeScanButton({
 
   const toggleTorch = async () => {
     const track = streamRef.current?.getVideoTracks()[0];
-    if (!track || !torchSupported) return;
+    if (!track) {
+      setNote("The scanner is still starting — try the light again in a moment.");
+      return;
+    }
     const next = !torchOn;
     try {
       try {
@@ -380,7 +377,7 @@ export default function BarcodeScanButton({
                   <div className="scan-stage">
                     <video
                       ref={videoRef}
-                      className="scan-video"
+                      className="scan-video is-zoomed"
                       playsInline
                       muted
                       autoPlay
@@ -390,26 +387,12 @@ export default function BarcodeScanButton({
                         type="button"
                         className={cn(
                           "scan-flash-btn",
-                          torchOn && "is-on",
-                          !torchSupported && "is-unavailable"
+                          torchOn && "is-on"
                         )}
                         onClick={() => void toggleTorch()}
-                        disabled={!torchSupported}
-                        aria-label={
-                          !torchSupported
-                            ? "Flashlight unavailable"
-                            : torchOn
-                              ? "Turn flashlight off"
-                              : "Turn flashlight on"
-                        }
-                        aria-pressed={torchSupported ? torchOn : undefined}
-                        title={
-                          !torchSupported
-                            ? "Flashlight is not available on this device"
-                            : torchOn
-                              ? "Turn flashlight off"
-                              : "Turn flashlight on"
-                        }
+                        aria-label={torchOn ? "Turn flashlight off" : "Turn flashlight on"}
+                        aria-pressed={torchOn}
+                        title={torchOn ? "Turn flashlight off" : "Turn flashlight on"}
                       >
                         {torchOn ? (
                           <FlashlightOff className="h-4 w-4" aria-hidden="true" />
