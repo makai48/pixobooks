@@ -61,6 +61,14 @@ const NATIVE_BARCODE_FORMATS = [
 /** How long the green success state holds before the code is applied. */
 const SUCCESS_HOLD_MS = 1200;
 
+/**
+ * A single frame can produce a false positive on a blurry/empty scene. Only
+ * accept a live-camera decode after the same value is seen twice in a row,
+ * which keeps the scanner responsive while filtering one-off garbage.
+ */
+const DETECTION_CONFIRM_MS = 1800;
+const DETECTION_CONFIRM_HITS = 2;
+
 function cameraMessage(err: unknown): string {
   const name = err instanceof DOMException ? err.name : "";
   if (name === "NotAllowedError" || name === "SecurityError") {
@@ -189,6 +197,12 @@ export default function BarcodeScanButton({
   const torchDesiredRef = useRef(false);
   const torchRetryRef = useRef<number[]>([]);
   const successTimerRef = useRef<number | undefined>(undefined);
+  const candidateRef = useRef<{
+    value: string;
+    format: string;
+    count: number;
+    at: number;
+  } | null>(null);
   const doneRef = useRef(false);
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
@@ -200,6 +214,7 @@ export default function BarcodeScanButton({
     streamRef.current = null;
     setTorchOn(false);
     torchCaptureRef.current = null;
+    candidateRef.current = null;
     torchDesiredRef.current = false;
     torchRetryRef.current.forEach((id) => window.clearTimeout(id));
     torchRetryRef.current = [];
@@ -246,10 +261,45 @@ export default function BarcodeScanButton({
 
   const handleDecodedRef = useRef(handleDecoded);
   handleDecodedRef.current = handleDecoded;
+
+  /**
+   * Live-camera confirmation gate. Native and ZXing callbacks may both report
+   * the same code many times per second, so two matching hits still resolve in
+   * well under a frame or two while a single phantom read is discarded.
+   */
+  function confirmDecoded(code: string, format?: string) {
+    const value = code.trim();
+    if (!value || value.length > 64 || doneRef.current) return;
+    const now = Date.now();
+    const candidate = candidateRef.current;
+    if (
+      candidate &&
+      candidate.value === value &&
+      now - candidate.at <= DETECTION_CONFIRM_MS
+    ) {
+      candidate.count += 1;
+      candidate.at = now;
+      if (candidate.count >= DETECTION_CONFIRM_HITS) {
+        candidateRef.current = null;
+        handleDecoded(value, format || candidate.format);
+      }
+      return;
+    }
+    candidateRef.current = {
+      value,
+      format: format || "CODE128",
+      count: 1,
+      at: now,
+    };
+  }
+
+  const confirmDecodedRef = useRef(confirmDecoded);
+  confirmDecodedRef.current = confirmDecoded;
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     doneRef.current = false;
+    candidateRef.current = null;
     setDecodedValue(null);
     setDecodedFormat("CODE128");
     setView("camera");
@@ -388,7 +438,7 @@ export default function BarcodeScanButton({
                   const results = await detector.detect(video);
                   const hit = results.find((item) => item.rawValue);
                   if (hit?.rawValue) {
-                    handleDecodedRef.current(
+                    confirmDecodedRef.current(
                       hit.rawValue,
                       detectorFormatName(hit.format)
                     );
@@ -416,7 +466,7 @@ export default function BarcodeScanButton({
               if (doneRef.current) return;
               const text = result?.getText?.();
               if (!text) return;
-              handleDecodedRef.current(
+              confirmDecodedRef.current(
                 text,
                 zxingFormatFromValue(result?.getBarcodeFormat?.())
               );
@@ -602,7 +652,10 @@ export default function BarcodeScanButton({
               role="dialog"
               aria-modal="true"
               aria-label={label}
-              className="scan-dialog"
+              className={cn(
+                "scan-dialog",
+                status !== "fallback" && "is-live"
+              )}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="scan-dialog-head">

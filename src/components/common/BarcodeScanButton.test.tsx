@@ -10,7 +10,11 @@ vi.mock("@zxing/browser", () => ({
       _video: unknown,
       callback: (result: { getText: () => string }) => void
     ) {
-      queueMicrotask(() => callback({ getText: () => "1234567890128" }));
+      queueMicrotask(() => {
+        const result = { getText: () => "1234567890128" };
+        callback(result);
+        callback(result);
+      });
       return Promise.resolve({ stop: () => undefined });
     }
   },
