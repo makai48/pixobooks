@@ -165,7 +165,9 @@ export default function BarcodeScanButton({
           const minZoom = Number(
             (capabilities as MediaTrackCapabilities & { minZoom?: number }).minZoom ?? 1
           );
-          const defaultZoom = Math.min(2, maxZoom);
+          // Use a close-up barcode view by default, while respecting the
+          // physical camera's supported range.
+          const defaultZoom = Math.min(4, maxZoom);
           void track.applyConstraints({
             advanced: [
               {
