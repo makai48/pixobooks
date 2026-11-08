@@ -672,11 +672,15 @@ export default function BarcodeScanButton({
                               <BarcodeImage
                                 value={decodedValue}
                                 format={toJsBarcodeFormat(decodedFormat)}
-                                height={110}
-                                width={2.5}
-                                margin={16}
+                                height={96}
+                                width={2.2}
+                                margin={14}
                                 background="#ffffff"
                                 lineColor="#000000"
+                                displayValue
+                                fontSize={20}
+                                textMargin={8}
+                                textAlign="center"
                                 className="h-full w-full"
                               />
                             )}

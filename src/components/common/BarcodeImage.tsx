@@ -17,6 +17,15 @@ type Props = {
   background?: string;
   /** Bar colour. White is used over the live camera, black on the result. */
   lineColor?: string;
+  /** Print the decoded value beneath the bars, like a retail barcode label. */
+  displayValue?: boolean;
+  /** Height of the human-readable value in SVG units. */
+  fontSize?: number;
+  /** Gap between the bars and the value in SVG units. */
+  textMargin?: number;
+  font?: string;
+  fontOptions?: string;
+  textAlign?: "left" | "center" | "right";
   className?: string;
 };
 
@@ -52,6 +61,12 @@ export default function BarcodeImage({
   margin = 12,
   background = "#ffffff",
   lineColor = "#000000",
+  displayValue = false,
+  fontSize = 18,
+  textMargin = 10,
+  font = "DM Sans, ui-sans-serif, system-ui, sans-serif",
+  fontOptions = "",
+  textAlign = "center",
   className,
 }: Props) {
   const ref = useRef<SVGSVGElement>(null);
@@ -65,10 +80,15 @@ export default function BarcodeImage({
     const options = {
       width,
       height,
-      displayValue: false,
+      displayValue,
       background,
       lineColor,
       margin,
+      fontSize,
+      textMargin,
+      font,
+      fontOptions,
+      textAlign,
     };
 
     void (async () => {
@@ -106,7 +126,21 @@ export default function BarcodeImage({
     return () => {
       cancelled = true;
     };
-  }, [value, format, height, width, margin, background, lineColor]);
+  }, [
+    value,
+    format,
+    height,
+    width,
+    margin,
+    background,
+    lineColor,
+    displayValue,
+    fontSize,
+    textMargin,
+    font,
+    fontOptions,
+    textAlign,
+  ]);
 
   return (
     <svg

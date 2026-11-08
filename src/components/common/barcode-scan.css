@@ -267,6 +267,14 @@
   opacity: 1;
 }
 
+/* Retail-label typography for the human-readable value JsBarcode draws
+   beneath the bars. */
+.scan-frame.is-success .scan-barcode svg text {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
 /* Familiar red barcode scanner laser sweeping the empty target. */
 .scan-laser {
   position: absolute;
@@ -301,11 +309,12 @@
 
 .scan-tick {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 64px;
-  height: 64px;
-  margin: -32px 0 0 -32px;
+  top: -26px;
+  right: -26px;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  margin: 0;
   animation: scan-tick-pop 360ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 

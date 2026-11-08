@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import BarcodeImage from "./BarcodeImage";
 
@@ -26,5 +26,31 @@ describe("BarcodeImage", () => {
     await waitFor(() => {
       expect(container.querySelector("svg rect")).toBeTruthy();
     });
+  });
+
+  it("prints the scanned value beneath the bars when requested", async () => {
+    // JsBarcode measures the label with a canvas context, which jsdom lacks.
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockImplementation(
+        () =>
+          ({
+            font: "",
+            measureText: (text: string) => ({ width: text.length * 8 }),
+          }) as unknown as CanvasRenderingContext2D
+      );
+
+    const { container } = render(
+      <BarcodeImage
+        value="1234567890128"
+        format="EAN_13"
+        displayValue
+      />
+    );
+    await waitFor(() => {
+      expect(container.querySelector("svg text")).toBeTruthy();
+    });
+    expect(container.textContent).toContain("1234567890128");
+    getContext.mockRestore();
   });
 });
