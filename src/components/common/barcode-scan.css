@@ -77,7 +77,11 @@
 .scan-stage {
   position: relative;
   width: 100%;
-  height: clamp(180px, 34vh, 250px);
+  width: auto;
+  height: min(58dvh, 520px);
+  aspect-ratio: 9 / 16;
+  max-width: 100%;
+  margin-inline: auto;
   overflow: hidden;
   border-radius: 14px;
   background: #000;
@@ -93,14 +97,9 @@
   object-fit: cover;
   object-position: center;
   background: #000;
-}
-
-/* Software fallback for browsers that expose no camera zoom constraint. The
-   video element is enlarged visually while the stream remains native 1x; this
-   makes the target usable even when getCapabilities().zoom is unavailable. */
-.scan-video.is-zoomed {
-  transform: scale(2);
-  transform-origin: center;
+  /* Browser-safe Scene Optimizer-style treatment: make bars and edges easier
+     to distinguish without changing the captured value or stored product. */
+  filter: contrast(1.16) saturate(1.28) brightness(1.06);
 }
 
 .scan-flash-btn {
@@ -451,7 +450,7 @@
 /* Short viewports (landscape phones, small laptops): keep both actions visible. */
 @media (max-height: 560px) {
   .scan-stage {
-    height: clamp(150px, 38vh, 200px);
+    height: min(42dvh, 240px);
   }
 
   .scan-dialog-head {
@@ -473,7 +472,7 @@
 
 @media (min-width: 640px) and (min-height: 720px) {
   .scan-stage {
-    height: 250px;
+    height: min(58dvh, 520px);
   }
 }
 

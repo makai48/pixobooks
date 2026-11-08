@@ -27,6 +27,30 @@ type Props = {
 type Status = "starting" | "scanning" | "fallback";
 type View = "camera" | "success";
 
+type NativeBarcode = { rawValue?: string };
+type NativeBarcodeDetector = {
+  detect: (source: HTMLVideoElement) => Promise<NativeBarcode[]>;
+};
+type NativeBarcodeDetectorConstructor = new (options?: {
+  formats?: string[];
+}) => NativeBarcodeDetector;
+
+const NATIVE_BARCODE_FORMATS = [
+  "aztec",
+  "code_128",
+  "code_39",
+  "code_93",
+  "codabar",
+  "data_matrix",
+  "ean_13",
+  "ean_8",
+  "itf",
+  "pdf417",
+  "qr_code",
+  "upc_a",
+  "upc_e",
+];
+
 /** How long the green success state holds before the code is applied. */
 const SUCCESS_HOLD_MS = 1200;
 
@@ -55,7 +79,6 @@ type ScanCapabilities = MediaTrackCapabilities & {
  * exposure and white balance, a detail-oriented stream, native zoom and torch. */
 async function optimizeCameraTrack(track: MediaStreamTrack): Promise<{
   torchOn: boolean;
-  zoom: number | null;
 }> {
   const capabilities = track.getCapabilities?.() as ScanCapabilities | undefined;
   const supported = (key: keyof ScanCapabilities, value: string) =>
@@ -73,13 +96,6 @@ async function optimizeCameraTrack(track: MediaStreamTrack): Promise<{
     advanced.push({ whiteBalanceMode: "continuous" } as MediaTrackConstraintSet);
   }
 
-  let zoom: number | null = null;
-  if (typeof capabilities?.zoom === "number") {
-    const min = Number(capabilities.minZoom ?? 1);
-    zoom = Math.max(min, Math.min(2, capabilities.zoom));
-    advanced.push({ zoom } as MediaTrackConstraintSet);
-  }
-
   if (advanced.length) {
     await track.applyConstraints({ advanced }).catch(() => undefined);
   }
@@ -93,17 +109,17 @@ async function optimizeCameraTrack(track: MediaStreamTrack): Promise<{
   if (capabilities?.torch === true || "torch" in (capabilities ?? {})) {
     try {
       await track.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] });
-      return { torchOn: true, zoom };
+      return { torchOn: true };
     } catch {
       try {
         await track.applyConstraints({ torch: true } as MediaTrackConstraints);
-        return { torchOn: true, zoom };
+        return { torchOn: true };
       } catch {
         // Continue with focus/exposure/white balance if torch is unavailable.
       }
     }
   }
-  return { torchOn: false, zoom };
+  return { torchOn: false };
 }
 
 /**
@@ -126,13 +142,14 @@ export default function BarcodeScanButton({
   const [note, setNote] = useState("Starting scanner…");
   const [view, setView] = useState<View>("camera");
   const [torchOn, setTorchOn] = useState(false);
-  const [nativeZoom, setNativeZoom] = useState<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
   const watchdogRef = useRef<number | undefined>(undefined);
+  const focusTimerRef = useRef<number | undefined>(undefined);
+  const nativeScanFrameRef = useRef<number | undefined>(undefined);
   const successTimerRef = useRef<number | undefined>(undefined);
   const doneRef = useRef(false);
   const onScanRef = useRef(onScan);
@@ -144,7 +161,14 @@ export default function BarcodeScanButton({
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setTorchOn(false);
-    setNativeZoom(null);
+    if (focusTimerRef.current) {
+      window.clearInterval(focusTimerRef.current);
+      focusTimerRef.current = undefined;
+    }
+    if (nativeScanFrameRef.current !== undefined) {
+      window.cancelAnimationFrame(nativeScanFrameRef.current);
+      nativeScanFrameRef.current = undefined;
+    }
     if (watchdogRef.current) {
       window.clearTimeout(watchdogRef.current);
       watchdogRef.current = undefined;
@@ -241,13 +265,20 @@ export default function BarcodeScanButton({
         if (track) {
           const optimized = await optimizeCameraTrack(track);
           setTorchOn(optimized.torchOn);
-          setNativeZoom(
-            optimized.zoom !== null && optimized.zoom >= 2
-              ? optimized.zoom
-              : null
-          );
+          // Re-assert continuous centre autofocus every 250ms. The browser
+          // does not expose a portable focus-point API; continuous focus is
+          // the supported way to keep the scan target sharp on Android.
+          focusTimerRef.current = window.setInterval(() => {
+            void track.applyConstraints({
+              advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet],
+            }).catch(() => undefined);
+          }, 250);
         }
         if (cancelled) {
+          if (focusTimerRef.current) {
+            window.clearInterval(focusTimerRef.current);
+            focusTimerRef.current = undefined;
+          }
           stream.getTracks().forEach((t) => t.stop());
           streamRef.current = null;
           return;
@@ -264,6 +295,42 @@ export default function BarcodeScanButton({
         setNote("Align the barcode inside the frame.");
 
         try {
+          // Prefer the browser's native detector where available. On Android
+          // Chrome this can use the platform camera/ML pipeline and tends to
+          // be faster and cleaner than a JavaScript decoder. ZXing remains
+          // active below as the compatibility fallback.
+          const NativeDetector = (
+            window as typeof window & {
+              BarcodeDetector?: NativeBarcodeDetectorConstructor;
+            }
+          ).BarcodeDetector;
+          if (NativeDetector) {
+            const detector = new NativeDetector({
+              formats: NATIVE_BARCODE_FORMATS,
+            });
+            const detectNative = async () => {
+              if (cancelled || doneRef.current) return;
+              try {
+                if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                  const results = await detector.detect(video);
+                  const value = results.find((item) => item.rawValue)?.rawValue;
+                  if (value) {
+                    handleDecodedRef.current(value);
+                    return;
+                  }
+                }
+              } catch {
+                // Native detection is optional; ZXing continues below.
+              }
+              if (!cancelled && !doneRef.current) {
+                nativeScanFrameRef.current = window.requestAnimationFrame(() => {
+                  void detectNative();
+                });
+              }
+            };
+            void detectNative();
+          }
+
           const { BrowserMultiFormatReader } = await import("@zxing/browser");
           const reader = new BrowserMultiFormatReader();
           const controls = await reader.decodeFromStream(
@@ -454,7 +521,7 @@ export default function BarcodeScanButton({
                   <div className="scan-stage">
                     <video
                       ref={videoRef}
-                      className={cn("scan-video", nativeZoom === null && "is-zoomed")}
+                      className="scan-video"
                       playsInline
                       muted
                       autoPlay
