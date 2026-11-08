@@ -152,8 +152,49 @@ export default function BarcodeScanButton({
         streamRef.current = stream;
         const track = stream.getVideoTracks?.()[0];
         const capabilities = track?.getCapabilities?.() as
-          | (MediaTrackCapabilities & { torch?: boolean; zoom?: number })
+          | (MediaTrackCapabilities & {
+              torch?: boolean;
+              zoom?: number;
+              minZoom?: number;
+              focusMode?: string[];
+              exposureMode?: string[];
+              whiteBalanceMode?: string[];
+            })
           | undefined;
+        if (track) {
+          // Prioritise barcode clarity: continuous autofocus plus continuous
+          // exposure/white balance where the device exposes those controls.
+          void track.applyConstraints({
+            advanced: [
+              {
+                ...(capabilities?.focusMode?.includes("continuous")
+                  ? { focusMode: "continuous" }
+                  : {}),
+                ...(capabilities?.exposureMode?.includes("continuous")
+                  ? { exposureMode: "continuous" }
+                  : {}),
+                ...(capabilities?.whiteBalanceMode?.includes("continuous")
+                  ? { whiteBalanceMode: "continuous" }
+                  : {}),
+              } as MediaTrackConstraintSet,
+            ],
+          }).catch(() => undefined);
+
+          // Turn the rear light on automatically for low-light barcode
+          // scanning. The manual flashlight control remains available when
+          // the browser/device supports torch constraints.
+          void track
+            .applyConstraints({
+              advanced: [{ torch: true } as MediaTrackConstraintSet],
+            })
+            .then(() => setTorchOn(true))
+            .catch(() =>
+              track
+                .applyConstraints({ torch: true } as MediaTrackConstraints)
+                .then(() => setTorchOn(true))
+                .catch(() => undefined)
+            );
+        }
         if (capabilities?.zoom !== undefined) {
           const maxZoom = capabilities.zoom;
           const minZoom = Number(
@@ -161,7 +202,7 @@ export default function BarcodeScanButton({
           );
           // Use a close-up barcode view by default, while respecting the
           // physical camera's supported range.
-          const defaultZoom = Math.min(4, maxZoom);
+          const defaultZoom = Math.min(2, maxZoom);
           void track.applyConstraints({
             advanced: [
               {

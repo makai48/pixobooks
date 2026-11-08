@@ -99,7 +99,7 @@
    video element is enlarged visually while the stream remains native 1x; this
    makes the target usable even when getCapabilities().zoom is unavailable. */
 .scan-video.is-zoomed {
-  transform: scale(4);
+  transform: scale(2);
   transform-origin: center;
 }
 
