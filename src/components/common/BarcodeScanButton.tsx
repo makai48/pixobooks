@@ -96,6 +96,14 @@ async function optimizeCameraTrack(track: MediaStreamTrack): Promise<{
     advanced.push({ whiteBalanceMode: "continuous" } as MediaTrackConstraintSet);
   }
 
+  // Prefer the camera's real optical/digital zoom control. This keeps the
+  // image in the camera/ISP pipeline instead of magnifying a CSS preview.
+  if (typeof capabilities?.zoom === "number") {
+    const minZoom = Number(capabilities.minZoom ?? 1);
+    const nativeZoom = Math.max(minZoom, Math.min(2, capabilities.zoom));
+    advanced.push({ zoom: nativeZoom } as MediaTrackConstraintSet);
+  }
+
   if (advanced.length) {
     await track.applyConstraints({ advanced }).catch(() => undefined);
   }
