@@ -29,6 +29,7 @@ import { RegisterSkeletonBody } from "@/components/auth/RegisterSkeleton";
 import {
   CURRENCIES,
   BUSINESS_TYPES,
+  DATE_FORMAT_OPTIONS,
   GROUPING_SYSTEMS,
   SEPARATOR_PRESETS,
   TIMEZONES,
@@ -41,6 +42,7 @@ import {
   joinPhone,
 } from "@/lib/referenceData";
 import { businessNameHint } from "@/lib/businessClues";
+import type { DateFormat } from "@/types";
 import "@/styles/auth.css";
 
 type Step = "details" | "otp";
@@ -138,6 +140,7 @@ export default function Register() {
   const [grouping, setGrouping] = useState<"western" | "indian">("western");
   const [decimalPlaces, setDecimalPlaces] = useState(2);
   const [separatorId, setSeparatorId] = useState("us");
+  const [dateFormat, setDateFormat] = useState<DateFormat>("DD/MM/YYYY");
   // contacts
   const [mobileDial, setMobileDial] = useState("256");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -205,6 +208,7 @@ export default function Register() {
         decimal_places: String(decimalPlaces),
         thousand_separator: separator.thousand,
         decimal_separator: separator.decimal,
+        date_format: dateFormat,
         mobile: formatPhone(mobileDial, mobileNumber),
         office_phone: officeNumber ? formatPhone(officeDial, officeNumber) : "",
         whatsapp: waNumber ? formatPhone(waDial, waNumber) : "",
@@ -259,6 +263,7 @@ export default function Register() {
             decimal_places: decimalPlaces,
             thousand_separator: separator.thousand,
             decimal_separator: separator.decimal,
+            date_format: dateFormat,
             mobile: formatPhone(mobileDial, mobileNumber),
             office_phone: officeNumber ? formatPhone(officeDial, officeNumber) : "",
             whatsapp: waNumber ? formatPhone(waDial, waNumber) : "",
@@ -521,6 +526,20 @@ export default function Register() {
                               label: s.label,
                             }))}
                             ariaLabel="Separator format"
+                            fullWidth
+                            className="input select-glass reg-input"
+                          />
+                        </AuthField>
+                        <AuthField htmlFor="reg-date-format" label="Date format">
+                          <GlassSelect
+                            id="reg-date-format"
+                            value={dateFormat}
+                            onChange={(v) => setDateFormat(v as DateFormat)}
+                            options={DATE_FORMAT_OPTIONS.map((option) => ({
+                              value: option.value,
+                              label: option.label,
+                            }))}
+                            ariaLabel="Date format"
                             fullWidth
                             className="input select-glass reg-input"
                           />

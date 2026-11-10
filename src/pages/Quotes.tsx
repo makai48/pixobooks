@@ -9,9 +9,9 @@ import {
   Check,
   ClipboardList,
   ShoppingCart,
-  LayoutDashboard,
+  ScanBarcode,
+  ShoppingBag,
   PauseCircle,
-  Receipt,
 } from "lucide-react";
 import SubNav from "@/components/layout/SubNav";
 import { toast } from "sonner";
@@ -122,8 +122,8 @@ export default function Quotes() {
     <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
       <SubNav
         items={[
-          { to: "/", label: "POS", icon: LayoutDashboard, end: true },
-          { to: "/sales-report", label: "Report", icon: Receipt },
+          { to: "/", label: "POS", icon: ScanBarcode, end: true },
+          { to: "/sales-report", label: "Sales", icon: ShoppingBag },
           { to: "/held", label: "Held Tickets", icon: PauseCircle },
           { to: "/quotes", label: "Quotes", icon: FileText },
         ]}

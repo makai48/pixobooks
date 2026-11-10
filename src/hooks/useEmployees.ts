@@ -55,9 +55,13 @@ export function useUpdateEmployee() {
   return useMutation<UpdateEmployeeResult, Error, Partial<Employee> & { id: string }>({
     mutationFn: async (e) => {
       const payload: Record<string, unknown> = {};
-      if (e.name !== undefined) payload.username = e.name;
+      if (e.name !== undefined) {
+        payload.username = e.name;
+        payload.display_name = e.name;
+      }
+      if (e.fullName !== undefined) payload.full_name = e.fullName;
       if (e.role !== undefined) payload.role = e.role;
-      if (e.pin !== undefined) payload.pin = e.pin || null;
+      if (e.pin !== undefined) payload.pin = e.pin || "";
       if (e.permissions !== undefined) payload.permissions = e.permissions;
       if (e.active !== undefined) payload.active = e.active;
       if (e.avatarUrl !== undefined) payload.avatar_url = e.avatarUrl;
@@ -123,7 +127,10 @@ export type InviteDelivery = {
 
 export type InviteEmployeeInput = {
   email: string;
+  /** Convenient name shown throughout the app. */
   name?: string;
+  /** Legal/full name. Falls back to `name` when omitted. */
+  fullName?: string;
   role?: string;
   permissions?: Permission[];
   expirationHours?: number;
@@ -175,6 +182,7 @@ export function useInviteEmployee() {
       const email = (p.email || "").trim().toLowerCase();
       if (!email) throw new Error("Email required");
       const name = (p.name || email.split("@")[0]).trim();
+      const fullName = (p.fullName || name).trim();
       const role = (p.role || "Staff").trim();
       const permissions =
         p.permissions && p.permissions.length > 0
@@ -186,6 +194,7 @@ export function useInviteEmployee() {
         body: {
           email,
           name,
+          fullName,
           role,
           permissions,
           expirationHours,

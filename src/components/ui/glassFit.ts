@@ -1,18 +1,22 @@
 /**
- * Content-hugging dropdown width (GLOBAL RULE): the longest label plus at
- * most 15% headroom (room for the chevron), floored at 64px so tiny labels
- * like "All" or "2026" still fit their text. The trigger truncates beyond
- * that, so boxes never stretch wider than 115% of their longest text and
- * never squeeze the search bar beside them.
+ * Content-hugging dropdown width (GLOBAL RULE): the longest label plus a
+ * bounded headroom allowance, floored at 64px so tiny labels like "All" or
+ * "2026" still fit their text. Callers keep the allowance at or below 25%.
  */
-export function glassFitWidth(labels: readonly string[]): number | undefined {
+export function glassFitWidth(
+  labels: readonly string[],
+  headroom = 0.15,
+  chromePx = 0
+): number | undefined {
   if (typeof document === "undefined") return undefined;
   const ctx = document.createElement("canvas").getContext("2d");
-  if (!ctx) return undefined;
-  ctx.font = "14px Inter, ui-sans-serif, system-ui, sans-serif";
+  if (ctx) ctx.font = "14px Inter, ui-sans-serif, system-ui, sans-serif";
   let longest = 0;
   for (const label of labels) {
-    longest = Math.max(longest, ctx.measureText(label).width);
+    const measured = ctx ? ctx.measureText(label).width : label.length * 7.5;
+    longest = Math.max(longest, measured);
   }
-  return Math.max(64, Math.ceil(longest * 1.15));
+  // Headroom applies to the text itself; the control's own padding, chevron
+  // and optional check icon are added separately so they never eat into it.
+  return Math.max(64, Math.ceil(longest * (1 + headroom) + chromePx));
 }

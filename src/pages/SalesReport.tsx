@@ -1,18 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   Download,
-  RotateCcw,
   Trash2,
   Receipt,
   FileText,
   X,
   Wallet,
   Plus,
-  LayoutDashboard,
+  ScanBarcode,
+  ShoppingBag,
   PauseCircle,
   Eye,
   EyeOff,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import SubNav from "@/components/layout/SubNav";
 import { toast } from "sonner";
@@ -25,15 +28,16 @@ import {
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/hooks/useAuth";
-import { cn, download, formatCurrency, formatCompactCurrency, formatDate, localISODate, timeAgo, todayISO } from "@/lib/utils";
+import { cn, download, formatCurrency, formatCompactCurrency, formatNumber, localISODate, todayISO } from "@/lib/utils";
 import { byTransactionDateDesc, inDayRange } from "@/lib/salesReport";
 import {
   DEFAULT_WEEK_START,
   RANGE_PRESET_OPTIONS,
-  resolveRange,
+  startOfWeekOn,
+  weekStartsOn,
   type RangePreset,
 } from "@/lib/week";
-import type { PaymentMethod, Sale } from "@/types";
+import type { DateFormat, PaymentMethod, Sale, WeekStart } from "@/types";
 import DocumentView from "@/components/features/receipts/DocumentView";
 import PrintablePortal from "@/components/features/receipts/PrintablePortal";
 import ReceiptActions from "@/components/features/receipts/ReceiptActions";
@@ -62,6 +66,7 @@ export default function SalesReport() {
   const [to, setTo] = useState(todayISO());
   const [rangePreset, setRangePreset] =
     useState<RangePreset | "custom">("today");
+  const [rangeOffset, setRangeOffset] = useState(0);
   const [method, setMethod] = useState<"all" | PaymentMethod>("all");
   const [status, setStatus] = useState<"all" | "paid" | "partial" | "credit">("all");
   const [cashier, setCashier] = useState<string>("all");
@@ -71,6 +76,7 @@ export default function SalesReport() {
    *  other. The toggle reveals them without affecting any total (voided rows
    *  never contribute, whichever way the toggle is set). */
   const [showVoided, setShowVoided] = useState(false);
+  const [showGeneralFilters, setShowGeneralFilters] = useState(false);
 
   // Canonical cashier identity: sales rows carry free-text cashier names, so
   // "Sheillah K", "sheillah  k" or a renamed profile would otherwise spawn
@@ -152,16 +158,32 @@ export default function SalesReport() {
     return out;
   }, [sales, employees, cashierDisplay]);
 
-  /** Quick range presets — Today is the default. "This Week" and
-   *  "Last Week" follow the business week-start setting. */
-  const applyPreset = (preset: RangePreset) => {
-    const range = resolveRange(
-      preset,
+  /** Apply a current or historical report session without changing the
+   *  geometry of the range controls. */
+  const applySession = (preset: RangePreset, offset = 0) => {
+    const family = preset === "lastWeek" ? "thisWeek" : preset;
+    const sessionOffset = preset === "lastWeek" ? offset - 1 : offset;
+    const range = resolveSessionRange(
+      family,
+      sessionOffset,
       settings?.weekStart ?? DEFAULT_WEEK_START
     );
     setFrom(localISODate(range.from));
     setTo(localISODate(range.to));
-    setRangePreset(preset);
+    setRangePreset(family);
+    setRangeOffset(sessionOffset);
+  };
+
+  /** Quick range presets — Today is the default. */
+  const applyPreset = (preset: RangePreset) => {
+    applySession(preset);
+  };
+
+  const moveRange = (direction: -1 | 1) => {
+    if (rangePreset === "custom") return;
+    const nextOffset = rangeOffset + direction;
+    if (nextOffset > 0) return;
+    applySession(rangePreset, nextOffset);
   };
 
   const withinFilters = useMemo(() => {
@@ -193,6 +215,16 @@ export default function SalesReport() {
   const filtered = useMemo(
     () => (showVoided ? withinFilters : withinFilters.filter((s) => !s.voidedAt)),
     [withinFilters, showVoided]
+  );
+  const [rowLimit, setRowLimit] = useState(250);
+
+  useEffect(() => {
+    setRowLimit(250);
+  }, [from, to, q, method, status, cashier, showVoided]);
+
+  const visibleFiltered = useMemo(
+    () => filtered.slice(0, rowLimit),
+    [filtered, rowLimit]
   );
 
   const totals = useMemo(() => {
@@ -254,8 +286,8 @@ export default function SalesReport() {
     <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
       <SubNav
         items={[
-          { to: "/", label: "POS", icon: LayoutDashboard, end: true },
-          { to: "/sales-report", label: "Report", icon: Receipt },
+          { to: "/", label: "POS", icon: ScanBarcode, end: true },
+          { to: "/sales-report", label: "Sales", icon: ShoppingBag },
           { to: "/held", label: "Held Tickets", icon: PauseCircle },
           { to: "/quotes", label: "Quotes", icon: FileText },
         ]}
@@ -307,51 +339,122 @@ export default function SalesReport() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
-        <span className="label text-[8px] md:text-[9px] text-ink-mute mr-0.5">Range</span>
-        {RANGE_PRESET_OPTIONS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => applyPreset(p.id)}
-            className={cn(
-              "chip border px-2 h-6 text-[9px] md:text-[10px] transition",
-              rangePreset === p.id
-                ? "bg-ink text-paper border-ink"
-                : "border-line hover:border-ink"
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-1.5 md:gap-2 max-md:flex-nowrap max-md:gap-0.5">
         <button
           type="button"
-          aria-pressed={showVoided}
-          onClick={() => setShowVoided((v) => !v)}
-          title={
-            showVoided
-              ? "Hide voided sales from the list"
-              : "Include voided sales in the list"
-          }
-          className={cn(
-            "chip border px-2 h-6 text-[9px] md:text-[10px] transition inline-flex items-center gap-1 ml-auto",
-            showVoided
-              ? "bg-danger/10 text-danger border-danger/40"
-              : "border-line text-ink-mute hover:border-ink hover:text-ink"
-          )}
+          aria-label="Previous report session"
+          onClick={() => moveRange(-1)}
+          disabled={rangePreset === "custom"}
+          className="input input-sm select-glass inline-flex h-8 w-8 items-center justify-center p-0 disabled:cursor-not-allowed disabled:opacity-35"
         >
-          {showVoided ? (
-            <EyeOff className="w-3 h-3 shrink-0" aria-hidden="true" />
-          ) : (
-            <Eye className="w-3 h-3 shrink-0" aria-hidden="true" />
-          )}
-          {showVoided ? "Hide voided" : "Show voided"}
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </button>
+        <GlassSelect
+          id="sr-range"
+          value={rangeSelectValue(rangePreset, rangeOffset)}
+          onChange={(value) => applyPreset(value as RangePreset)}
+          ariaLabel="Report range"
+          options={RANGE_PRESET_OPTIONS
+            .filter((p) => p.id !== "lastWeek")
+            .map((p) => ({
+              value: p.id,
+              label: p.id === "thisYear" ? String(new Date().getFullYear()) : p.label,
+            }))}
+          selectedLabel={rangeSessionLabel(
+            rangePreset,
+            rangeOffset,
+            settings?.dateFormat ?? "DD/MM/YYYY"
+          )}
+          noTruncate
+          triggerHeadroom={0.25}
+          menuHeadroom={0.25}
+          triggerChromePx={36}
+          menuChromePx={48}
+          className="input input-sm select-glass max-md:text-[9px]"
+        />
+        <button
+          type="button"
+          aria-label="Next report session"
+          onClick={() => moveRange(1)}
+          disabled={rangePreset === "custom" || rangeOffset >= 0}
+          className="input input-sm select-glass inline-flex h-8 w-8 items-center justify-center p-0 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <label htmlFor="sr-filter-visibility" className="label text-[8px] md:text-[9px] text-ink-mute ml-1 max-md:hidden">
+          Filters
+        </label>
+        <GlassSelect
+          id="sr-filter-visibility"
+          value={showGeneralFilters ? "show" : "hide"}
+          onChange={(value) => setShowGeneralFilters(value === "show")}
+          ariaLabel="General filters visibility"
+          options={[
+            { value: "show", label: "Show filters" },
+            { value: "hide", label: "Hide filters" },
+          ]}
+          noTruncate
+          triggerHeadroom={0.2}
+          menuHeadroom={0.2}
+          triggerChromePx={36}
+          menuChromePx={48}
+          className="input input-sm select-glass hidden md:flex"
+        />
+        <button
+          type="button"
+          aria-label={showGeneralFilters ? "Hide filters" : "Show filters"}
+          aria-expanded={showGeneralFilters}
+          onClick={() => setShowGeneralFilters((visible) => !visible)}
+          className="input input-sm select-glass inline-flex h-8 w-8 max-md:ml-2 items-center justify-center p-0 md:hidden"
+        >
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform",
+              showGeneralFilters && "rotate-180"
+            )}
+            aria-hidden="true"
+          />
+        </button>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            aria-pressed={showVoided}
+            onClick={() => setShowVoided((v) => !v)}
+            title={
+              showVoided
+                ? "Hide voided sales from the list"
+                : "Include voided sales in the list"
+            }
+            className={cn(
+              "chip border px-1.5 md:px-2 h-6 text-[9px] md:text-[10px] transition inline-flex items-center gap-1 whitespace-nowrap",
+              showVoided
+                ? "bg-danger/10 text-danger border-danger/40"
+                : "border-line text-ink-mute hover:border-ink hover:text-ink"
+            )}
+          >
+            {showVoided ? (
+              <EyeOff className="w-3 h-3 shrink-0" aria-hidden="true" />
+            ) : (
+              <Eye className="w-3 h-3 shrink-0" aria-hidden="true" />
+            )}
+            <span>{showVoided ? "Hide voided" : "Show voided"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={exportCsv}
+            aria-label="Download CSV"
+            title="Download CSV"
+            className="btn btn-primary btn-sm h-7 shrink-0 gap-1 px-2 text-[9px]"
+          >
+            <Download className="w-3.5 h-3.5" aria-hidden="true" />
+            CSV
+          </button>
+        </div>
       </div>
 
-      <div className="paper-card p-2.5 md:p-4 grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center md:items-end gap-x-1.5 gap-y-1.5 md:grid-cols-6 md:gap-3">
-        <div className="relative col-span-4 md:col-span-2 flex items-center gap-1.5 md:gap-3 min-w-0">
-          <div className="relative max-md:w-[140px] max-md:flex-none max-md:shrink-0 md:flex-1 md:min-w-0">
+      {showGeneralFilters && <div className="paper-card p-2.5 md:p-4 grid grid-cols-2 items-end gap-x-2 gap-y-2 md:grid-cols-6 md:gap-3">
+        <div className="relative col-span-2 md:col-span-2 flex items-center gap-1.5 md:gap-3 min-w-0">
+          <div className="relative max-md:flex-1 max-md:min-w-0 md:flex-1 md:min-w-0">
             <Search className="w-3.5 h-3.5 md:w-4 md:h-4 absolute left-2 md:left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Number, customer, cashier" className="input input-sm pl-7 md:pl-9" />
           </div>
@@ -363,18 +466,18 @@ export default function SalesReport() {
               value: c,
               label: c === "all" ? "All cashiers" : c,
             }))}
-            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:hidden flex-1"
+            className="input input-sm select-glass min-w-0 max-md:w-[104px] max-md:flex-none max-md:px-1.5 md:hidden"
           />
         </div>
-        <div className="max-md:contents">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <label htmlFor="sr-from" className="label max-md:text-[9px] max-md:whitespace-nowrap">From</label>
-          <GlassDatePicker id="sr-from" value={from} onChange={(v) => { setFrom(v); setRangePreset("custom"); }} ariaLabel="From date" className="input input-sm select-glass max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear />
+          <GlassDatePicker id="sr-from" value={from} onChange={(v) => { setFrom(v); setRangePreset("custom"); setRangeOffset(0); }} ariaLabel="From date" className="input input-sm select-glass w-full min-w-0 whitespace-nowrap max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear fullWidth dateFormat={settings?.dateFormat ?? "DD/MM/YYYY"} />
         </div>
-        <div className="max-md:contents">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <label htmlFor="sr-to" className="label max-md:text-[9px] max-md:whitespace-nowrap">To</label>
-          <GlassDatePicker id="sr-to" value={to} onChange={(v) => { setTo(v); setRangePreset("custom"); }} ariaLabel="To date" className="input input-sm select-glass max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear />
+          <GlassDatePicker id="sr-to" value={to} onChange={(v) => { setTo(v); setRangePreset("custom"); setRangeOffset(0); }} ariaLabel="To date" className="input input-sm select-glass w-full min-w-0 whitespace-nowrap max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear fullWidth dateFormat={settings?.dateFormat ?? "DD/MM/YYYY"} />
         </div>
-        <div className="max-md:contents">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <label htmlFor="sr-payment" className="label max-md:text-[9px] max-md:whitespace-nowrap">Payment</label>
           <GlassSelect
             id="sr-payment"
@@ -389,10 +492,10 @@ export default function SalesReport() {
               { value: "credit", label: "Credit" },
               { value: "partial", label: "Partial" },
             ]}
-            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+            className="input input-sm select-glass w-full min-w-0 max-md:px-1.5 md:mt-1"
           />
         </div>
-        <div className="max-md:contents">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <label htmlFor="sr-status" className="label max-md:text-[9px] max-md:whitespace-nowrap">Status</label>
           <GlassSelect
             id="sr-status"
@@ -400,15 +503,15 @@ export default function SalesReport() {
             onChange={(v) => setStatus(v as typeof status)}
             ariaLabel="Payment status"
             options={[
-              { value: "all", label: "All" },
+               { value: "all", label: "All statuses" },
               { value: "paid", label: "Paid" },
               { value: "partial", label: "Partial" },
               { value: "credit", label: "Credit" },
             ]}
-            className="input input-sm select-glass min-w-0 max-md:px-1.5 md:mt-1"
+            className="input input-sm select-glass w-full min-w-0 max-md:px-1.5 md:mt-1"
           />
         </div>
-      </div>
+      </div>}
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-[10px] md:text-xs text-ink-mute inline-flex items-center gap-1.5 md:gap-2">
@@ -422,7 +525,7 @@ export default function SalesReport() {
             </span>
           )}
         </div>
-        <div className="flex gap-1 md:gap-2 flex-wrap max-md:flex-1 max-md:justify-end">
+        <div className="hidden gap-1 md:flex md:gap-2 md:flex-wrap">
           <div className="hidden md:block">
             <GlassSelect
               value={cashier}
@@ -432,25 +535,10 @@ export default function SalesReport() {
                 value: c,
                 label: c === "all" ? "All cashiers" : c,
               }))}
+              triggerHeadroom={0.25}
               className="input input-sm select-glass"
             />
           </div>
-          <button
-            onClick={() => {
-              setQ("");
-              setFrom(todayISO());
-              setTo(todayISO());
-              setRangePreset("today");
-              setMethod("all"); setStatus("all"); setCashier("all");
-              setShowVoided(false);
-            }}
-            className="btn btn-ghost btn-sm"
-          >
-            <RotateCcw className="w-3.5 h-3.5 md:w-4 md:h-4" /> Reset
-          </button>
-          <button onClick={exportCsv} className="btn btn-primary btn-sm">
-            <Download className="w-3.5 h-3.5 md:w-4 md:h-4" /> Export CSV
-          </button>
         </div>
       </div>
 
@@ -475,11 +563,12 @@ export default function SalesReport() {
           </div>
         ) : (
           <div className="divide-y">
-            {filtered.map((s) => (
+            {visibleFiltered.map((s) => (
               <TransactionRow
                 key={s.id}
                 sale={s}
                 currency={currency}
+                dateFormat={settings?.dateFormat ?? "DD/MM/YYYY"}
                 initials={initialsByCashier.get(canonCashierKey(s.cashierName)) || canonCashierName(s.cashierName).slice(0, 2).toUpperCase()}
                 canViewCosts={canViewCosts}
                 canVoid={can("sales.void")}
@@ -501,6 +590,17 @@ export default function SalesReport() {
                 }}
               />
             ))}
+            {visibleFiltered.length < filtered.length && (
+              <div className="flex justify-center p-3">
+                <button
+                  type="button"
+                  onClick={() => setRowLimit((limit) => limit + 250)}
+                  className="btn btn-ghost btn-sm"
+                >
+                  Load more transactions ({filtered.length - visibleFiltered.length} remaining)
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -525,6 +625,7 @@ export default function SalesReport() {
 function TransactionRow({
   sale,
   currency,
+  dateFormat,
   initials,
   canViewCosts,
   canVoid,
@@ -533,6 +634,7 @@ function TransactionRow({
 }: {
   sale: Sale;
   currency: string;
+  dateFormat: DateFormat;
   initials: string;
   canViewCosts: boolean;
   canVoid: boolean;
@@ -562,20 +664,15 @@ function TransactionRow({
     credit: "bg-danger/10 text-danger border-danger/30",
   }[sale.paymentStatus];
 
-  // Show the actual transaction day, not "3mo ago" — imported sales must read
-  // on the date they happened (device-local, matching the report's day filter).
-  const dayLabel = formatDate(sale.createdAt);
-  const shortDay = new Date(sale.createdAt).toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-  });
+  const desktopWhen = transactionWhen(sale.createdAt, false, dateFormat);
+  const mobileWhen = transactionWhen(sale.createdAt, true, dateFormat);
   const fullWhen = new Date(sale.createdAt).toLocaleString();
 
   return (
     <div className="flex items-center h-[27px] max-md:h-[21px] hover:bg-paper/50 transition text-[11px] leading-tight">
       <button
         onClick={onClick}
-        className="flex-1 flex items-center gap-1.5 md:gap-2 px-2 max-md:pr-1 py-1 max-md:py-0 min-w-0 text-left max-md:grid max-md:grid-cols-[40px_17.5px_minmax(0,1fr)_auto_auto_auto] max-md:gap-x-1 h-full"
+         className="flex-1 flex items-center gap-1.5 md:gap-2 px-2 max-md:pr-1 py-1 max-md:py-0 min-w-0 text-left max-md:grid max-md:grid-cols-[44px_16px_minmax(0,1fr)_66px_38px_56px] max-md:gap-x-0.5 h-full"
         title={`${customer} · ${sale.number}`}
       >
         <span
@@ -617,37 +714,38 @@ function TransactionRow({
           </span>
         )}
         <span
-          className="shrink-0 md:hidden inline-flex items-center justify-start text-[11px] font-bold text-ink max-md:leading-none max-md:mr-1"
+          className="shrink-0 md:hidden inline-flex items-center justify-start text-[11px] font-bold text-ink max-md:leading-none max-md:mr-2"
           title={sale.cashierName}
         >
           {initials}
         </span>
         <span className="min-w-0 flex flex-col leading-tight md:flex-1 md:flex-row md:items-baseline md:gap-1 max-md:contents">
-          <span className="truncate max-md:min-w-0 max-md:leading-none">
-            <span className="text-ink font-medium">{customer}</span>
+          <span className="truncate max-md:min-w-0 max-md:w-full max-md:justify-self-start max-md:leading-none">
+            <span className="text-ink font-medium max-md:ml-2">{customer}</span>
             <span className="opacity-70 hidden md:inline"> by {methodLabel}</span>
           </span>
-          <span className="text-[10px] text-ink-mute md:hidden max-md:leading-none truncate" title={fullWhen}>
-            {shortDay} · {timeAgo(sale.createdAt).replace(" ago", "")}
+          <span className="text-[10px] text-ink-mute md:hidden max-md:w-[66px] max-md:justify-self-start max-md:leading-none max-md:text-[9px] max-md:text-left truncate" title={fullWhen}>
+            {mobileWhen}
           </span>
         </span>
         <span className="font-mono text-[9px] text-ink-mute shrink-0 hidden md:inline">
           {sale.number}
         </span>
-        <span className="num text-ink-mute shrink-0 whitespace-nowrap max-md:leading-none max-md:text-[10px] max-md:font-bold">
-          {totalQty} {totalQty === 1 ? "Item" : "Items"}
+        <span className="num text-ink-mute shrink-0 whitespace-nowrap max-md:justify-self-end max-md:w-full max-md:grid max-md:grid-cols-[1fr_auto] max-md:gap-1 max-md:leading-none max-md:text-[10px] max-md:font-bold inline-flex items-baseline justify-end gap-1">
+          <span className="text-right">{totalQty}</span>
+          <span className="text-left">{totalQty === 1 ? "Item" : "Items"}</span>
         </span>
         <span className="text-ink-mute shrink-0 hidden md:inline-flex items-center gap-1" title={fullWhen}>
-          {dayLabel}
-          <span className="text-[9px] text-ink-mute/80">· {timeAgo(sale.createdAt)}</span>
+          {desktopWhen}
         </span>
         <span
           className={cn(
-            "num font-bold shrink-0 md:min-w-[70px] text-right max-md:leading-none",
+            "num font-bold shrink-0 md:min-w-[70px] text-right max-md:justify-self-end max-md:leading-none",
             sale.voidedAt ? "text-ink-mute line-through" : "text-ink"
           )}
         >
-          {formatCurrency(sale.total, currency)}
+          <span className="hidden md:inline">{formatCurrency(sale.total, currency)}</span>
+          <span className="md:hidden">{formatNumber(sale.total, currency)}</span>
         </span>
         {sale.amountDue > 0 && !sale.voidedAt && (
           <span className="num text-danger shrink-0 hidden md:inline text-[10px]">
@@ -833,6 +931,151 @@ function TransactionViewer({
 /** Collapse whitespace variants of a cashier name to one display spelling. */
 function canonCashierName(n: string): string {
   return (n || "").trim().replace(/\s+/g, " ");
+}
+
+function shiftedDate(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function rangeSelectValue(
+  preset: RangePreset | "custom",
+  offset: number
+): string {
+  if (preset === "custom") return "custom";
+  if (preset === "thisWeek" && offset === -1) return "lastWeek";
+  return preset;
+}
+
+function rangeSessionLabel(
+  preset: RangePreset | "custom",
+  offset: number,
+  dateFormat: DateFormat
+): string {
+  if (preset === "custom") return "Custom range";
+
+  if (preset === "today") {
+    if (offset === 0) return "Today";
+    if (offset === -1) return "Yesterday";
+    return formatPreferredDate(shiftedDate(new Date(), offset), dateFormat);
+  }
+
+  if (preset === "thisWeek") {
+    if (offset === 0) return "This Week";
+    if (offset === -1) return "Last Week";
+    return formatPreferredDate(shiftedDate(new Date(), offset * 7), dateFormat);
+  }
+
+  if (preset === "thisMonth") {
+    if (offset === 0) return "This Month";
+    if (offset === -1) return "Last Month";
+    return formatPreferredDate(new Date(new Date().getFullYear(), new Date().getMonth() + offset, 1), dateFormat);
+  }
+
+  if (offset === 0) return String(new Date().getFullYear());
+  if (offset === -1) return "Last Year";
+  return String(new Date().getFullYear() + offset);
+}
+
+function resolveSessionRange(
+  preset: RangePreset,
+  offset: number,
+  weekStart: WeekStart
+): { from: Date; to: Date } {
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(now);
+  todayEnd.setHours(23, 59, 59, 999);
+
+  if (preset === "today") {
+    const from = shiftedDate(todayStart, offset);
+    const to = new Date(from);
+    to.setHours(23, 59, 59, 999);
+    return { from, to };
+  }
+
+  if (preset === "thisWeek") {
+    const currentStart = startOfWeekOn(now, weekStartsOn(weekStart));
+    const from = shiftedDate(currentStart, offset * 7);
+    const to = offset === 0
+      ? todayEnd
+      : new Date(shiftedDate(from, 7).getTime() - 1);
+    return { from, to };
+  }
+
+  if (preset === "thisMonth") {
+    const from = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    const to = offset === 0
+      ? todayEnd
+      : new Date(now.getFullYear(), now.getMonth() + offset + 1, 1).getTime() - 1;
+    return { from, to: new Date(to) };
+  }
+
+  const from = new Date(now.getFullYear() + offset, 0, 1);
+  const to = offset === 0
+    ? todayEnd
+    : new Date(now.getFullYear() + offset + 1, 0, 1).getTime() - 1;
+  return { from, to: new Date(to) };
+}
+
+function formatPreferredDate(
+  value: string | number | Date,
+  dateFormat: DateFormat
+): string {
+  const date = new Date(value);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear());
+  if (dateFormat === "DD MMM YYYY" || dateFormat === "DD MMMM YYYY") {
+    const monthName = date.toLocaleDateString(undefined, {
+      month: dateFormat === "DD MMMM YYYY" ? "long" : "short",
+    });
+    return `${day} ${monthName} ${year}`;
+  }
+  if (dateFormat === "MM/DD/YYYY") return `${month}/${day}/${year}`;
+  if (dateFormat === "YYYY-MM-DD") return `${year}-${month}-${day}`;
+  return `${day}/${month}/${year}`;
+}
+
+/**
+ * Compact transaction timing for the dense report rows.
+ *
+ * Today is represented only by elapsed time. A transaction from yesterday
+ * remains elapsed-time based for the first six hours of the new day; after
+ * that it is simply "Yesterday". Older transactions show their date only.
+ */
+function transactionWhen(
+  createdAt: string,
+  compact: boolean,
+  dateFormat: DateFormat
+): string {
+  const created = new Date(createdAt);
+  const now = new Date();
+  const createdDay = localISODate(created);
+  const today = localISODate(now);
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = localISODate(yesterdayDate);
+  const elapsedHours = Math.max(0, now.getTime() - created.getTime()) / 3_600_000;
+
+  if (createdDay === today || (createdDay === yesterday && elapsedHours <= 6)) {
+    const minutes = Math.max(1, Math.floor((elapsedHours * 60)));
+    if (minutes < 60) {
+      return compact
+        ? `Abt ${minutes}min ago`
+        : `About ${minutes} min${minutes === 1 ? "" : "s"} ago`;
+    }
+
+    const hours = Math.max(1, Math.floor(minutes / 60));
+    return compact
+      ? `Abt ${hours}hr${hours === 1 ? "" : "s"} ago`
+      : `About ${hours} hr${hours === 1 ? "" : "s"} ago`;
+  }
+
+  if (createdDay === yesterday) return "Yesterday";
+  return formatPreferredDate(createdAt, dateFormat);
 }
 
 /** Grouping key for a cashier name — case-insensitive, whitespace-insensitive. */

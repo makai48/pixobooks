@@ -371,7 +371,10 @@ export type ApprovalStatus =
 
 export type Employee = {
   id: string;
+  /** Convenient working name used on POS, reports and receipts. */
   name: string;
+  /** Legal/formal name kept separate from the display name. */
+  fullName?: string;
   email?: string;
   pin: string;
   role: string;
@@ -741,6 +744,13 @@ export type WeekStart =
   | "friday"
   | "saturday";
 
+export type DateFormat =
+  | "DD/MM/YYYY"
+  | "DD MMM YYYY"
+  | "DD MMMM YYYY"
+  | "MM/DD/YYYY"
+  | "YYYY-MM-DD";
+
 export type Settings = {
   shopName: string;
   currency: string;
@@ -752,6 +762,8 @@ export type Settings = {
   categories: string[];
   /** Weekday that opens the business week. Defaults to Monday when unset. */
   weekStart?: WeekStart;
+  /** Display format used for calendar/report dates. */
+  dateFormat: DateFormat;
   /** Custom expense-category list. When empty the fallback constant
    *  `EXPENSE_CATEGORIES` is used app-wide. Renaming/deleting an entry
    *  reassigns affected expenses to "General" so no orphan rows exist. */

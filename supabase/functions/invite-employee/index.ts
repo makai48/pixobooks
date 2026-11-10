@@ -62,6 +62,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const email = String(body?.email || "").trim().toLowerCase();
     const name = String(body?.name || "").trim() || email.split("@")[0];
+    const fullName = String(body?.fullName || "").trim() || name;
     const role = String(body?.role || "").trim() || "Staff";
     const phone = orNull(body?.phone);
     const address = orNull(body?.address);
@@ -105,7 +106,7 @@ Deno.serve(async (req: Request) => {
 
     const tempPassword = generateSecurePassword();
     const expiresAt = new Date(Date.now() + expirationHours * 3600 * 1000).toISOString();
-    const metadata = { username: name, role, permissions };
+    const metadata = { username: name, display_name: name, full_name: fullName, role, permissions };
 
     // Detect any pre-existing profile so we can clean it up if it's
     // orphaned (points to a different auth.users id than we're about
@@ -213,6 +214,8 @@ Deno.serve(async (req: Request) => {
           id: userId,
           email,
           username: name,
+          display_name: name,
+          full_name: fullName,
           role,
           permissions,
           phone,

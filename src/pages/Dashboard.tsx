@@ -28,7 +28,7 @@ import {
 import { toast } from "sonner";
 import { Link, useOutletContext } from "react-router-dom";
 import SubNav from "@/components/layout/SubNav";
-import { PauseCircle as PauseIcon, FileText as QuotesIcon, LayoutDashboard as POSIcon, Receipt as SalesReportIcon } from "lucide-react";
+import { PauseCircle as PauseIcon, FileText as QuotesIcon, ScanBarcode as POSIcon, ShoppingBag as SalesReportIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useItems, useSeedSampleData } from "@/hooks/useItems";
 import { useUoms } from "@/hooks/useUoms";
@@ -595,7 +595,7 @@ export default function Dashboard() {
         <SubNav
           items={[
             { to: "/", label: "POS", icon: POSIcon, end: true },
-            { to: "/sales-report", label: "Report", icon: SalesReportIcon },
+            { to: "/sales-report", label: "Sales", icon: SalesReportIcon },
             { to: "/held", label: `Held (${heldTickets.length})`, icon: PauseIcon },
             { to: "/quotes", label: "Quotes", icon: QuotesIcon },
           ]}

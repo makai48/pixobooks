@@ -2,14 +2,14 @@ import { Image as ImageIcon } from "lucide-react";
 import CountrySelect from "@/components/common/CountrySelect";
 import PhoneInput from "@/components/common/PhoneInput";
 import GlassSelect from "@/components/ui/GlassSelect";
-import { BUSINESS_TYPES, COUNTRIES, TIMEZONES, TIMEZONE_OPTIONS } from "@/lib/referenceData";
+import { BUSINESS_TYPES, COUNTRIES, DATE_FORMAT_OPTIONS, TIMEZONES, TIMEZONE_OPTIONS } from "@/lib/referenceData";
 import { DEFAULT_WEEK_START, WEEK_START_OPTIONS } from "@/lib/week";
 import {
   addressHint,
   businessNameHint,
   emailHint,
 } from "@/lib/businessClues";
-import type { WeekStart } from "@/types";
+import type { DateFormat, WeekStart } from "@/types";
 import { Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
 
@@ -94,6 +94,25 @@ export default function BusinessSection() {
                   />
                   <div className="field-hint" style={{ marginTop: 4 }}>
                     Drives This Week and Last Week in reports. Defaults to Monday.
+                  </div>
+                </SField>
+              </div>
+
+              <div className="grid-3" style={{ marginTop: 14 }}>
+                <SField label="Date Format" htmlFor="set-date-format">
+                  <GlassSelect
+                    id="set-date-format"
+                    value={form.dateFormat}
+                    onChange={(v) => setForm({ ...form, dateFormat: v as DateFormat })}
+                    ariaLabel="Date format"
+                    options={DATE_FORMAT_OPTIONS.map((option) => ({
+                      value: option.value,
+                      label: option.label,
+                    }))}
+                    className="input select-glass"
+                  />
+                  <div className="field-hint" style={{ marginTop: 4 }}>
+                    Used for report and transaction dates.
                   </div>
                 </SField>
               </div>

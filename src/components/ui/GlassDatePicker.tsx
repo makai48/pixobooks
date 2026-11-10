@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { glassFitWidth } from "./glassFit";
+import type { DateFormat } from "@/types";
 
 type Pos = {
   left: number;
@@ -19,12 +20,20 @@ const isoToDate = (iso: string) => {
   return new Date(y || 1970, (m || 1) - 1, d || 1);
 };
 
-const formatLabel = (iso: string) =>
-  isoToDate(iso).toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+const formatLabel = (iso: string, dateFormat: DateFormat, compactMonth = false) => {
+  const date = isoToDate(iso);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear());
+  if (dateFormat === "DD MMM YYYY" || dateFormat === "DD MMMM YYYY") {
+    return `${day} ${date.toLocaleDateString(undefined, {
+      month: dateFormat === "DD MMMM YYYY" && !compactMonth ? "long" : "short",
+    })} ${year}`;
+  }
+  if (dateFormat === "MM/DD/YYYY") return `${month}/${day}/${year}`;
+  if (dateFormat === "YYYY-MM-DD") return `${year}-${month}-${day}`;
+  return `${day}/${month}/${year}`;
+};
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -55,6 +64,7 @@ export default function GlassDatePicker({
   fullWidth = false,
   placeholder = "Select date",
   allowClear = false,
+  dateFormat = "DD MMM YYYY",
 }: {
   value: string;
   onChange: (iso: string) => void;
@@ -67,6 +77,7 @@ export default function GlassDatePicker({
   placeholder?: string;
   /** Offer a Clear button so an optional date can go back to empty. */
   allowClear?: boolean;
+  dateFormat?: DateFormat;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<Pos | null>(null);
@@ -81,7 +92,8 @@ export default function GlassDatePicker({
   );
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
-  const label = value ? formatLabel(value) : placeholder;
+  const label = value ? formatLabel(value, dateFormat) : placeholder;
+  const mobileLabel = value ? formatLabel(value, dateFormat, true) : placeholder;
   const fitWidth = useMemo(() => glassFitWidth([label, "Today"]), [label]);
 
   // Arrows can cross a year boundary; keep the editable field in step.
@@ -157,7 +169,7 @@ export default function GlassDatePicker({
   }, [view]);
 
   const monthLabel = new Date(view.y, view.m, 1).toLocaleDateString(undefined, {
-    month: "long",
+    month: "short",
     year: "numeric",
   });
 
@@ -200,7 +212,10 @@ export default function GlassDatePicker({
         )}
         style={fitWidth && !fullWidth ? { width: fitWidth } : undefined}
       >
-        <span className="truncate">{label}</span>
+        <span className="whitespace-nowrap">
+          <span className="hidden md:inline">{label}</span>
+          <span className="md:hidden">{mobileLabel}</span>
+        </span>
         <CalendarDays className="w-3.5 h-3.5 shrink-0 opacity-60" />
       </button>
       {open &&
@@ -306,7 +321,10 @@ export default function GlassDatePicker({
               )}
             </div>
             <div className="flex items-center justify-between gap-2 mt-1.5 px-0.5">
-              <span className="text-[10px] text-ink-mute truncate">{label}</span>
+              <span className="text-[10px] text-ink-mute truncate">
+                <span className="hidden md:inline">{label}</span>
+                <span className="md:hidden">{mobileLabel}</span>
+              </span>
               <div className="flex items-center gap-1 shrink-0">
                 {allowClear && value && (
                   <button

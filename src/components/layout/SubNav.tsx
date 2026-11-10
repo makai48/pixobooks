@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 export type SubNavItem = {
   to?: string;
   label: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string; strokeWidth?: string | number }>;
   end?: boolean;
   onClick?: () => void;
   active?: boolean;
@@ -34,10 +34,17 @@ export default function SubNav({
       )}
     >
       {items.map((i) => {
-        const content = (
+        // Same icon language as the mobile bottom navigation: Lucide outline,
+        // slightly heavier stroke when active, consistent optical size.
+        const renderContent = (active: boolean) => (
           <>
-            {i.icon ? <i.icon className="w-3.5 h-3.5 max-md:w-3 max-md:h-3" /> : null}
-            {i.label}
+            {i.icon ? (
+              <i.icon
+                className="w-4 h-4 max-md:w-[15px] max-md:h-[15px] shrink-0"
+                strokeWidth={active ? 2.25 : 1.75}
+              />
+            ) : null}
+            <span>{i.label}</span>
           </>
         );
         const state = i.active
@@ -52,7 +59,7 @@ export default function SubNav({
               onClick={i.onClick}
               className={cn(ITEM_CLASS, state)}
             >
-              {content}
+              {renderContent(!!i.active)}
             </button>
           );
         }
@@ -64,7 +71,7 @@ export default function SubNav({
             end={i.end}
             className={({ isActive }) => cn(ITEM_CLASS, isActive ? "bg-ink text-paper" : state)}
           >
-            {content}
+            {({ isActive }) => renderContent(isActive)}
           </NavLink>
         );
       })}

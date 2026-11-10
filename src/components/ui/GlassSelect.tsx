@@ -33,6 +33,13 @@ export default function GlassSelect({
   disabled,
   autoFocus,
   searchable,
+  selectedLabel,
+  noTruncate = false,
+  menuMinWidth,
+  triggerHeadroom = 0.15,
+  menuHeadroom = 0.15,
+  triggerChromePx = 0,
+  menuChromePx = 0,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -46,6 +53,20 @@ export default function GlassSelect({
   autoFocus?: boolean;
   /** Type-to-search box in the popup. Defaults to on when the list is long. */
   searchable?: boolean;
+  /** Optional trigger text for a temporary value not included in the menu. */
+  selectedLabel?: string;
+  /** Keep trigger and menu labels fully visible instead of ellipsizing them. */
+  noTruncate?: boolean;
+  /** Minimum menu width for short triggers whose options need more room. */
+  menuMinWidth?: number;
+  /** Width headroom over the longest trigger label, capped by callers at 25%. */
+  triggerHeadroom?: number;
+  /** Width headroom over the longest option label in the popup. */
+  menuHeadroom?: number;
+  /** Trigger padding, border, gap and chevron width added after headroom. */
+  triggerChromePx?: number;
+  /** Popup padding, gap and check-icon width added after headroom. */
+  menuChromePx?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<Pos | null>(null);
@@ -62,9 +83,16 @@ export default function GlassSelect({
     return options.filter((o) => o.label.toLowerCase().includes(q));
   }, [options, query]);
   const hasWidthClass = /\b(w-|min-w-|max-w-|flex-1|col-span-)/.test(className ?? "");
-  const fitWidth = useMemo(
-    () => glassFitWidth(options.map((o) => o.label)),
-    [options]
+  const triggerFitWidth = useMemo(
+    () => glassFitWidth([
+      ...options.map((o) => o.label),
+      ...(selectedLabel ? [selectedLabel] : []),
+    ], triggerHeadroom, triggerChromePx),
+    [options, selectedLabel, triggerHeadroom, triggerChromePx]
+  );
+  const menuFitWidth = useMemo(
+    () => glassFitWidth(options.map((o) => o.label), menuHeadroom, menuChromePx),
+    [options, menuHeadroom, menuChromePx]
   );
 
   const place = useCallback(() => {
@@ -72,7 +100,10 @@ export default function GlassSelect({
     if (!r) return;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const width = Math.min(Math.max(fitWidth ?? r.width, 64), vw - 16);
+    const width = Math.min(
+      Math.max(menuFitWidth ?? r.width, 64, menuMinWidth ?? 0),
+      vw - 16
+    );
     const height = options.length * 32 + (showSearch ? 44 : 10);
     const openUp = r.bottom + height + 8 > vh && r.top > vh - r.bottom;
     setPos({
@@ -81,7 +112,7 @@ export default function GlassSelect({
       maxHeight: Math.max(96, (openUp ? r.top : vh - r.bottom) - 12),
       ...(openUp ? { bottom: vh - r.top + 4 } : { top: r.bottom + 4 }),
     });
-  }, [options.length, fitWidth, showSearch]);
+  }, [options.length, menuFitWidth, showSearch, menuMinWidth]);
 
   useLayoutEffect(() => {
     if (open) place();
@@ -193,9 +224,11 @@ export default function GlassSelect({
           disabled && "opacity-60 cursor-not-allowed",
           className
         )}
-        style={!fullWidth && !hasWidthClass && fitWidth ? { width: fitWidth } : undefined}
+         style={!fullWidth && !hasWidthClass && triggerFitWidth ? { width: triggerFitWidth } : undefined}
       >
-        <span className="truncate">{selected?.label ?? "—"}</span>
+        <span className={noTruncate ? "whitespace-nowrap" : "truncate"}>
+          {selectedLabel ?? selected?.label ?? "—"}
+        </span>
         <ChevronDown
           className={cn("w-3.5 h-3.5 shrink-0 opacity-60 transition", open && "rotate-180")}
         />
@@ -260,7 +293,9 @@ export default function GlassSelect({
                         : "text-ink hover:bg-ink/10"
                     )}
                   >
-                    <span className="flex-1 truncate">{o.label}</span>
+                    <span className={cn("flex-1", noTruncate ? "whitespace-nowrap" : "truncate")}>
+                      {o.label}
+                    </span>
                     {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                   </button>
                 );

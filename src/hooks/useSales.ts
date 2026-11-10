@@ -13,6 +13,7 @@ import type {
 import { useActiveBranch } from "@/hooks/useBranches";
 import { useActiveBusiness } from "@/hooks/useBusinesses";
 import { useAuth } from "@/hooks/useAuth";
+import { autoValidateAttendanceFromSales } from "@/hooks/useAttendance";
 import { logAudit } from "@/lib/audit";
 
 /**
@@ -139,7 +140,7 @@ export function useCompleteSale() {
       // and offline-queue replay compute identical numbers and writes.
       return executeSaleWrite(stamped);
     },
-    onSuccess: () => {
+    onSuccess: (_sale, input) => {
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["stock_movements"] });
@@ -147,6 +148,18 @@ export function useCompleteSale() {
       qc.invalidateQueries({ queryKey: ["shop_settings"] });
       qc.invalidateQueries({ queryKey: ["loyalty"] });
       qc.invalidateQueries({ queryKey: ["attendance"] });
+      // A cashier becomes automatically present only once the day reaches the
+      // minimum transaction count. Below that threshold attendance stays manual.
+      if (input.cashierId) {
+        void autoValidateAttendanceFromSales({
+          employeeId: input.cashierId,
+          employeeName: input.cashierName,
+        })
+          .then((validated) => {
+            if (validated) qc.invalidateQueries({ queryKey: ["attendance"] });
+          })
+          .catch(() => undefined);
+      }
       // The new sale is a cash movement — the balancing b/f / till must
       // re-derive from the live ledger.
       qc.invalidateQueries({ queryKey: ["live_opening_balance"] });

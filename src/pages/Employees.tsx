@@ -55,7 +55,10 @@ import { TXN_ALLOWANCE_MARKER } from "@/types";
 import {
   useAttendance,
   useUpsertAttendance,
+  useEmployeeTransactionDays,
+  useAutoValidateAttendance,
   attendanceStats,
+  ATTENDANCE_AUTO_MIN_TRANSACTIONS,
 } from "@/hooks/useAttendance";
 import {
   ALL_PERMISSIONS,
@@ -73,7 +76,8 @@ import {
   type AttendanceStatus,
   type ApprovalStatus,
 } from "@/types";
-import { cn, formatCurrency, formatDate, getMonthMatrix } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, getMonthMatrix, localISODate } from "@/lib/utils";
+import { deriveDisplayName, employeeInitials } from "@/lib/employeeName";
 import { processImageFile } from "@/lib/imageUpload";
 import PhoneInput from "@/components/common/PhoneInput";
 import GlassSelect from "@/components/ui/GlassSelect";
@@ -450,7 +454,7 @@ export default function Employees() {
                     {e.avatarUrl ? (
                       <img src={e.avatarUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      e.name.charAt(0).toUpperCase()
+                      employeeInitials(e.fullName || e.name)
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -586,6 +590,7 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
   const invite = useInviteEmployee();
   const [form, setForm] = useState({
     email: "",
+    fullName: "",
     name: "",
     role: "Staff",
     phone: "",
@@ -597,14 +602,30 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
   });
   const [result, setResult] = useState<InviteEmployeeResult | null>(null);
 
+  const changeFullName = (fullName: string) => {
+    setForm((current) => {
+      const previousSuggestion = deriveDisplayName(current.fullName);
+      const keepManual =
+        current.name.trim() !== "" &&
+        current.name.trim() !== previousSuggestion;
+      return {
+        ...current,
+        fullName,
+        name: keepManual ? current.name : deriveDisplayName(fullName),
+      };
+    });
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.email.trim()) return toast.error("Email is required");
+    if (!form.fullName.trim()) return toast.error("Full name is required");
     if (!form.name.trim()) return toast.error("Display name is required");
     try {
       const r = await invite.mutateAsync({
         email: form.email.trim(),
         name: form.name.trim(),
+        fullName: form.fullName.trim(),
         role: form.role.trim() || "Staff",
         phone: form.phone.trim() || null,
         address: form.address.trim() || null,
@@ -652,7 +673,7 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
               onClose={onClose}
               onInviteAnother={() => {
                 setResult(null);
-                setForm((f) => ({ ...f, email: "", name: "", phone: "", address: "" }));
+                setForm((f) => ({ ...f, email: "", fullName: "", name: "", phone: "", address: "" }));
               }}
             />
           ) : (
@@ -666,15 +687,38 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
 
               <SectionLabel>Identity</SectionLabel>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Field label="Display name *">
+                <Field label="Full name *">
                   <input
                     autoFocus
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    value={form.fullName}
+                    onChange={(e) => changeFullName(e.target.value)}
                     className="input mt-1"
                     placeholder="e.g. Amara Nabatanzi"
+                    autoComplete="name"
                     required
                   />
+                </Field>
+                <Field label="Display name *">
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      className="input min-w-0 flex-1"
+                      placeholder="e.g. Amara N"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, name: deriveDisplayName(form.fullName) })}
+                      className="btn btn-outline btn-sm shrink-0"
+                      title="Use first name + surname initial"
+                    >
+                      Suggest
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[10px] text-ink-mute">
+                    The convenient working name shown on POS and receipts.
+                  </p>
                 </Field>
                 <Field label="Role / Job title">
                   <input
@@ -1416,6 +1460,7 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
   const update = useUpdateEmployee();
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
+    fullName: employee.fullName || employee.name,
     name: employee.name,
     role: employee.role,
     pin: employee.pin,
@@ -1439,11 +1484,28 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
     } finally { setUploading(false); }
   };
 
+  const changeFullName = (fullName: string) => {
+    setForm((current) => {
+      const previousSuggestion = deriveDisplayName(current.fullName);
+      const keepManual =
+        current.name.trim() !== "" &&
+        current.name.trim() !== previousSuggestion;
+      return {
+        ...current,
+        fullName,
+        name: keepManual ? current.name : deriveDisplayName(fullName),
+      };
+    });
+  };
+
   const save = () => {
+    if (!form.fullName.trim()) return toast.error("Full name is required");
+    if (!form.name.trim()) return toast.error("Display name is required");
     update.mutate(
       {
         id: employee.id,
         name: form.name,
+        fullName: form.fullName,
         role: form.role,
         pin: form.pin,
         active: form.active,
@@ -1475,11 +1537,14 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
         <div className="w-20 h-20 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold text-2xl flex items-center justify-center shrink-0 overflow-hidden">
-          {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="w-full h-full object-cover" /> : employee.name.charAt(0).toUpperCase()}
+          {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="w-full h-full object-cover" /> : employeeInitials(form.fullName || form.name)}
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[11px] uppercase tracking-widest text-ink-mute truncate">{employee.email}</div>
-          <h2 className="font-display text-2xl font-bold break-words">{employee.name}</h2>
+          <h2 className="font-display text-2xl font-bold break-words">{form.name || form.fullName}</h2>
+          {form.fullName && form.fullName !== form.name && (
+            <div className="text-xs text-ink-mute truncate">{form.fullName}</div>
+          )}
           <div className="text-xs text-ink-mute">Joined {formatDate(employee.createdAt)}</div>
           <ApprovalPill status={employee.approvalStatus} mustChange={employee.mustChangePassword} />
           {employee.tempPasswordExpiresAt && employee.mustChangePassword && (
@@ -1504,8 +1569,36 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Field label="Full name">
+          <input
+            value={form.fullName}
+            onChange={(e) => changeFullName(e.target.value)}
+            className="input mt-1"
+            placeholder="e.g. Sheillah Nakato"
+            autoComplete="name"
+          />
+        </Field>
         <Field label="Display name">
-          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input mt-1" />
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="input min-w-0 flex-1"
+              placeholder="e.g. Sheillah K"
+            />
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, name: deriveDisplayName(form.fullName) })}
+              className="btn btn-outline btn-sm shrink-0"
+              title="Use first name + surname initial"
+            >
+              Suggest
+            </button>
+          </div>
+          <p className="mt-1 text-[10px] text-ink-mute">
+            The name colleagues and receipts use. Defaults to first name + surname
+            initial, e.g. Sheillah K.
+          </p>
         </Field>
         <Field label="Role / Job title">
           <input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="input mt-1" placeholder="Cashier / Designer / Admin" />
@@ -1757,10 +1850,24 @@ function AttendanceTab({ employee }: { employee: Employee }) {
   const canEdit = can("employees.attendance");
   const [month, setMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
   const upsert = useUpsertAttendance();
+  const autoValidate = useAutoValidateAttendance();
 
-  const from = new Date(month.year, month.month, 1).toISOString().slice(0, 10);
-  const to = new Date(month.year, month.month + 1, 0).toISOString().slice(0, 10);
+  const from = localISODate(new Date(month.year, month.month, 1));
+  const to = localISODate(new Date(month.year, month.month + 1, 0));
   const { data: records = [] } = useAttendance(employee.id, from, to);
+  const { data: transactionDays = {} } = useEmployeeTransactionDays(
+    employee.id,
+    employee.name,
+    from,
+    to
+  );
+
+  const autoEligibleCount = Object.entries(transactionDays).filter(
+    ([date, count]) =>
+      date <= localISODate(new Date()) &&
+      count >= ATTENDANCE_AUTO_MIN_TRANSACTIONS &&
+      !records.some((record) => record.date === date)
+  ).length;
 
   const stats = attendanceStats(records);
   const days = getMonthMatrix(month.year, month.month);
@@ -1841,20 +1948,76 @@ function AttendanceTab({ employee }: { employee: Employee }) {
         </div>
       )}
 
+      <div className="rounded-lg border border-line bg-paper/60 px-3 py-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="text-[11px] text-ink-mute">
+          Automatic validation needs at least{" "}
+          <strong className="text-ink">{ATTENDANCE_AUTO_MIN_TRANSACTIONS} transactions</strong>{" "}
+          on that day. Days below the threshold must be marked manually.
+        </div>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => {
+              if (autoEligibleCount === 0) {
+                toast.info("No unmarked days meet the 3-transaction threshold.");
+                return;
+              }
+              autoValidate.mutate(
+                {
+                  employeeId: employee.id,
+                  employeeName: employee.name,
+                  days: transactionDays,
+                },
+                {
+                  onSuccess: (count) =>
+                    toast.success(
+                      count === 0
+                        ? "No eligible unmarked days found"
+                        : `${count} day${count === 1 ? "" : "s"} auto-validated from sales`
+                    ),
+                  onError: (err) =>
+                    toast.error(err instanceof Error ? err.message : "Validation failed"),
+                }
+              );
+            }}
+            disabled={autoValidate.isPending}
+            className="btn btn-outline btn-sm shrink-0"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            {autoValidate.isPending
+              ? "Validating…"
+              : `Auto-validate${autoEligibleCount > 0 ? ` (${autoEligibleCount})` : ""}`}
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-widest text-ink-mute">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (<div key={d} className="pb-1">{d}</div>))}
       </div>
       <div className="grid grid-cols-7 gap-1">
         {days.map((d, i) => {
           const inMonth = d.getMonth() === month.month;
-          const iso = d.toISOString().slice(0, 10);
+          const iso = localISODate(d);
           const record = records.find((r) => r.date === iso);
           const meta = record ? ATTENDANCE_META[record.status] : null;
-          const isToday = iso === new Date().toISOString().slice(0, 10);
+          const isToday = iso === localISODate(new Date());
+          const txnCount = transactionDays[iso] || 0;
+          const autoReady = txnCount >= ATTENDANCE_AUTO_MIN_TRANSACTIONS;
+          const whenTitle = autoReady
+            ? `${txnCount} transactions — eligible for automatic validation`
+            : txnCount > 0
+            ? `${txnCount} transaction${txnCount === 1 ? "" : "s"} — ${ATTENDANCE_AUTO_MIN_TRANSACTIONS - txnCount} more needed for automatic validation; mark manually`
+            : "No transactions — mark attendance manually";
           return (
-            <button key={i} onClick={() => canEdit && cycleStatus(d, record?.status)} disabled={!inMonth || !canEdit} className={cn("aspect-square border rounded-md text-xs flex flex-col items-center justify-center transition", !inMonth && "opacity-30 cursor-default", meta?.color, isToday && "ring-2 ring-magenta-reg")} title={canEdit ? (meta?.label || "Click to mark") : "View only"}>
+            <button key={i} onClick={() => canEdit && cycleStatus(d, record?.status)} disabled={!inMonth || !canEdit} className={cn("aspect-square border rounded-md text-xs flex flex-col items-center justify-center transition relative", !inMonth && "opacity-30 cursor-default", meta?.color, isToday && "ring-2 ring-magenta-reg")} title={canEdit ? `${whenTitle}${meta ? ` · ${meta.label}` : ""}` : "View only"}>
               <div className="text-[11px] font-semibold">{d.getDate()}</div>
               {meta && <div className="text-[10px] font-bold mt-0.5">{meta.symbol}</div>}
+              {!meta && autoReady && (
+                <div className="mt-0.5 h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+              )}
+              {!meta && txnCount > 0 && (
+                <div className="text-[8px] leading-none text-ink-mute mt-0.5">{txnCount}t</div>
+              )}
             </button>
           );
         })}

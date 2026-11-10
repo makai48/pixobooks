@@ -292,9 +292,12 @@ export function mapEmployee(r: DbRow): Employee {
         allowances: Array.isArray(r.salary.allowances) ? r.salary.allowances : [],
       }
     : defaultSalary;
+  const fullName = String(r.full_name || r.username || r.email || "Unnamed");
+  const displayName = String(r.display_name || r.username || fullName);
   return {
     id: r.id,
-    name: r.username || r.email || "Unnamed",
+    name: displayName,
+    fullName,
     email: r.email,
     pin: r.pin || "",
     role: r.role || "Staff",
@@ -365,6 +368,11 @@ export function mapSettings(r: DbRow): Settings {
           : "monday"
       ) as Settings["weekStart"];
     })(),
+    dateFormat: (["DD/MM/YYYY", "DD MMM YYYY", "DD MMMM YYYY", "MM/DD/YYYY", "YYYY-MM-DD"] as const).includes(
+      r.date_format
+    )
+      ? r.date_format
+      : "DD/MM/YYYY",
     expenseCategories: Array.isArray(r.expense_categories) ? r.expense_categories : [],
     country: r.country || "",
     timezone: r.timezone || "UTC",

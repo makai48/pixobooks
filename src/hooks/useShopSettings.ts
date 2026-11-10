@@ -60,6 +60,7 @@ export function useUpdateShopSettings() {
       if (patch.email !== undefined) payload.email = patch.email;
       if (patch.categories !== undefined) payload.categories = patch.categories;
       if (patch.weekStart !== undefined) payload.week_start = patch.weekStart;
+      if (patch.dateFormat !== undefined) payload.date_format = patch.dateFormat;
       if (patch.expenseCategories !== undefined)
         payload.expense_categories = patch.expenseCategories;
       if (patch.country !== undefined) payload.country = patch.country;
@@ -90,17 +91,18 @@ export function useUpdateShopSettings() {
         .from("shop_settings")
         .upsert(row, { onConflict: "id" });
 
-      // Older deployments may not have run the week_start migration yet.
-      // Never block an unrelated settings save because of one new column;
-      // retry without it and keep the rest of the form intact.
-      if (error && /week_start/i.test(error.message)) {
+      // Older deployments may not have run the week_start/date_format
+      // migrations yet. Never block an unrelated settings save because of
+      // one new column; retry without the missing field(s).
+      if (error && /week_start|date_format/i.test(error.message)) {
         if (import.meta.env.DEV) {
           console.warn(
-            "[settings] week_start column missing — applying migration 20261108000001_shop_week_start.sql"
+            "[settings] newer settings column missing — apply the pending shop settings migration"
           );
         }
         const fallback = { ...row } as Record<string, unknown>;
-        delete fallback.week_start;
+        if (/week_start/i.test(error.message)) delete fallback.week_start;
+        if (/date_format/i.test(error.message)) delete fallback.date_format;
         ({ error } = await supabase
           .from("shop_settings")
           .upsert(fallback, { onConflict: "id" }));

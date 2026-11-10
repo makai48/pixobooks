@@ -26,6 +26,7 @@ function makeSettings(): Settings {
     phone: "555-0100",
     email: "shop@pixo.test",
     categories: ["General"],
+    dateFormat: "DD/MM/YYYY",
     expenseCategories: [],
     country: "US",
     timezone: "UTC",
