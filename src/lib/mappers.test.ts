@@ -37,4 +37,18 @@ describe("mapSettings empty-data safety", () => {
         .receiptPreviewMs
     ).toBe(-1);
   });
+
+  it("normalises legacy theme presets into the five current skins", () => {
+    expect(mapSettings({ id: "main" }).theme).toEqual({
+      mode: "light",
+      preset: "papier",
+    });
+    expect(mapSettings({ id: "main", theme: { preset: "ocean" } }).theme.preset).toBe("tidal");
+    expect(mapSettings({ id: "main", theme: { preset: "forest" } }).theme).toEqual({
+      mode: "dark",
+      preset: "grove",
+    });
+    expect(mapSettings({ id: "main", theme: { preset: "sunset" } }).theme.preset).toBe("ember");
+    expect(mapSettings({ id: "main", theme: { preset: "logo" } }).theme.preset).toBe("papier");
+  });
 });

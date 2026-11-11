@@ -132,8 +132,8 @@
 }
 
 .scan-flash-btn.is-on {
-  background: #ffcc08;
-  border-color: #ffcc08;
+  background: hsl(var(--brand));
+  border-color: hsl(var(--brand));
   color: #111111;
 }
 
@@ -148,7 +148,7 @@
 
 .scan-flash-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(255, 204, 8, 0.55);
+  box-shadow: 0 0 0 3px hsl(var(--brand) / 0.55);
 }
 
 .scan-icon-btn {
@@ -189,8 +189,8 @@
   overflow: hidden;
   border-radius: 8px;
   background: transparent;
-  box-shadow: inset 0 0 22px rgba(255, 204, 8, 0.14),
-    0 0 0 1px rgba(255, 204, 8, 0.45);
+  box-shadow: inset 0 0 22px hsl(var(--brand) / 0.14),
+    0 0 0 1px hsl(var(--brand) / 0.45);
   transition: background-color 220ms ease, box-shadow 220ms ease;
 }
 
@@ -213,8 +213,8 @@
   position: absolute;
   width: 22px;
   height: 22px;
-  border: 3px solid #ffcc08;
-  filter: drop-shadow(0 0 4px rgba(255, 204, 8, 0.55));
+  border: 3px solid hsl(var(--brand));
+  filter: drop-shadow(0 0 4px hsl(var(--brand) / 0.55));
 }
 
 .scan-brackets .tl {
@@ -574,3 +574,4 @@
     stroke-dashoffset: 0;
   }
 }
+

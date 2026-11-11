@@ -34,12 +34,12 @@ export default function GlassSelect({
   autoFocus,
   searchable,
   selectedLabel,
-  noTruncate = false,
+  noTruncate = true,
   menuMinWidth,
-  triggerHeadroom = 0.15,
-  menuHeadroom = 0.15,
-  triggerChromePx = 0,
-  menuChromePx = 0,
+  triggerHeadroom = 0.25,
+  menuHeadroom = 0.25,
+  triggerChromePx = 36,
+  menuChromePx = 48,
 }: {
   value: string;
   onChange: (value: string) => void;

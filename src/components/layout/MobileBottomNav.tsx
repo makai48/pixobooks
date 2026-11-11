@@ -77,7 +77,7 @@ export default function MobileBottomNav({ onOpenMore }: { onOpenMore: () => void
           aria-label="More"
           className="group absolute left-1/2 top-0 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full focus-visible:outline-none"
         >
-          <span className="grid h-10 w-10 place-items-center rounded-full border-[3px] border-paper bg-[#FFCC08] text-[#111111] shadow-[0_8px_20px_-8px_rgba(255,204,8,0.6)] transition-transform duration-200 group-hover:scale-105 group-active:scale-95 group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-[#FFCC08]">
+          <span className="grid h-10 w-10 place-items-center rounded-full border-[3px] border-paper bg-brand text-brand-fg shadow-[0_8px_20px_-8px_rgba(0,0,0,0.45)] transition-transform duration-200 group-hover:scale-105 group-active:scale-95 group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-brand">
             <MoreHorizontal size={17.6} strokeWidth={2.25} />
           </span>
         </button>
@@ -93,25 +93,25 @@ function NavItem({ tab }: { tab: Tab }) {
     <NavLink
       to={to}
       end={end}
-      className="group flex h-full min-w-0 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFCC08]"
+      className="group flex h-full min-w-0 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
     >
       {({ isActive }) => (
         <span
           className={cn(
             "flex min-w-[58px] flex-col items-center justify-center gap-[2px] rounded-[8px] px-1.5 py-1",
             isActive
-              ? "bg-[#FFCC08] text-[#111111]"
-              : "text-white/85 group-hover:bg-white/15 group-hover:text-white"
+              ? "bg-brand text-brand-fg shadow-sm"
+              : "text-white group-hover:bg-white/15 group-hover:text-white"
           )}
         >
           <Icon
-            className="h-[17.6px] w-[17.6px] shrink-0"
-            strokeWidth={isActive ? 2.25 : 1.75}
+            className="h-[18px] w-[18px] shrink-0"
+            strokeWidth={isActive ? 2.25 : 2}
           />
           <span
             className={cn(
-              "whitespace-nowrap text-[8.8px] leading-[1.15]",
-              isActive ? "font-bold" : "font-medium"
+              "whitespace-nowrap text-[9.5px] leading-[1.15]",
+              isActive ? "font-bold" : "font-semibold"
             )}
           >
             {label}
@@ -121,3 +121,5 @@ function NavItem({ tab }: { tab: Tab }) {
     </NavLink>
   );
 }
+
+

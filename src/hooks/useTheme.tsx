@@ -1,12 +1,14 @@
 import { useEffect, type ReactNode } from "react";
 import { useShopSettings } from "./useShopSettings";
-import { hexToHslString } from "@/lib/utils";
-import type { ThemeConfig } from "@/types";
+import { THEME_PRESETS, type ThemeConfig } from "@/types";
 
 /**
- * Applies theme CSS custom properties on <html> whenever shop_settings.theme changes.
- * - `data-theme` attribute switches light/dark base variables (see index.css).
- * - `--reg-magenta`, `--accent` are dynamically overridden from primary/accent hex values.
+ * Applies the selected V3 skin to <html>.
+ *
+ * Skins are complete token sets defined in index.css:
+ *   data-skin + data-theme -> paper, card, ink, line, brand, semantic colours.
+ * No inline colour overrides are used, so switching skins is instant and
+ * every surface (sidebar, cards, tables, dialogs, bottom nav) follows together.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { data: settings } = useShopSettings();
@@ -14,31 +16,34 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     const theme: ThemeConfig | undefined = settings?.theme;
-    if (!theme) {
-      root.setAttribute("data-theme", "light");
-      return;
+    root.setAttribute("data-theme", theme?.mode === "dark" ? "dark" : "light");
+    root.setAttribute("data-skin", theme?.preset || "papier");
+
+    // Keep the installed-PWA status bar in step with the active skin.
+    const skin = THEME_PRESETS[theme?.preset || "papier"];
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta && skin) meta.content = skin.preview.paper;
+
+    // Cache the last applied skin so the next launch paints correctly before
+    // Supabase settings finish loading.
+    try {
+      localStorage.setItem(
+        "pixobooks.theme",
+        JSON.stringify({ mode: theme?.mode || "light", preset: theme?.preset || "papier" })
+      );
+    } catch {
+      // Private mode / blocked storage — the effect still applied above.
     }
-    root.setAttribute("data-theme", theme.mode);
-    if (theme.primary) {
-      const hsl = hexToHslString(theme.primary);
-      if (hsl) root.style.setProperty("--reg-magenta", hsl);
-    }
-    if (theme.accent && theme.preset !== "default") {
-      const hsl = hexToHslString(theme.accent);
-      if (hsl && theme.mode === "light") {
-        root.style.setProperty("--accent", hsl);
-      }
-    }
-    // Custom theme's third pallete: background color
-    if (theme.background && (theme.preset === "custom" || theme.preset === "logo")) {
-      const hsl = hexToHslString(theme.background);
-      if (hsl) {
-        root.style.setProperty("--paper", hsl);
-        root.style.setProperty("--background", hsl);
-      }
-    } else {
-      root.style.removeProperty("--paper");
-      root.style.removeProperty("--background");
+
+    // Remove inline colours left by the previous theme engine so a saved
+    // skin fully controls the workspace after an upgrade.
+    for (const property of [
+      "--reg-magenta",
+      "--accent",
+      "--paper",
+      "--background",
+    ]) {
+      root.style.removeProperty(property);
     }
   }, [settings?.theme]);
 

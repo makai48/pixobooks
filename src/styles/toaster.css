@@ -54,6 +54,28 @@
   translate: -50% 0;
 }
 
+/* Sonner's <=600px stylesheet makes the track 100% wide *and* offsets it on
+   both sides, so the track's midpoint no longer matches the viewport centre.
+   Re-anchor the track to the viewport and centre each card on it. */
+@media (max-width: 600px) {
+  [data-sonner-toaster][data-x-position="center"] {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    transform: none !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast] {
+    left: 50% !important;
+    right: auto !important;
+    width: max-content !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - 24px) !important;
+    translate: -50% 0 !important;
+    margin-inline: 0 !important;
+  }
+}
+
 [data-sonner-toaster] {
   font-family: var(--toast-font-sans);
   --width: max-content;

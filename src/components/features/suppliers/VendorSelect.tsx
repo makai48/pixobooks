@@ -16,6 +16,8 @@ type Props = {
   /** Offers an "Other" choice that reveals a free-text box. */
   allowCustom?: boolean;
   autoFocus?: boolean;
+  /** Trigger class — lets callers match the surrounding form spacing. */
+  className?: string;
 };
 
 /**
@@ -33,6 +35,7 @@ export default function VendorSelect({
   allowEmpty,
   allowCustom = true,
   autoFocus,
+  className = "input select-glass mt-1",
 }: Props) {
   const { data: suppliers = [] } = useSuppliers();
   const [custom, setCustom] = useState(false);
@@ -81,7 +84,7 @@ export default function VendorSelect({
           ...names.map((name) => ({ value: name, label: name })),
           ...(allowCustom ? [{ value: CUSTOM, label: "Other (enter manually)" }] : []),
         ]}
-        className="input select-glass mt-1"
+        className={className}
       />
 
       {showCustom && (
@@ -90,7 +93,7 @@ export default function VendorSelect({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           autoFocus={autoFocus}
-          className="input select-glass mt-1"
+          className={className}
           placeholder="Vendor name"
           aria-label="Vendor name"
         />

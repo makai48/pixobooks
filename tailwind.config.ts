@@ -37,6 +37,10 @@ const config: Config = {
         warning: "hsl(var(--warning))",
         danger: "hsl(var(--danger))",
         accent: "hsl(var(--accent))",
+        brand: {
+          DEFAULT: "hsl(var(--brand))",
+          fg: "hsl(var(--brand-foreground))",
+        },
       },
       borderRadius: {
         lg: "14px",

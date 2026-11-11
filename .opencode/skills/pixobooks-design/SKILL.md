@@ -11,6 +11,10 @@ intact; scope V3 overrides to the surface being redesigned.
 
 ## Tokens (oklch, never hex in new work)
 
+The app ships five skins — Papier, Tidal, Grove, Ember, Nocturne — applied as
+`data-skin` + `data-theme` on `<html>`. The values below are the Papier light/dark
+baseline; always consume the semantic CSS variables so every skin keeps working.
+
 - Brand: `oklch(0.86 0.175 92)` (#FFCC08). Brand foreground: `oklch(0.18 0 0)`.
 - Ink: `oklch(0.18 0 0)`; ink-foreground: `oklch(0.98 0 0)`.
 - Background: `oklch(0.935 0.004 106)`; card: `oklch(1 0 0)`.
@@ -26,12 +30,57 @@ intact; scope V3 overrides to the surface being redesigned.
 
 ## Typography
 
-- Display: Manrope (`--font-display`). Body and controls: DM Sans (`--font-sans`).
+- V3 auth surfaces: Display Manrope, body and controls DM Sans. Operational app
+  surfaces (ledgers, POS, settings) use `font-display` = Fraunces and `font-sans` =
+  Inter from `tailwind.config.ts`; `auth.css` overrides only the auth scope.
 - Mono only for tabular numbers and OTP codes.
 - Page titles: 1.5rem → 2.125rem via `clamp(1.5rem, 4vw, 2.125rem)`, weight 700,
   tight tracking. Ledes: 15px, muted, max 30ch.
-- Field labels are sentence case, 14px, weight 500 — never uppercase.
-- Small overlines/kickers: 10px, 600–700, uppercase, 0.16–0.2em tracking.
+- Auth field labels are sentence case, 14px, weight 500 — never uppercase. Dense ledger
+  field labels are the opposite: 8–9px, uppercase, tracked, muted.
+- Small overlines/kickers: 10px in auth, 600–700, uppercase, 0.16–0.2em tracking; ledger
+  labels tighten to 8–9px.
+
+## Operational ledgers (Sales + Expenses)
+
+Density is the product. These two pages are one design family: pinned heights,
+micro-labels over tabular numbers, no decorative colour, and no metric-card sprawl.
+
+- **Range row:** Sales uses back chevron → `GlassSelect` → forward chevron, all 32px
+  (`h-8`). Expenses uses the same glass select without the session chevrons, at a compact
+  114/124px. Presets are Today, This Week, This Month, `<real year>` — never "This year".
+  Selected session labels obey the saved date preference; manual picks read
+  "Custom range". Expenses does not list a Custom option at all.
+- **Filters:** collapsed by default. Sales uses an arrow-only toggle on mobile and a
+  Show/Hide filters dropdown on desktop. Expenses uses an outlined `Filters` button with
+  an active-filter count badge.
+- **Separators:** one `divide-y` rule from the `line` token. Never layer per-row borders,
+  and keep the mobile and desktop separator weight identical.
+- **Sales rows:** 27px desktop / 21px mobile. Mobile grid is
+  `44px | 16px | minmax(0,1fr) | 66px | 38px | 56px` (badge, initials, customer, when,
+  qty/items, total). Currency symbols are hidden on mobile; `md+` shows full currency.
+  Voided sales are hidden by default behind `Show voided`; the toggle never changes
+  totals. Tap a row for the receipt/invoice.
+- **Expenses rows:** the whole row is the edit target (click or Enter/Space). Delete is
+  isolated, icon-only, 28/32px and outline-free. Category is plain faint text; payment
+  method is plain faint text directly below the amount — no badge, border or background.
+  Desktop is a 7-column ledger; mobile is a compact card with one shared divider.
+- **Expenses bar:** sticky (`top-0 z-20`), carries the Expenses/Drawings tabs, range,
+  Filters, Categories and New expense. Tabs stay outlined in both states, brand-filled
+  when active, with a 6px gap. No metric cards, no Export, no second header card.
+- **Expense sheet:** a 512px desktop dialog / phone bottom sheet with an icon-tiled header
+  and outlined close. The header glyph follows the nav: Wallet for expenses (never Receipt),
+  ArrowDownRight for drawings, Banknote for payroll. Controls are 34px on phones; the amount
+  is a 16px right-aligned hero with a currency-code suffix; amount + date and method +
+  vendor/payee share even rows, and the date trigger fills its cell so the calendar icon
+  never crowds the date. Notes collapse behind `Add note`; the pinned footer shows
+  `method · date` and full-width 36px actions on phones. Escape and backdrop click close;
+  `max-h-[92dvh]`.
+- **Dates:** always `formatDateByPreference`. Months are short. `D MMM YYYY` renders
+  `7 Nov` on mobile/compact and `7 Nov 2026` on larger surfaces.
+- **Toasts:** centred on both axes at every breakpoint; keep the ≤600px Sonner track
+  override in `src/styles/toaster.css`.
+- Verify light + dark at `<768px`, `768–1023px`, `1024–1279px`, `≥1280px`.
 
 ## Auth composition (login/register)
 

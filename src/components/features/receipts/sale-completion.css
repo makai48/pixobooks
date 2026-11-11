@@ -99,10 +99,10 @@
   max-width: min(92vw, 420px);
   white-space: nowrap;
   padding: 7px 16px;
-  border: 1px solid #e3b600;
+  border: 1px solid hsl(var(--brand) / 0.8);
   border-radius: 999px;
-  background: #ffcc08;
-  color: #111111;
+  background: hsl(var(--brand));
+  color: hsl(var(--brand-foreground));
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 13px;
   font-weight: 600;
@@ -247,3 +247,4 @@
     stroke-dashoffset: 0;
   }
 }
+

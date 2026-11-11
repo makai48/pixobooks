@@ -8,6 +8,7 @@ import type {
   PurchaseOrder,
   Employee,
   Settings,
+  ThemePreset,
   LoyaltyTransaction,
   ItemType,
   UnitConversion,
@@ -344,6 +345,24 @@ export function mapAccountApprovalRequest(r: DbRow) {
   };
 }
 
+function normalizeThemePreset(raw: unknown): ThemePreset {
+  const value = String(raw || "").trim().toLowerCase();
+  const migrated: Record<string, ThemePreset> = {
+    default: "papier",
+    custom: "papier",
+    logo: "papier",
+    ocean: "tidal",
+    sunset: "ember",
+    forest: "grove",
+    papier: "papier",
+    tidal: "tidal",
+    grove: "grove",
+    ember: "ember",
+    nocturne: "nocturne",
+  };
+  return migrated[value] || "papier";
+}
+
 export function mapSettings(r: DbRow): Settings {
   const receipt = r.receipt || {};
   const invoice = r.invoice || {};
@@ -351,6 +370,14 @@ export function mapSettings(r: DbRow): Settings {
   const loyalty = r.loyalty || {};
   const discount = r.discount || {};
   const theme = r.theme || {};
+  const themePreset = normalizeThemePreset(theme.preset);
+  const legacyDarkPreset = String(theme.preset || "").toLowerCase() === "forest";
+  const themeMode =
+    theme.mode === "dark" || theme.mode === "light"
+      ? theme.mode
+      : legacyDarkPreset || themePreset === "nocturne"
+      ? "dark"
+      : "light";
   return {
     shopName: r.shop_name || "My Shop",
     currency: r.currency || "USD",
@@ -368,7 +395,7 @@ export function mapSettings(r: DbRow): Settings {
           : "monday"
       ) as Settings["weekStart"];
     })(),
-    dateFormat: (["DD/MM/YYYY", "DD MMM YYYY", "DD MMMM YYYY", "MM/DD/YYYY", "YYYY-MM-DD"] as const).includes(
+    dateFormat: (["DD/MM/YYYY", "DD MMM YYYY", "DD MMMM YYYY", "D MMM YYYY", "MM/DD/YYYY", "YYYY-MM-DD"] as const).includes(
       r.date_format
     )
       ? r.date_format
@@ -445,11 +472,8 @@ export function mapSettings(r: DbRow): Settings {
       maxAmount: n(discount.maxAmount, 100),
     },
     theme: {
-      mode: theme.mode || "light",
-      preset: theme.preset || "default",
-      primary: theme.primary || "#e0399a",
-      accent: theme.accent || "#1b2a4e",
-      background: theme.background || undefined,
+      mode: themeMode,
+      preset: themePreset,
     },
     billing: {
       plan: r.plan === "growth" || r.plan === "pro" ? r.plan : r.billing?.plan === "growth" || r.billing?.plan === "pro" ? r.billing.plan : "starter",

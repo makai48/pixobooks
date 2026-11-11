@@ -11,7 +11,7 @@ export type SubNavItem = {
 };
 
 const ITEM_CLASS =
-  "inline-flex items-center gap-1.5 max-md:gap-1 h-9 max-md:h-7 px-3 max-md:px-2 rounded-md text-xs max-md:text-[10px] font-semibold uppercase tracking-widest max-md:tracking-wide whitespace-nowrap transition";
+  "inline-flex items-center gap-1.5 max-md:gap-1 h-9 max-md:h-8 px-3 max-md:px-2 rounded-md border border-transparent text-xs max-md:text-[10px] font-semibold uppercase tracking-widest max-md:tracking-wide whitespace-nowrap transition";
 
 /**
  * Compact horizontal sub-navigation used at the top of "merged" parent
@@ -41,15 +41,15 @@ export default function SubNav({
             {i.icon ? (
               <i.icon
                 className="w-4 h-4 max-md:w-[15px] max-md:h-[15px] shrink-0"
-                strokeWidth={active ? 2.25 : 1.75}
+                strokeWidth={active ? 2.25 : 2}
               />
             ) : null}
             <span>{i.label}</span>
           </>
         );
         const state = i.active
-          ? "bg-ink text-paper"
-          : "text-ink-mute hover:text-ink hover:bg-paper";
+          ? "bg-ink text-paper shadow-sm"
+          : "text-ink-soft hover:text-ink hover:bg-paper";
 
         if (i.onClick) {
           return (

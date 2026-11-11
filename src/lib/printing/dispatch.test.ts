@@ -39,7 +39,7 @@ function makeSettings(): Settings {
     },
     loyalty: { enabled: false, pointsPerDollar: 1, dollarPerPoint: 100 },
     discount: { type: "percentage", allowLine: true, allowOrder: true, maxPct: 100, maxAmount: 1000 },
-    theme: { mode: "light", preset: "default", primary: "#000000", accent: "#ffffff" },
+    theme: { mode: "light", preset: "papier" },
   };
   return base;
 }
@@ -170,3 +170,4 @@ describe("describePrintError", () => {
     expect(describePrintError("nope")).toBe("Printing failed");
   });
 });
+

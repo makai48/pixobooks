@@ -290,8 +290,6 @@ export default function SettingsPage() {
       e.nextNumber = "Next number must be a whole number of 1 or more.";
     if (f.discount.maxPct < 0 || f.discount.maxPct > 100) e.maxPct = "Max % must be 0–100.";
     if (f.discount.maxAmount < 0) e.maxAmount = "Max amount can't be negative.";
-    if (!/^#[0-9a-fA-F]{6}$/.test(f.theme.primary)) e.primary = "Primary must be a #rrggbb hex.";
-    if (!/^#[0-9a-fA-F]{6}$/.test(f.theme.accent)) e.accent = "Accent must be a #rrggbb hex.";
     return e;
   };
 
@@ -364,14 +362,10 @@ export default function SettingsPage() {
   };
 
   const applyPreset = (preset: ThemePreset) => {
-    if (preset === "custom" || preset === "logo") {
-      setForm({ ...form, theme: { ...form.theme, preset } });
-      return;
-    }
     const p = THEME_PRESETS[preset];
     setForm({
       ...form,
-      theme: { ...form.theme, preset, mode: p.mode, primary: p.primary, accent: p.accent },
+      theme: { ...form.theme, preset, mode: p.mode },
     });
   };
 

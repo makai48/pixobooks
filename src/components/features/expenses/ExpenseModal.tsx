@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, User as UserIcon, Calendar as CalendarIcon } from "lucide-react";
+import {
+  X,
+  Banknote,
+  ArrowDownRight,
+  Wallet,
+  Check,
+  StickyNote,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useUpsertExpense } from "@/hooks/useExpenses";
 import { useEmployees } from "@/hooks/useEmployees";
@@ -12,11 +19,15 @@ import {
   computeEmployeeSalary,
 } from "@/types";
 import { todayISO, formatCurrency } from "@/lib/utils";
+import { formatDateByPreference } from "@/lib/dateFormat";
 import MoneyText from "@/components/ui/MoneyText";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassMonthPicker from "@/components/ui/GlassMonthPicker";
 import GlassSelect from "@/components/ui/GlassSelect";
 import VendorSelect from "@/components/features/suppliers/VendorSelect";
+
+const FIELD_LABEL =
+  "mb-0.5 block text-[8.5px] font-semibold uppercase tracking-[0.14em] text-ink-mute md:text-[10px]";
 
 function currentMonthISO() {
   const d = new Date();
@@ -64,9 +75,21 @@ export default function ExpenseModal({
   const [employeeId, setEmployeeId] = useState<string>("");
   const [salaryMonth, setSalaryMonth] = useState(currentMonthISO());
   const [salaryAutoSynced, setSalaryAutoSynced] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
 
   const isSalary = form.category === "Salary";
   const isDrawing = form.category === "Drawings";
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      // Let an open dropdown/calendar consume Escape first.
+      if (document.querySelector(".glass-pop")) return;
+      if (!upsert.isPending) onClose();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [onClose, upsert.isPending]);
 
   useEffect(() => {
     if (expense) {
@@ -79,6 +102,7 @@ export default function ExpenseModal({
         vendor: expense.vendor || "",
         notes: expense.notes || "",
       });
+      setShowNotes(Boolean(expense.notes));
       // Try to reverse-engineer employee/month for salary edits
       if (expense.category === "Salary") {
         const monthMatch = /(\d{4})-(\d{2})/.exec(expense.description || "");
@@ -128,6 +152,38 @@ export default function ExpenseModal({
     return base;
   }, [settings?.expenseCategories, form.category]);
 
+  const dateFormat = settings?.dateFormat ?? "DD/MM/YYYY";
+  const methodLabels: Record<string, string> = {
+    cash: "Cash",
+    card: "Card",
+    transfer: "Transfer",
+    credit: "Credit",
+    partial: "Partial",
+  };
+  const methodLabel = methodLabels[form.paymentMethod] ?? form.paymentMethod;
+  // Expenses reuses the nav bar's Wallet glyph so the page, the tab and the
+  // sheet all carry the same mark. Payroll/drawings keep their own icons.
+  const HeaderIcon = isSalary ? Banknote : isDrawing ? ArrowDownRight : Wallet;
+  const headerTone = isDrawing
+    ? "border-danger/40 bg-danger/10 text-danger"
+    : isSalary
+    ? "border-magenta-reg/40 bg-magenta-reg/10 text-magenta-reg"
+    : "border-brand/70 bg-brand text-brand-fg";
+  const kicker = `${
+    isDrawing ? "Drawings" : isSalary ? "Payroll" : "Expenses"
+  } · ${expense ? "Editing" : "New entry"}`;
+  const title = isSalary
+    ? expense
+      ? "Edit payroll payment"
+      : "Payroll payment"
+    : isDrawing
+    ? expense
+      ? "Edit drawing"
+      : "New drawing"
+    : expense
+    ? "Edit expense"
+    : "Record expense";
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSalary && !employeeId)
@@ -163,38 +219,56 @@ export default function ExpenseModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/40 flex items-end md:items-center justify-center p-2 md:p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-md max-h-[94dvh] md:max-h-[92vh] overflow-hidden flex flex-col">
-        <div className="px-2.5 md:px-5 py-2 md:py-4 border-b flex items-center justify-between gap-2 shrink-0">
-          <div className="min-w-0">
-            <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute truncate">
-              {expense ? "Edit expense" : isDrawing ? "New drawing" : "Record expense"}
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/45 p-1.5 backdrop-blur-[2px] animate-fade-in md:items-center md:p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !upsert.isPending) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="expense-modal-title"
+        className="expense-modal paper-card flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden md:max-h-[92vh] md:max-w-lg"
+      >
+        <div className="flex shrink-0 items-start gap-2.5 border-b border-line/70 px-3 py-2.5 md:px-5 md:py-4">
+          <span
+            className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border md:h-9 md:w-9 ${headerTone}`}
+          >
+            <HeaderIcon
+              className="h-4 w-4 md:h-[18px] md:w-[18px]"
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
+          </span>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <div className="truncate text-[8px] font-semibold uppercase tracking-[0.16em] text-ink-mute md:text-[10px]">
+              {kicker}
             </div>
-            <h2 className="font-display text-base md:text-xl font-bold leading-tight">
-              {isSalary
-                ? "Payroll payment"
-                : isDrawing
-                ? "Admin drawing"
-                : "Track shop spend"}
+            <h2
+              id="expense-modal-title"
+              className="font-display text-[15px] font-bold leading-tight md:text-xl"
+            >
+              {title}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="btn btn-ghost btn-sm max-md:w-7 max-md:px-0 shrink-0"
+            className="expense-icon-btn inline-flex shrink-0 items-center justify-center rounded-md border border-line bg-card text-ink-mute transition hover:border-ink hover:bg-ink/5 hover:text-ink"
             aria-label="Close expense"
             title="Close"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
         <form
           id="expense-form"
           onSubmit={submit}
-          className="flex-1 overflow-auto p-2.5 md:p-5 space-y-2 md:space-y-4"
+          className="flex-1 space-y-2 overflow-auto p-2.5 md:space-y-3 md:p-5"
         >
           <div>
-            <label htmlFor="exp-category" className="label text-[9px] md:text-xs">Category</label>
+            <label htmlFor="exp-category" className={FIELD_LABEL}>Category</label>
             <GlassSelect
               id="exp-category"
               value={form.category}
@@ -207,33 +281,42 @@ export default function ExpenseModal({
               }}
               ariaLabel="Category"
               options={displayCategories.map((c) => ({ value: c, label: c }))}
-              className="input select-glass mt-1"
+              className="input select-glass"
+              fullWidth
             />
           </div>
 
           {isDrawing && (
-            <div className="rounded-lg border border-danger/30 bg-danger/5 p-2.5 md:p-3 space-y-0.5 md:space-y-1">
-              <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-danger font-semibold">
-                Admin drawing
-              </div>
-              <p className="text-[10px] md:text-[11px] text-ink-mute">
-                Drawings feed today&apos;s total into the Daily Balancing &amp;
-                Banking form. Cash drawings leave the till immediately;
-                transfer or card drawings are recorded without affecting the
-                till count.
+            <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/[0.06] px-2.5 py-2">
+              <ArrowDownRight
+                className="mt-px h-3.5 w-3.5 shrink-0 text-danger"
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+              <p className="text-[9.5px] leading-snug text-ink-soft md:text-[10.5px]">
+                <span className="font-semibold text-danger">Drawing:</span> cash
+                reduces today&apos;s till; card or transfer only changes the
+                ledger.
               </p>
             </div>
           )}
 
           {isSalary && (
-            <div className="rounded-lg border border-magenta-reg/30 bg-magenta-reg/5 p-2.5 md:p-3 space-y-2 md:space-y-3">
-              <div className="text-[9px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-magenta-reg font-semibold">
-                Salary payment
+            <div className="space-y-2 rounded-xl border border-magenta-reg/30 bg-magenta-reg/[0.05] p-2.5 md:p-3">
+              <div className="flex items-center gap-1.5">
+                <Banknote
+                  className="h-3.5 w-3.5 text-magenta-reg"
+                  strokeWidth={1.9}
+                  aria-hidden="true"
+                />
+                <span className="text-[8.5px] font-semibold uppercase tracking-[0.14em] text-magenta-reg md:text-[10px]">
+                  Salary payment
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-1.5 md:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:gap-3">
                 <div>
-                  <label htmlFor="exp-salary-employee" className="label text-[9px] md:text-xs inline-flex items-center gap-1">
-                    <UserIcon className="w-3 h-3" /> Employee
+                  <label htmlFor="exp-salary-employee" className={FIELD_LABEL}>
+                    Employee
                   </label>
                   <GlassSelect
                     id="exp-salary-employee"
@@ -246,26 +329,31 @@ export default function ExpenseModal({
                         .filter((e) => e.active !== false)
                         .map((e) => ({ value: e.id, label: `${e.name} · ${e.role}` })),
                     ]}
-                    className="input select-glass mt-1"
+                    className="input select-glass"
+                    fullWidth
                   />
                 </div>
                 <div>
-                  <label htmlFor="exp-salary-month" className="label text-[9px] md:text-xs inline-flex items-center gap-1">
-                    <CalendarIcon className="w-3 h-3" /> Month
+                  <label htmlFor="exp-salary-month" className={FIELD_LABEL}>
+                    Month
                   </label>
                   <GlassMonthPicker
                     id="exp-salary-month"
                     value={salaryMonth}
                     onChange={setSalaryMonth}
                     ariaLabel="Salary month"
-                    className="mt-1"
                   />
                 </div>
               </div>
-              {salaryEmployee?.salary && salaryAutoSynced && (
-                <div className="text-[11px] text-ink-soft space-y-0.5 border-t border-magenta-reg/20 pt-2">
-                  <div className="flex justify-between">
-                    <span>Base ({salaryEmployee.salary.payCycle})</span>
+              {salaryEmployee?.salary && salaryAutoSynced ? (
+                <div className="space-y-0.5 rounded-md border border-magenta-reg/20 bg-card/70 px-2 py-1.5 text-[9.5px] md:text-[10.5px]">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-ink-soft">
+                      Base{" "}
+                      <span className="text-ink-mute">
+                        ({salaryEmployee.salary.payCycle})
+                      </span>
+                    </span>
                     <span className="num">
                       {formatCurrency(
                         salaryEmployee.salary.base,
@@ -274,11 +362,12 @@ export default function ExpenseModal({
                     </span>
                   </div>
                   {salaryEmployee.salary.allowances?.map((a, i) => (
-                    <div key={i} className="flex justify-between text-ink-mute">
-                      <span>
-                        + {a.name || "Allowance"} ({a.type === "percentage" ? `${a.amount}%` : "fixed"})
+                    <div key={i} className="flex justify-between gap-3 text-ink-mute">
+                      <span className="min-w-0 truncate">
+                        + {a.name || "Allowance"} (
+                        {a.type === "percentage" ? `${a.amount}%` : "fixed"})
                       </span>
-                      <span className="num">
+                      <span className="num shrink-0">
                         {formatCurrency(
                           a.type === "percentage"
                             ? (salaryEmployee.salary?.base ?? 0) * (a.amount / 100)
@@ -288,25 +377,31 @@ export default function ExpenseModal({
                       </span>
                     </div>
                   ))}
-                  <div className="flex justify-between font-semibold pt-1 border-t border-magenta-reg/20">
+                  <div className="mt-1 flex justify-between gap-3 border-t border-magenta-reg/20 pt-1 font-semibold">
                     <span>Total payable</span>
                     <span className="num text-magenta-reg">
-                      <MoneyText value={formatCurrency(form.amount, settings?.currency)} />
+                      <MoneyText
+                        value={formatCurrency(form.amount, settings?.currency)}
+                      />
                     </span>
                   </div>
                 </div>
+              ) : (
+                <p className="text-[9px] text-ink-mute md:text-[10px]">
+                  Choose an employee and month to load the payroll amount.
+                </p>
               )}
             </div>
           )}
 
           <div>
-            <label htmlFor="exp-description" className="label text-[9px] md:text-xs">Description</label>
+            <label htmlFor="exp-description" className={FIELD_LABEL}>Description</label>
             <input
               id="exp-description"
               required
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="input mt-1"
+              className="input"
               placeholder={
                 isSalary
                   ? "Auto-filled from employee & month"
@@ -315,37 +410,48 @@ export default function ExpenseModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5 md:gap-3">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             <div>
-              <label htmlFor="exp-amount" className="label text-[9px] md:text-xs">Amount</label>
-            <input
-              id="exp-amount"
-              type="number"
-              step="0.01"
-              min={0}
-              required
-              value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
-                className="input mt-1 num text-right"
-              />
+              <label htmlFor="exp-amount" className={FIELD_LABEL}>Amount</label>
+              <div className="relative">
+                <input
+                  id="exp-amount"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  required
+                  inputMode="decimal"
+                  value={form.amount}
+                  onFocus={(event) => event.currentTarget.select()}
+                  onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
+                  className="input expense-amount num w-full pr-12 text-right"
+                />
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[8.5px] font-semibold uppercase tracking-wide text-ink-mute">
+                  {settings?.currency || "USD"}
+                </span>
+              </div>
               {isSalary && salaryEmployee && (
-                <div className="text-[10px] text-ink-mute mt-1">
-                  Predefined from employee payroll
+                <div className="mt-0.5 text-[8.5px] text-ink-mute md:text-[9px]">
+                  From payroll
                 </div>
               )}
             </div>
             <div>
-              <label htmlFor="exp-date" className="label text-[9px] md:text-xs">Payment date</label>
+              <label htmlFor="exp-date" className={FIELD_LABEL}>Payment date</label>
               <GlassDatePicker
                 id="exp-date"
                 value={form.expenseDate}
                 onChange={(v) => setForm({ ...form, expenseDate: v })}
                 ariaLabel="Payment date"
-                className="input mt-1"
+                className="input"
+                fullWidth
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             <div className={isSalary ? "col-span-2" : ""}>
-              <label htmlFor="exp-method" className="label text-[9px] md:text-xs">Payment method</label>
+              <label htmlFor="exp-method" className={FIELD_LABEL}>Payment method</label>
               <GlassSelect
                 id="exp-method"
                 value={form.paymentMethod}
@@ -356,62 +462,101 @@ export default function ExpenseModal({
                 options={[
                   { value: "cash", label: "Cash" },
                   { value: "card", label: "Card" },
-                  { value: "transfer", label: "Wire" },
+                  { value: "transfer", label: "Transfer" },
                 ]}
-                className="input select-glass mt-1"
+                className="input select-glass"
+                fullWidth
               />
             </div>
+
+            {!isSalary && !isDrawing && (
+              <div>
+                <label htmlFor="exp-vendor" className={FIELD_LABEL}>Vendor</label>
+                <VendorSelect
+                  id="exp-vendor"
+                  value={form.vendor}
+                  onChange={(vendor) => setForm({ ...form, vendor })}
+                  placeholder="Select supplier..."
+                  allowEmpty
+                  className="input select-glass w-full"
+                />
+              </div>
+            )}
+
+            {isDrawing && (
+              <div>
+                <label htmlFor="exp-payee" className={FIELD_LABEL}>Payee (optional)</label>
+                <input
+                  id="exp-payee"
+                  value={form.vendor}
+                  onChange={(e) => setForm({ ...form, vendor: e.target.value })}
+                  className="input"
+                  placeholder="Admin name or purpose"
+                />
+              </div>
+            )}
           </div>
 
-          {!isSalary && !isDrawing && (
-            <div>
-              <label htmlFor="exp-vendor" className="label text-[9px] md:text-xs">Vendor</label>
-            <VendorSelect
-              id="exp-vendor"
-              value={form.vendor}
-              onChange={(vendor) => setForm({ ...form, vendor })}
-              placeholder="Select supplier..."
-              allowEmpty
-            />
-            </div>
-          )}
-
-          {isDrawing && (
-            <div>
-              <label htmlFor="exp-payee" className="label text-[9px] md:text-xs">Payee (optional)</label>
-            <input
-              id="exp-payee"
-              value={form.vendor}
-              onChange={(e) => setForm({ ...form, vendor: e.target.value })}
-              className="input mt-1"
-              placeholder="Admin name or purpose (personal, family, etc.)"
-            />
-            </div>
-          )}
-
           <div>
-            <label htmlFor="exp-notes" className="label text-[9px] md:text-xs">Notes</label>
-            <textarea
-              id="exp-notes"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="input mt-1 h-14 md:h-20 text-[13px] md:text-sm"
-            />
+            <div className="flex items-center justify-between gap-2">
+              <label htmlFor="exp-notes" className={FIELD_LABEL}>Notes</label>
+              <button
+                type="button"
+                onClick={() => setShowNotes((visible) => !visible)}
+                aria-expanded={showNotes}
+                aria-controls={showNotes ? "exp-notes" : undefined}
+                className="mb-0.5 inline-flex items-center gap-1 text-[8.5px] font-semibold uppercase tracking-[0.12em] text-ink-mute transition hover:text-ink"
+              >
+                <StickyNote className="h-3 w-3" strokeWidth={1.8} aria-hidden="true" />
+                {showNotes ? "Hide note" : "Add note"}
+              </button>
+            </div>
+            {showNotes && (
+              <textarea
+                id="exp-notes"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                className="input mt-0.5 md:h-20"
+                placeholder={
+                  isDrawing
+                    ? "Purpose, approver or reference…"
+                    : "Invoice number, approver or anything worth remembering…"
+                }
+              />
+            )}
           </div>
         </form>
         {/* Pinned footer — actions stay reachable while the form scrolls */}
-        <div className="shrink-0 flex items-center justify-end gap-1.5 md:gap-2 px-2.5 md:px-5 py-2 md:p-4 border-t md:bg-card">
-          <button type="button" onClick={onClose} className="btn btn-outline">
-            Cancel
-          </button>
-          <button
-            type="submit"
-            form="expense-form"
-            disabled={upsert.isPending}
-            className="btn btn-primary"
-          >
-            {upsert.isPending ? "Saving..." : expense ? "Save" : "Record"}
-          </button>
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line/70 px-2.5 py-2 md:px-5 md:py-3.5 md:bg-card">
+          <span className="hidden min-w-0 truncate text-[9px] text-ink-mute sm:block md:text-[10px]">
+            <span className="font-semibold text-ink-soft">{methodLabel}</span>
+            <span className="mx-1 opacity-60">·</span>
+            {formatDateByPreference(form.expenseDate, dateFormat)}
+          </span>
+          <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-outline flex-1 sm:flex-none max-md:text-[12px]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="expense-form"
+              disabled={upsert.isPending}
+              className="btn btn-primary flex-1 sm:flex-none max-md:text-[12px]"
+            >
+              {upsert.isPending ? (
+                "Saving..."
+              ) : (
+                <>
+                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                  {expense ? "Save" : "Record"}
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -698,13 +698,17 @@ export type DiscountConfig = {
 };
 
 export type ThemeMode = "light" | "dark";
-export type ThemePreset = "default" | "logo" | "ocean" | "sunset" | "forest" | "custom";
+
+/** Five complete application skins. Legacy preset names are migrated in the
+ *  settings mapper so existing shops never lose their appearance. */
+export type ThemePreset = "papier" | "tidal" | "grove" | "ember" | "nocturne";
 
 export type ThemeConfig = {
   mode: ThemeMode;
   preset: ThemePreset;
-  primary: string; // hex
-  accent: string; // hex
+  /** Legacy custom-theme fields kept optional only for older stored JSON. */
+  primary?: string;
+  accent?: string;
   background?: string;
 };
 
@@ -748,6 +752,7 @@ export type DateFormat =
   | "DD/MM/YYYY"
   | "DD MMM YYYY"
   | "DD MMMM YYYY"
+  | "D MMM YYYY"
   | "MM/DD/YYYY"
   | "YYYY-MM-DD";
 
@@ -1042,13 +1047,63 @@ export const NO_DECIMAL_CURRENCIES = ["UGX", "TZS", "RWF", "JPY", "KRW", "IDR", 
 export type POSViewMode = "tiles" | "list" | "thumbnails";
 
 export const THEME_PRESETS: Record<
-  Exclude<ThemePreset, "custom" | "logo">,
-  { primary: string; accent: string; mode: ThemeMode; label: string }
+  ThemePreset,
+  {
+    primary: string;
+    accent: string;
+    mode: ThemeMode;
+    label: string;
+    description: string;
+    preview: {
+      paper: string;
+      card: string;
+      ink: string;
+      brand: string;
+      brandInk: string;
+      muted: string;
+    };
+  }
 > = {
-  default: { primary: "#e0399a", accent: "#1b2a4e", mode: "light", label: "Cream & Ink" },
-  ocean: { primary: "#0891b2", accent: "#0b3b52", mode: "light", label: "Ocean" },
-  sunset: { primary: "#f97316", accent: "#7c2d12", mode: "light", label: "Sunset" },
-  forest: { primary: "#059669", accent: "#064e3b", mode: "dark", label: "Forest Night" },
+  papier: {
+    primary: "#111111",
+    accent: "#f2c400",
+    mode: "light",
+    label: "Papier",
+    description: "Warm paper, black ink, signature yellow.",
+    preview: { paper: "#f7f4ee", card: "#fefdfb", ink: "#171512", brand: "#f2c400", brandInk: "#171512", muted: "#6f6a62" },
+  },
+  tidal: {
+    primary: "#0e7490",
+    accent: "#083344",
+    mode: "light",
+    label: "Tidal",
+    description: "Cool porcelain with teal precision.",
+    preview: { paper: "#eff7f9", card: "#fbfeff", ink: "#102a32", brand: "#0e7490", brandInk: "#ffffff", muted: "#5d6f76" },
+  },
+  grove: {
+    primary: "#166534",
+    accent: "#052e16",
+    mode: "light",
+    label: "Grove",
+    description: "Soft sage, ledger green, calm operations.",
+    preview: { paper: "#f0f7f1", card: "#fbfefb", ink: "#10251a", brand: "#166534", brandInk: "#ffffff", muted: "#5f7065" },
+  },
+  ember: {
+    primary: "#c2410c",
+    accent: "#431407",
+    mode: "light",
+    label: "Ember",
+    description: "Clay paper with a warm terracotta signal.",
+    preview: { paper: "#faf1eb", card: "#fffbf8", ink: "#24140e", brand: "#c2410c", brandInk: "#ffffff", muted: "#77645b" },
+  },
+  nocturne: {
+    primary: "#f5c400",
+    accent: "#fafafa",
+    mode: "dark",
+    label: "Nocturne",
+    description: "Near-black studio with a high-visibility signal.",
+    preview: { paper: "#0b0b0c", card: "#151516", ink: "#f7f7f5", brand: "#f5c400", brandInk: "#0b0b0c", muted: "#9a9a96" },
+  },
 };
 
 /**

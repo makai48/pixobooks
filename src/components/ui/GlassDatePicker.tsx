@@ -25,10 +25,11 @@ const formatLabel = (iso: string, dateFormat: DateFormat, compactMonth = false) 
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = String(date.getFullYear());
+  if (dateFormat === "D MMM YYYY") {
+    return `${compactMonth ? Number(day) : day} ${date.toLocaleDateString(undefined, { month: "short" })}${compactMonth ? "" : ` ${year}`}`;
+  }
   if (dateFormat === "DD MMM YYYY" || dateFormat === "DD MMMM YYYY") {
-    return `${day} ${date.toLocaleDateString(undefined, {
-      month: dateFormat === "DD MMMM YYYY" && !compactMonth ? "long" : "short",
-    })} ${year}`;
+    return `${day} ${date.toLocaleDateString(undefined, { month: "short" })} ${year}`;
   }
   if (dateFormat === "MM/DD/YYYY") return `${month}/${day}/${year}`;
   if (dateFormat === "YYYY-MM-DD") return `${year}-${month}-${day}`;
@@ -94,7 +95,12 @@ export default function GlassDatePicker({
   const popRef = useRef<HTMLDivElement>(null);
   const label = value ? formatLabel(value, dateFormat) : placeholder;
   const mobileLabel = value ? formatLabel(value, dateFormat, true) : placeholder;
-  const fitWidth = useMemo(() => glassFitWidth([label, "Today"]), [label]);
+  // The trigger's own padding, gap and calendar glyph must sit outside the
+  // measured label, otherwise the icon eats into the date text.
+  const fitWidth = useMemo(
+    () => glassFitWidth([label, "Today"], 0.15, 36),
+    [label]
+  );
 
   // Arrows can cross a year boundary; keep the editable field in step.
   useEffect(() => {

@@ -382,6 +382,7 @@ export const DATE_FORMAT_OPTIONS = [
   { value: "DD/MM/YYYY", label: "DD/MM/YYYY — 31/12/2026" },
   { value: "DD MMM YYYY", label: "DD MMM YYYY — 31 Dec 2026" },
   { value: "DD MMMM YYYY", label: "DD MMMM YYYY — 31 December 2026" },
+  { value: "D MMM YYYY", label: "Short date — 7 Nov / 7 Nov 2026" },
   { value: "MM/DD/YYYY", label: "MM/DD/YYYY — 12/31/2026" },
   { value: "YYYY-MM-DD", label: "YYYY-MM-DD — 2026-12-31" },
 ] as const;

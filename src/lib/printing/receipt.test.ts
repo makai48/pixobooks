@@ -52,7 +52,7 @@ function makeSettings(): Settings {
     },
     loyalty: { enabled: false, pointsPerDollar: 1, dollarPerPoint: 100 },
     discount: { type: "percentage", allowLine: true, allowOrder: true, maxPct: 100, maxAmount: 1000 },
-    theme: { mode: "light", preset: "default", primary: "#000000", accent: "#ffffff" },
+    theme: { mode: "light", preset: "papier" },
   };
   return base;
 }
@@ -212,3 +212,4 @@ describe("buildTestPrintBytes", () => {
     expect(Array.from(out.slice(-6))).toEqual([0x1b, 0x64, 3, 0x1d, 0x56, 0x01]);
   });
 });
+

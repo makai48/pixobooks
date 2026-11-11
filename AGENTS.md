@@ -7,7 +7,7 @@ PixoBooks is a multi-business POS and business-management PWA built with Vite 5,
 - `npm run dev` — local dev server on `http://localhost:8080` (base `/`).
 - `npm run typecheck` — `tsc -b --pretty false`.
 - `npm run lint` — ESLint.
-- `npm run test` — Vitest (229 tests).
+- `npm run test` — Vitest (387 tests).
 - `npm run build` — typecheck + production build (base `/`).
 
 Run typecheck, lint, build, and tests before calling a non-trivial change done.
@@ -31,15 +31,36 @@ Run typecheck, lint, build, and tests before calling a non-trivial change done.
 - This project has GoTrue's `SECURITY_UPDATE_PASSWORD_REQUIRE_CURRENT_PASSWORD` enabled, so `supabase.auth.updateUser({ password })` fails with "Current password required when setting new password." `ChangePassword` must send `current_password` (the temporary password the employee signed in with). Error copy lives in `describePasswordUpdateError` in `src/lib/signInFlow.ts`.
 - `src/lib/onboarding.ts` is the *first-run checklist* module (`buildOnboardingSteps`, dismiss/backup markers) — unrelated to sign-in.
 
+## UI/UX command protocol
+- For every UI/UX request, first ask which screen sizes must be implemented: mobile (`<768px`), tablet (`768–1023px`), laptop (`1024–1279px`), and desktop (`>=1280px`). If the user says "all", implement and verify all four.
+- Treat the active V3 skin as the source of truth. Use semantic tokens (`paper`, `card`, `ink`, `line`, `brand`, status colors) rather than hardcoded colors. Solid `surface-brand`, `surface-ink`, and `surface-soft` are the preferred high-signal card surfaces.
+- Use the navigation icon language everywhere: Lucide outline, `1.75` inactive / `2.25` active, optical size 16–18px.
+- Shared range and date controls: compact dropdown culture, short month names always, saved date format applied, no truncated trigger/menu text.
+
+## Sales Report and Expenses (shared ledger culture)
+- Both pages are operational ledgers: micro-labels over tabular numbers, pinned row heights, no decorative colour. Row and control heights must never depend on content, permissions or async data.
+- Range control: Sales uses chevron-back / `GlassSelect` / chevron-forward; Expenses uses the same compact glass select without the session chevrons. Presets are Today, This Week, This Month and the real year (`2026`, never "This year") in both pages. Expenses does not offer a "Custom range" option — manual date picks only show `Custom range` as the selected label.
+- Filter panels are collapsed by default on both pages, and the toggle reports state: Sales uses an arrow-only button on mobile plus a Show/Hide filters dropdown on desktop; Expenses uses an outlined `Filters` button with an active-filter count badge.
+- One horizontal separator per ledger row: `divide-y` + the `line` token (`.expense-ledger-rows`). Never layer per-row `border-b` on top, and never give mobile separators a different weight or design from desktop.
+- Sales rows are pinned at `h-[27px]` desktop / `max-md:h-[21px]` mobile. The mobile grid is `44px | 16px | minmax(0,1fr) | 66px | 38px | 56px`: badge, initials, customer, when, qty/items, total. Currency symbols are hidden on mobile (`formatNumber`); `md+` uses full `formatCurrency`.
+- Voided sales are hidden by default. The `Show voided` chip reveals them, reports the hidden count, and never changes totals. Tapping a row opens the receipt/invoice.
+- Expenses has no metric cards and no Export. The sticky control bar carries the Expenses/Drawings tabs, range, Filters, Categories and New expense. Tabs stay outlined in both states and keep a small gap.
+- Expenses rows: tapping/clicking anywhere (or Enter/Space) opens the edit sheet; delete is isolated, icon-only and outline-free. Category is plain faint text. The payment method is plain faint text directly below the amount — no badge, border or background. Mobile uses the compact date preference.
+- Date output always goes through `formatDateByPreference` (`src/lib/dateFormat.ts`); months are short everywhere. The `D MMM YYYY` preference renders `7 Nov` on mobile/compact and `7 Nov 2026` on larger screens.
+- The expense sheet (`ExpenseModal`) is a dense two-column-at-`md` dialog: icon-tiled header with outlined close (Wallet for expenses — the nav glyph — plus ArrowDownRight drawings and Banknote payroll), 34px phone controls, amount as a 16px hero with currency suffix, amount/date and method/vendor rows, notes collapsed behind `Add note`, and a pinned footer showing `method · date` with full-width 36px actions on phones. Payment date fills its grid cell so the calendar icon never crowds the label. Keep new fields inside those rows rather than stacking full-width blocks.
+- Notifications are vertically centred and horizontally centred on every breakpoint. Sonner's ≤600px track is full-width with side offsets, so `src/styles/toaster.css` re-anchors the track to the viewport and centres each toast card on it; do not remove that mobile block.
+- After each UI change, update this file or the relevant scoped design doc when a reusable pattern changes. Notify the user in the final response which screens and breakpoints were verified.
+- **Permanent instruction (all sessions): after every prompt, update this context/skill file with any durable new preference or decision, and explicitly tell the user that the context was updated.**
+
 ## Design systems
-- `pixobooks-shared.css` at the repo root is the canonical PixoBooks Signature Design System reference (Apple-blue controls, teal callout panels, chips, data rows, custom checkboxes). It is **not imported globally**: its `body`/`*` resets would alter the whole app.
+- `pixobooks-shared.css` at the repo root is the legacy PixoBooks Signature Design System reference (Apple-blue/teal era controls, chips, data rows, custom checkboxes). It is **not imported globally**: its `body`/`*` resets would alter the whole app, and its palette is not the current skin system.
 - Page-specific UI must import a local scoped stylesheet and namespace it under a root class:
   - `src/pages/Settings.tsx` + `src/pages/settings.css` use `.st`.
   - `src/components/features/inventory/ItemModal.tsx` + `item-modal.css` use `.im`.
   - `src/components/features/uom/UomManagerModal.tsx` + `uom-manager.css` use `.uom`.
 - Page CSS should copy/reuse the shared component styles under the scope (`.st .btn`, `.st .input`, `.st .opt-card`, etc.) and avoid importing `pixobooks-shared.css` globally.
 - Settings/design reference: `C:\Users\Pixo\Downloads\stitch_item_modal_design_system (26)\code.html` and `DESIGN.md`. The rendered `code.html` is the visual authority; `DESIGN.md` supplies typography/spacing culture.
-- `docs/traditional-design.md` freezes the Sales Report page's **Traditional design** baseline: tokens, page rhythm, pinned metrics and the glass-popover recipe. Measure changes to that page against it; do not drift the palette or the row heights.
+- `docs/traditional-design.md` freezes the **Sales Report + Expenses** ledger baseline: tokens, page rhythm, range/filter culture, pinned rows, separators, the expense sheet and the glass-popover recipe. Measure changes to either page against it; do not drift the palette, row heights or separator weight.
 - `docs/stock-design.md` freezes the STOCK page's mobile **Stock Ledger** culture: single-line search+filter+action filter card, ≤15% fit-width glass dropdowns with type-to-search, sticky above-table header, pinned ledger rows, grey-symbol full figures, bottom-sheet modals. Apply it to every dense list page on mobile; restore desktop with `md:` overrides.
 - Use lucide icons with `className="icon"`; scoped CSS controls size/stroke.
 - Do not add comments unless the surrounding code already relies on them.

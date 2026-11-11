@@ -1,172 +1,154 @@
-import { Moon, Palette, Sun } from "lucide-react";
+import { Moon, ShoppingBag, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ThemePreset } from "@/types";
 import { THEME_PRESETS } from "@/types";
 import { THEME_PRESET_KEYS } from "../constants";
-import { Section, SField } from "../fields";
+import { Section } from "../fields";
 import { useSettings } from "../settingsContext";
 
+/**
+ * Five complete skins, each with a light and dark expression.
+ * The previews use the same Lucide stroke language as the app navigation so
+ * what is shown here matches what the workspace actually becomes.
+ */
 export default function ThemeSection() {
-  const { form, setForm, errors, canTheme, logoError, setLogoError, applyPreset } = useSettings();
+  const { form, setForm, canTheme, applyPreset } = useSettings();
+  const selected = THEME_PRESETS[form.theme.preset] || THEME_PRESETS.papier;
 
   return (
     <>
-          {canTheme && (
-            <Section
-              id="theme"
-              title="8. Application Theme"
-              desc="Application appearance, color themes, and display mode"
-            >
-              <div>
-                <label className="field-label" style={{ marginBottom: 8 }}>
-                  Base Mode
-                </label>
-                <div className="opt-cards-grid" style={{ maxWidth: 420 }}>
-                  {(
-                    [
-                      { k: "light", label: "Light", icon: Sun },
-                      { k: "dark", label: "Dark", icon: Moon },
-                    ] as const
-                  ).map(({ k, label, icon: Icon }) => (
-                    <button
-                      key={k}
-                      type="button"
-                      className={cn("opt-card", form.theme.mode === k && "selected")}
-                      onClick={() =>
-                        setForm({ ...form, theme: { ...form.theme, mode: k } })
-                      }
+      {canTheme && (
+        <Section
+          id="theme"
+          title="8. Application Theme"
+          desc="Five complete skins for the whole workspace: surfaces, ink, borders, status colors and navigation signal"
+        >
+          <div>
+            <label className="field-label" style={{ marginBottom: 8 }}>
+              Base mode
+            </label>
+            <div className="opt-cards-grid" style={{ maxWidth: 420 }}>
+              {(
+                [
+                  { k: "light", label: "Light", icon: Sun, sub: "Paper and daylight surfaces" },
+                  { k: "dark", label: "Dark", icon: Moon, sub: "Low-glare evening workspace" },
+                ] as const
+              ).map(({ k, label, sub, icon: Icon }) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={cn("opt-card", form.theme.mode === k && "selected")}
+                  onClick={() =>
+                    setForm({ ...form, theme: { ...form.theme, mode: k } })
+                  }
+                >
+                  <span className="opt-title">
+                    <Icon className="icon" strokeWidth={form.theme.mode === k ? 2.25 : 1.75} />
+                    {label}
+                  </span>
+                  <span className="opt-sub">{sub}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <label className="field-label" style={{ marginBottom: 8 }}>
+              Skin
+            </label>
+            <div className="opt-cards-grid theme-skin-grid">
+              {THEME_PRESET_KEYS.map((key) => {
+                const skin = THEME_PRESETS[key as ThemePreset];
+                const active = form.theme.preset === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={cn("opt-card theme-skin-card", active && "selected")}
+                    onClick={() => applyPreset(key as ThemePreset)}
+                  >
+                    <span
+                      className="theme-skin-stage"
+                      style={{ background: skin.preview.paper }}
+                      aria-hidden="true"
                     >
-                      <span className="opt-title"><Icon className="icon" /> {label}</span>
-                      <span className="opt-sub">{k === "light" ? "Bright paper canvas" : "Dimmed ledger surface"}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginTop: 14 }}>
-                <label className="field-label" style={{ marginBottom: 8 }}>
-                  Palette Preset
-                </label>
-                <div className="opt-cards-grid">
-                  {THEME_PRESET_KEYS.map((k) => {
-                    const p = THEME_PRESETS[k];
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        className={cn("opt-card", form.theme.preset === k && "selected")}
-                        onClick={() => applyPreset(k as ThemePreset)}
+                      <span
+                        className="theme-skin-surface"
+                        style={{
+                          background: skin.preview.card,
+                          borderColor: `${skin.preview.muted}2e`,
+                        }}
                       >
-                        <span className="theme-swatches">
-                          <span style={{ background: p.primary }} />
-                          <span style={{ background: p.accent }} />
+                        <span
+                          className="theme-skin-pill"
+                          style={{
+                            background: skin.preview.brand,
+                            color: skin.preview.brandInk,
+                          }}
+                        >
+                          <ShoppingBag size={11} strokeWidth={2.25} />
+                          Sales
                         </span>
-                        <span className="opt-title">{p.label}</span>
-                        <span className="opt-sub">{p.mode}</span>
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    className={cn("opt-card", form.theme.preset === "logo" && "selected")}
-                    onClick={() => applyPreset("logo")}
-                  >
-                    <span className="theme-logo-preview">
-                      {form.logoUrl && !logoError ? (
-                        <img src={form.logoUrl} alt="" onError={() => setLogoError(true)} />
-                      ) : (
-                        <Palette className="icon" />
-                      )}
+                        <span
+                          className="theme-skin-line"
+                          style={{ background: skin.preview.ink }}
+                        />
+                        <span
+                          className="theme-skin-line short"
+                          style={{ background: skin.preview.muted }}
+                        />
+                      </span>
                     </span>
-                    <span className="opt-title">Match logo</span>
-                    <span className="opt-sub">Pick colors below</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={cn("opt-card", form.theme.preset === "custom" && "selected")}
-                    onClick={() => applyPreset("custom")}
-                  >
-                    <span className="theme-swatches">
-                      <span style={{ background: form.theme.primary }} />
-                      <span style={{ background: form.theme.accent }} />
+
+                    <span className="theme-swatches" aria-hidden="true">
+                      <span style={{ background: skin.preview.paper }} />
+                      <span style={{ background: skin.preview.brand }} />
+                      <span style={{ background: skin.preview.ink }} />
+                      <span style={{ background: skin.preview.card }} />
                     </span>
-                    <span className="opt-title">Fully custom</span>
-                    <span className="opt-sub">Any two hex colors</span>
+
+                    <span className="opt-title">
+                      {skin.label}
+                      <span className="theme-mode-tag">
+                        {skin.mode === "dark" ? "Dark base" : "Light base"}
+                      </span>
+                    </span>
+                    <span className="opt-sub">{skin.description}</span>
                   </button>
-                </div>
-              </div>
+                );
+              })}
+            </div>
+          </div>
 
-              {(form.theme.preset === "custom" || form.theme.preset === "logo") && (
-                <div className="grid-3" style={{ marginTop: 14 }}>
-                  <SField label="Primary (hex)" htmlFor="set-theme-primary" error={errors.primary}>
-                    <div className="color-row">
-                      <input
-                        type="color"
-                        className="color-input"
-                        value={/^#[0-9a-fA-F]{6}$/.test(form.theme.primary) ? form.theme.primary : "#000000"}
-                        onChange={(e) =>
-                          setForm({ ...form, theme: { ...form.theme, primary: e.target.value } })
-                        }
-                      />
-                      <input
-                        id="set-theme-primary"
-                        className="input num"
-                        value={form.theme.primary}
-                        onChange={(e) =>
-                          setForm({ ...form, theme: { ...form.theme, primary: e.target.value } })
-                        }
-                      />
-                    </div>
-                  </SField>
-                  <SField label="Accent (hex)" htmlFor="set-theme-accent" error={errors.accent}>
-                    <div className="color-row">
-                      <input
-                        type="color"
-                        className="color-input"
-                        value={/^#[0-9a-fA-F]{6}$/.test(form.theme.accent) ? form.theme.accent : "#000000"}
-                        onChange={(e) =>
-                          setForm({ ...form, theme: { ...form.theme, accent: e.target.value } })
-                        }
-                      />
-                      <input
-                        id="set-theme-accent"
-                        className="input num"
-                        value={form.theme.accent}
-                        onChange={(e) =>
-                          setForm({ ...form, theme: { ...form.theme, accent: e.target.value } })
-                        }
-                      />
-                    </div>
-                  </SField>
-                  <SField label="Background (hex)" htmlFor="set-theme-background">
-                    <div className="color-row">
-                      <input
-                        type="color"
-                        className="color-input"
-                        value={form.theme.background || "#f7f2e8"}
-                        onChange={(e) =>
-                          setForm({ ...form, theme: { ...form.theme, background: e.target.value } })
-                        }
-                      />
-                      <input
-                        id="set-theme-background"
-                        className="input num"
-                        value={form.theme.background || "#f7f2e8"}
-                        onChange={(e) =>
-                          setForm({ ...form, theme: { ...form.theme, background: e.target.value } })
-                        }
-                      />
-                    </div>
-                  </SField>
-                </div>
-              )}
-
-              <div className="theme-preview">
-                <span style={{ background: form.theme.primary }}>Live preview — Primary</span>
-                <span style={{ background: form.theme.accent }}>Accent</span>
-              </div>
-            </Section>
-          )}
+          <div
+            className="theme-preview theme-preview-v3"
+            style={{
+              background: selected.preview.paper,
+              borderColor: `${selected.preview.muted}33`,
+            }}
+            aria-label={`${selected.label} live preview`}
+          >
+            <span
+              style={{ background: selected.preview.card, color: selected.preview.ink }}
+            >
+              Surface
+            </span>
+            <span
+              style={{
+                background: selected.preview.brand,
+                color: selected.preview.brandInk,
+              }}
+            >
+              Brand
+            </span>
+            <span
+              style={{ background: selected.preview.ink, color: selected.preview.paper }}
+            >
+              Ink
+            </span>
+          </div>
+        </Section>
+      )}
     </>
   );
 }

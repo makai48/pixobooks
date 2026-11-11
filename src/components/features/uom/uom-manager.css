@@ -1,25 +1,25 @@
 .uom {
-  --uom-card: #ffffff;
-  --uom-soft: #f8fafc;
-  --uom-soft-blue: #fbfcfe;
-  --uom-border: #e2e8f0;
-  --uom-border-strong: #cbd5e1;
-  --uom-ink: #09090b;
-  --uom-ink-secondary: #1e293b;
-  --uom-muted: #64748b;
-  --uom-subtle: #94a3b8;
-  --uom-blue: #007aff;
-  --uom-blue-strong: #0066d6;
-  --uom-blue-tint: #eff6ff;
-  --uom-blue-ring: rgba(0, 122, 255, 0.22);
-  --uom-teal: #0f766e;
-  --uom-teal-surface: #f0fdfa;
-  --uom-teal-border: #99f6e4;
-  --uom-danger: #dc2626;
-  --uom-danger-strong: #b91c1c;
-  --uom-danger-bg: #fef2f2;
-  --uom-success: #16a34a;
-  --uom-warning: #f59e0b;
+  --uom-card: hsl(var(--card));
+  --uom-soft: hsl(var(--surface-elevated));
+  --uom-soft-blue: hsl(var(--brand) / 0.06);
+  --uom-border: hsl(var(--line));
+  --uom-border-strong: hsl(var(--ink) / 0.45);
+  --uom-ink: hsl(var(--ink));
+  --uom-ink-secondary: hsl(var(--ink-soft));
+  --uom-muted: hsl(var(--ink-mute));
+  --uom-subtle: hsl(var(--ink-mute) / 0.75);
+  --uom-blue: hsl(var(--brand));
+  --uom-blue-strong: hsl(var(--brand) / 0.86);
+  --uom-blue-tint: hsl(var(--brand) / 0.12);
+  --uom-blue-ring: hsl(var(--brand) / 0.24);
+  --uom-teal: hsl(var(--reg-cyan));
+  --uom-teal-surface: hsl(var(--reg-cyan) / 0.1);
+  --uom-teal-border: hsl(var(--reg-cyan) / 0.35);
+  --uom-danger: hsl(var(--danger));
+  --uom-danger-strong: hsl(var(--danger) / 0.82);
+  --uom-danger-bg: hsl(var(--danger) / 0.1);
+  --uom-success: hsl(var(--success));
+  --uom-warning: hsl(var(--warning));
   --uom-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
   --uom-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --uom-spring: cubic-bezier(0.32, 0.72, 0, 1);
@@ -220,7 +220,7 @@
 }
 
 .uom .uom-close:hover {
-  background: #f1f5f9;
+  background: var(--uom-soft);
   border-color: var(--uom-border-strong);
   color: var(--uom-ink);
   transform: scale(1.04);
@@ -387,7 +387,7 @@
 }
 
 .uom .uom-search input:hover:not(:focus) {
-  border-color: #94a3b8;
+  border-color: var(--uom-subtle);
 }
 
 .uom .uom-search input:focus {
@@ -459,7 +459,7 @@
 }
 
 .uom .uom-select-wrap:not(.uom-select-field) select:hover {
-  border-color: #94a3b8;
+  border-color: var(--uom-subtle);
 }
 
 .uom .uom-select-wrap:not(.uom-select-field) select:focus {
@@ -484,7 +484,7 @@
   overflow-y: auto;
   padding: 0 18px 18px;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: var(--uom-border-strong) transparent;
 }
 
 .uom .uom-panel-body::-webkit-scrollbar {
@@ -492,7 +492,7 @@
 }
 
 .uom .uom-panel-body::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--uom-border-strong);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -539,7 +539,7 @@
   overflow: hidden;
   border: 1px solid #dbeafe;
   border-radius: 11px;
-  background: linear-gradient(145deg, #eff6ff, #e0f2fe);
+  background: linear-gradient(145deg, var(--uom-blue-tint), #e0f2fe);
   color: var(--uom-blue-strong);
   font-family: var(--uom-mono);
   font-size: 11px;
@@ -564,7 +564,7 @@
   padding: 1px 6px;
   border: 1px solid var(--uom-border);
   border-radius: 6px;
-  background: #f1f5f9;
+  background: var(--uom-soft);
   color: var(--uom-ink-secondary);
   font-family: var(--uom-mono);
   font-size: 11.5px;
@@ -596,7 +596,7 @@
 .uom .uom-meta-chip {
   padding: 2px 7px;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: var(--uom-soft);
   color: #475569;
   font-size: 9.5px;
   font-weight: 700;
@@ -679,7 +679,7 @@
 }
 
 .uom .uom-icon-btn:hover {
-  background: #f1f5f9;
+  background: var(--uom-soft);
   color: var(--uom-ink);
 }
 
@@ -850,7 +850,7 @@
   height: 64px;
   margin-bottom: 8px;
   border-radius: 12px;
-  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background: linear-gradient(90deg, var(--uom-soft) 0%, var(--uom-border) 50%, var(--uom-soft) 100%);
   background-size: 200% 100%;
   animation: uomShimmer 1.4s ease-in-out infinite;
 }
@@ -919,15 +919,15 @@
 }
 
 .uom .uom-btn-primary {
-  border-color: #09090b;
-  background: #09090b;
-  color: #ffffff;
+  border-color: var(--uom-ink);
+  background: var(--uom-ink);
+  color: var(--uom-card);
   box-shadow: 0 3px 10px rgba(9, 9, 11, 0.22);
 }
 
 .uom .uom-btn-primary:hover:not(:disabled) {
-  border-color: #1e293b;
-  background: #1e293b;
+  border-color: var(--uom-ink-secondary);
+  background: var(--uom-ink-secondary);
   box-shadow: 0 5px 14px rgba(15, 23, 42, 0.26);
   transform: translateY(-1px);
 }
@@ -939,7 +939,7 @@
 }
 
 .uom .uom-btn-outline:hover:not(:disabled) {
-  border-color: #94a3b8;
+  border-color: var(--uom-subtle);
   background: var(--uom-soft);
   transform: translateY(-1px);
 }
@@ -947,7 +947,7 @@
 .uom .uom-btn-danger {
   border-color: var(--uom-danger);
   background: var(--uom-danger);
-  color: #ffffff;
+  color: var(--uom-card);
   box-shadow: 0 3px 10px rgba(220, 38, 38, 0.22);
 }
 
@@ -1022,7 +1022,7 @@
   overflow-y: auto;
   background: #fafafc;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: var(--uom-border-strong) transparent;
 }
 
 .uom .uom-dialog-foot {
@@ -1085,7 +1085,7 @@
 }
 
 .uom .uom-input:hover:not(:focus):not(:disabled) {
-  border-color: #94a3b8;
+  border-color: var(--uom-subtle);
 }
 
 .uom .uom-input:focus {
@@ -1094,7 +1094,7 @@
 }
 
 .uom .uom-input:disabled {
-  background: #f1f5f9;
+  background: var(--uom-soft);
   color: var(--uom-subtle);
   cursor: not-allowed;
 }
@@ -1136,7 +1136,7 @@
 }
 
 .uom .uom-choice:hover {
-  border-color: #94a3b8;
+  border-color: var(--uom-subtle);
   transform: translateY(-1px);
 }
 
@@ -1207,14 +1207,14 @@
 }
 
 .uom .uom-check-row:hover .uom-check-box {
-  border-color: #94a3b8;
+  border-color: var(--uom-subtle);
 }
 
 .uom .uom-check-box .uom-icon {
   width: 12px;
   height: 12px;
   opacity: 0;
-  color: #ffffff;
+  color: var(--uom-card);
   stroke-width: 3;
   transition: opacity 0.14s ease;
 }
@@ -1532,7 +1532,7 @@
     grid-template-columns: 1fr;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: var(--uom-border-strong) transparent;
   }
 
   .uom .uom-panel {
@@ -1735,3 +1735,4 @@
     scroll-behavior: auto !important;
   }
 }
+

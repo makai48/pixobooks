@@ -30,6 +30,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/hooks/useAuth";
 import { cn, download, formatCurrency, formatCompactCurrency, formatNumber, localISODate, todayISO } from "@/lib/utils";
 import { byTransactionDateDesc, inDayRange } from "@/lib/salesReport";
+import { formatDateByPreference } from "@/lib/dateFormat";
 import {
   DEFAULT_WEEK_START,
   RANGE_PRESET_OPTIONS,
@@ -958,19 +959,19 @@ function rangeSessionLabel(
   if (preset === "today") {
     if (offset === 0) return "Today";
     if (offset === -1) return "Yesterday";
-    return formatPreferredDate(shiftedDate(new Date(), offset), dateFormat);
+    return formatDateByPreference(shiftedDate(new Date(), offset), dateFormat);
   }
 
   if (preset === "thisWeek") {
     if (offset === 0) return "This Week";
     if (offset === -1) return "Last Week";
-    return formatPreferredDate(shiftedDate(new Date(), offset * 7), dateFormat);
+    return formatDateByPreference(shiftedDate(new Date(), offset * 7), dateFormat);
   }
 
   if (preset === "thisMonth") {
     if (offset === 0) return "This Month";
     if (offset === -1) return "Last Month";
-    return formatPreferredDate(new Date(new Date().getFullYear(), new Date().getMonth() + offset, 1), dateFormat);
+    return formatDateByPreference(new Date(new Date().getFullYear(), new Date().getMonth() + offset, 1), dateFormat);
   }
 
   if (offset === 0) return String(new Date().getFullYear());
@@ -1020,25 +1021,6 @@ function resolveSessionRange(
   return { from, to: new Date(to) };
 }
 
-function formatPreferredDate(
-  value: string | number | Date,
-  dateFormat: DateFormat
-): string {
-  const date = new Date(value);
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = String(date.getFullYear());
-  if (dateFormat === "DD MMM YYYY" || dateFormat === "DD MMMM YYYY") {
-    const monthName = date.toLocaleDateString(undefined, {
-      month: dateFormat === "DD MMMM YYYY" ? "long" : "short",
-    });
-    return `${day} ${monthName} ${year}`;
-  }
-  if (dateFormat === "MM/DD/YYYY") return `${month}/${day}/${year}`;
-  if (dateFormat === "YYYY-MM-DD") return `${year}-${month}-${day}`;
-  return `${day}/${month}/${year}`;
-}
-
 /**
  * Compact transaction timing for the dense report rows.
  *
@@ -1075,7 +1057,7 @@ function transactionWhen(
   }
 
   if (createdDay === yesterday) return "Yesterday";
-  return formatPreferredDate(createdAt, dateFormat);
+  return formatDateByPreference(createdAt, dateFormat, compact);
 }
 
 /** Grouping key for a cashier name — case-insensitive, whitespace-insensitive. */
@@ -1121,3 +1103,4 @@ function Stat({
     </div>
   );
 }
+
