@@ -19,7 +19,7 @@ import {
   computeEmployeeSalary,
 } from "@/types";
 import { todayISO, formatCurrency } from "@/lib/utils";
-import { formatDateByPreference } from "@/lib/dateFormat";
+import { DEFAULT_DATE_FORMAT, formatDateByPreference } from "@/lib/dateFormat";
 import MoneyText from "@/components/ui/MoneyText";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassMonthPicker from "@/components/ui/GlassMonthPicker";
@@ -152,7 +152,7 @@ export default function ExpenseModal({
     return base;
   }, [settings?.expenseCategories, form.category]);
 
-  const dateFormat = settings?.dateFormat ?? "DD/MM/YYYY";
+  const dateFormat = settings?.dateFormat ?? DEFAULT_DATE_FORMAT;
   const methodLabels: Record<string, string> = {
     cash: "Cash",
     card: "Card",

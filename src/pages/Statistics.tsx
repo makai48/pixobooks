@@ -13,6 +13,8 @@ import {
   Package,
   ShoppingCart,
   TrendingUp,
+  ChevronDown,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useSales } from "@/hooks/useSales";
 import { useExpenses } from "@/hooks/useExpenses";
@@ -29,6 +31,7 @@ import {
   formatMoney,
   localISODate,
 } from "@/lib/utils";
+import { DEFAULT_DATE_FORMAT } from "@/lib/dateFormat";
 import {
   DEFAULT_WEEK_START,
   resolveRange,
@@ -87,6 +90,7 @@ export default function Statistics() {
   const [pickedYear, setPickedYear] = useState(now.getFullYear());
   const [customFrom, setCustomFrom] = useState<string>("");
   const [customTo, setCustomTo] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
   const [view, setView] = useState<View>("overview");
   const [bestMetric, setBestMetric] = useState<"revenue" | "profit">("revenue");
   const [bestItem, setBestItem] = useState("");
@@ -97,6 +101,13 @@ export default function Statistics() {
     for (let i = now.getFullYear() - 5; i <= now.getFullYear() + 1; i++) y.push(i);
     return y;
   }, [now]);
+
+  const rangeOptions: { value: StatsPeriod; label: string }[] = [
+    { value: "day", label: "Today" },
+    { value: "week", label: "This Week" },
+    { value: "month", label: "This Month" },
+    { value: "year", label: String(now.getFullYear()) },
+  ];
 
   const range = useMemo(() => {
     const nowD = new Date();
@@ -241,13 +252,12 @@ export default function Statistics() {
   const ageing = useMemo(() => debtAgeing(invoices), [invoices]);
   const dso = useMemo(() => debtorDays(invoices), [invoices]);
 
-  const maxBar = Math.max(...stats.buckets.map((d) => d.rev + d.exp), 1);
   const periodLabel =
     rangeMode === "custom" && customFrom && customTo
-      ? `${customFrom} → ${customTo}`
+      ? `${formatDate(customFrom)} → ${formatDate(customTo)}`
       : rangeMode === "monthYear"
       ? `${MONTH_NAMES[pickedMonth]} ${pickedYear}`
-      : STATS_PERIOD_META[period].label;
+      : rangeOptions.find((option) => option.value === period)?.label ?? STATS_PERIOD_META[period].label;
 
   const currency = settings?.currency || "USD";
   const money = (v: number) => formatMoney(v, currency);
@@ -256,37 +266,74 @@ export default function Statistics() {
 
   return (
     <div className="p-2.5 md:p-6 space-y-2 md:space-y-4">
-      <div className="paper-card p-2.5 md:p-3 space-y-1.5 md:space-y-2">
-        <div className="flex items-center gap-1.5 text-ink-mute">
-          <Calendar className="w-3 h-3" />
-          <span className="label text-[7px] md:text-[9px]">Reporting period</span>
-        </div>
-
-        <div className="flex flex-wrap gap-1">
-          {(Object.keys(STATS_PERIOD_META) as StatsPeriod[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => {
-                setPeriod(p); setRangeMode("quick"); setCustomFrom(""); setCustomTo("");
+      <section
+        className="paper-card p-2.5 md:p-3 space-y-2 md:space-y-3"
+        aria-labelledby="statistics-header-title"
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-brand/40 bg-brand/10 text-ink md:h-8 md:w-8">
+              <BarChart3 className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={2} />
+            </span>
+            <div className="min-w-0">
+              <div
+                id="statistics-header-title"
+                className="text-[7px] uppercase tracking-[0.14em] text-ink-mute md:text-[9px]"
+              >
+                Financial statistics
+              </div>
+              <div className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[10px] leading-tight text-ink md:text-xs">
+                <Calendar className="mt-px h-3 w-3 shrink-0 text-ink-mute" strokeWidth={2} />
+                <span className="break-words">{periodLabel}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex w-full items-center justify-between gap-1.5 sm:w-auto sm:justify-end">
+            <GlassSelect
+              value={period === "lastWeek" ? "week" : period}
+              onChange={(value) => {
+                setPeriod(value as StatsPeriod);
+                setRangeMode("quick");
+                setCustomFrom("");
+                setCustomTo("");
               }}
+              ariaLabel="Reporting period"
+              options={rangeOptions}
+              noTruncate
+              triggerHeadroom={0.15}
+              menuHeadroom={0.15}
+              triggerChromePx={28}
+              menuChromePx={32}
+              className="input input-sm select-glass max-md:px-1.5"
+            />
+            <button
+              type="button"
+              aria-expanded={showFilters}
+              aria-controls="statistics-filters"
+              onClick={() => setShowFilters((visible) => !visible)}
               className={cn(
-                "chip border px-2 h-6 text-[9px] md:text-[10px] transition",
-                rangeMode === "quick" && period === p
-                  ? "bg-ink text-paper border-ink"
-                  : "border-line hover:border-ink"
+                "btn h-8 shrink-0 px-2.5 text-[10px]",
+                showFilters ? "btn-primary" : "btn-outline"
               )}
             >
-              {STATS_PERIOD_META[p].label}
+              <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
+              <span>Filters</span>
+              <ChevronDown
+                className={cn("h-3.5 w-3.5 transition", showFilters && "rotate-180")}
+                strokeWidth={2}
+              />
             </button>
-          ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 md:gap-2">
-          <div className="paper-card p-2 space-y-1">
-            <div className="text-[7px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute">
-              Pick specific month
+        {showFilters && <div id="statistics-filters" className="grid grid-cols-1 gap-1.5 md:grid-cols-2 md:gap-2">
+          <div className="paper-card flex min-w-0 flex-col gap-1.5 p-2 md:p-2.5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="text-[7px] uppercase tracking-[0.12em] text-ink-mute md:text-[9px]">
+                Month
+              </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <GlassSelect
                 value={String(pickedMonth)}
                 onChange={(v) => {
@@ -306,6 +353,7 @@ export default function Statistics() {
                 className="input input-sm select-glass max-md:px-1.5"
               />
               <button
+                type="button"
                 onClick={() => setRangeMode("monthYear")}
                 className={cn(
                   "btn btn-sm shrink-0",
@@ -316,29 +364,41 @@ export default function Statistics() {
               </button>
             </div>
           </div>
-          <div className="paper-card p-2 space-y-1">
-            <div className="text-[7px] md:text-[9px] uppercase tracking-wide md:tracking-widest text-ink-mute">
-              Custom date range
+          <div className="paper-card flex min-w-0 flex-col gap-1.5 p-2 md:p-2.5 lg:flex-row lg:items-center">
+            <div className="min-w-0 shrink-0">
+              <div className="text-[7px] uppercase tracking-[0.12em] text-ink-mute md:text-[9px]">
+                Custom range
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="text-ink-mute text-[9px] md:text-[10px] shrink-0">From</span>
-              <GlassDatePicker
-                value={customFrom}
-                onChange={(v) => { setCustomFrom(v); setRangeMode("custom"); }}
-                ariaLabel="Custom from date"
-                className="input input-sm select-glass max-md:px-1.5"
-              />
-              <span className="text-ink-mute text-[9px] md:text-[10px] shrink-0">To</span>
-              <GlassDatePicker
-                value={customTo}
-                onChange={(v) => { setCustomTo(v); setRangeMode("custom"); }}
-                ariaLabel="Custom to date"
-                className="input input-sm select-glass max-md:px-1.5"
-              />
+            <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+              <label htmlFor="statistics-custom-from" className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-[9px] text-ink-mute md:text-[10px]">From</span>
+                <GlassDatePicker
+                  id="statistics-custom-from"
+                  value={customFrom}
+                  onChange={(v) => { setCustomFrom(v); setRangeMode("custom"); }}
+                  ariaLabel="Custom from date"
+                  className="input input-sm select-glass min-w-0 w-full max-md:px-1.5"
+                  fullWidth
+                  dateFormat={settings?.dateFormat ?? DEFAULT_DATE_FORMAT}
+                />
+              </label>
+              <label htmlFor="statistics-custom-to" className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-[9px] text-ink-mute md:text-[10px]">To</span>
+                <GlassDatePicker
+                  id="statistics-custom-to"
+                  value={customTo}
+                  onChange={(v) => { setCustomTo(v); setRangeMode("custom"); }}
+                  ariaLabel="Custom to date"
+                  className="input input-sm select-glass min-w-0 w-full max-md:px-1.5"
+                  fullWidth
+                  dateFormat={settings?.dateFormat ?? DEFAULT_DATE_FORMAT}
+                />
+              </label>
             </div>
           </div>
-        </div>
-      </div>
+        </div>}
+      </section>
 
       {/* View tabs */}
       <div className="paper-card border-b flex overflow-x-auto scrollbar-none">
@@ -423,22 +483,27 @@ export default function Statistics() {
                 <Legend color="bg-warning" label="Expenses" />
               </div>
             </div>
-            <div className="mt-2 md:mt-3 flex items-end gap-1 h-20 md:h-28 min-h-[5rem] md:min-h-[7rem]">
-              {stats.buckets.length === 0 ? (
-                <div className="w-full text-center text-[10px] text-ink-mute">No activity in this range.</div>
-              ) : (
-                stats.buckets.map((d) => (
-                  <div key={d.key} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                    <div className="w-full flex-1 flex flex-col justify-end gap-0.5">
-                      <div className="bg-magenta-reg rounded-t-sm" style={{ height: `${(d.rev / maxBar) * 100}%` }} title={`Rev ${fullMoney(d.rev)}`} />
-                      <div className="bg-warning rounded-t-sm opacity-80" style={{ height: `${(d.exp / maxBar) * 100}%` }} title={`Exp ${fullMoney(d.exp)}`} />
-                    </div>
-                    <div className="text-[7px] md:text-[8px] text-ink-mute num truncate w-full text-center">
-                      {d.key.length > 6 ? d.key.slice(-5) : d.key}
-                    </div>
-                  </div>
-                ))
-              )}
+            <div className="mt-2 grid grid-cols-1 gap-2 md:mt-3 md:grid-cols-2">
+              <div className="min-w-0 rounded-md border border-line/60 bg-paper/40 p-1.5">
+                <div className="mb-1 text-[8px] uppercase tracking-[0.12em] text-ink-mute">Revenue</div>
+                <LineChart
+                  data={trends.revenue}
+                  height={104}
+                  color="#c2185b"
+                  formatValue={money}
+                  emptyLabel="No revenue in this range."
+                />
+              </div>
+              <div className="min-w-0 rounded-md border border-line/60 bg-paper/40 p-1.5">
+                <div className="mb-1 text-[8px] uppercase tracking-[0.12em] text-ink-mute">Expenses</div>
+                <LineChart
+                  data={trends.expenses}
+                  height={104}
+                  color="#f59e0b"
+                  formatValue={money}
+                  emptyLabel="No expenses in this range."
+                />
+              </div>
             </div>
           </div>
 

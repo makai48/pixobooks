@@ -32,7 +32,7 @@ import {
   PROTECTED_EXPENSE_CATEGORIES,
 } from "@/types";
 import { cn, formatMoney, localISODate, todayISO } from "@/lib/utils";
-import { formatDateByPreference } from "@/lib/dateFormat";
+import { DEFAULT_DATE_FORMAT, formatDateByPreference } from "@/lib/dateFormat";
 import { DEFAULT_WEEK_START, resolveRange } from "@/lib/week";
 
 type Tab = "expenses" | "drawings";
@@ -150,7 +150,7 @@ export default function Expenses() {
   };
 
   const currency = settings?.currency || "USD";
-  const dateFormat = settings?.dateFormat ?? "DD/MM/YYYY";
+  const dateFormat = settings?.dateFormat ?? DEFAULT_DATE_FORMAT;
 
   const openEdit = (expense: Expense) => {
     setEdit(expense);
@@ -352,7 +352,7 @@ export default function Expenses() {
                     value={from}
                     onChange={setFrom}
                     ariaLabel="From date"
-                    dateFormat={settings?.dateFormat ?? "DD/MM/YYYY"}
+                    dateFormat={settings?.dateFormat ?? DEFAULT_DATE_FORMAT}
                     className="input input-sm select-glass w-full min-w-0 whitespace-nowrap sm:w-[132px]"
                     fullWidth
                   />
@@ -366,7 +366,7 @@ export default function Expenses() {
                     value={to}
                     onChange={setTo}
                     ariaLabel="To date"
-                    dateFormat={settings?.dateFormat ?? "DD/MM/YYYY"}
+                    dateFormat={settings?.dateFormat ?? DEFAULT_DATE_FORMAT}
                     className="input input-sm select-glass w-full min-w-0 whitespace-nowrap sm:w-[132px]"
                     fullWidth
                   />

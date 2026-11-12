@@ -127,18 +127,22 @@ export default function Inventory() {
           the ledger scrolls beneath. Desktop keeps the normal flow. */}
       <div className="space-y-2 md:space-y-4 max-md:sticky max-md:top-0 max-md:z-20 max-md:-mx-2.5 max-md:-mt-2.5 max-md:px-2.5 max-md:pt-2.5 max-md:pb-2.5 max-md:bg-paper max-md:border-b max-md:border-line">
       <div className="grid grid-cols-4 gap-1.5 md:gap-3">
-        <StatCard label="Products" value={String(stats.products)} />
-        <StatCard label="Ready" value={String(stats.ready)} />
-        <StatCard label="Materials" value={String(stats.materials + stats.intermediate)} />
+        <StatCard label="Products" value={String(stats.products)} fill="brand" />
+        <StatCard label="Ready" value={String(stats.ready)} fill="success" />
+        <StatCard
+          label="Materials"
+          value={String(stats.materials + stats.intermediate)}
+          fill="cyan"
+        />
         <StatCard
           label="Low stock"
           value={String(stats.low)}
-          tone={stats.low > 0 ? "danger" : undefined}
+          fill={stats.low > 0 ? "danger" : "ink"}
         />
       </div>
 
-      <div className="paper-card px-2.5 md:px-4 py-1.5 md:py-2.5 hidden md:flex items-center justify-between gap-2 min-w-0">
-        <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest leading-none text-ink-mute min-w-0 truncate">
+      <div className="paper-card surface-ink px-2.5 md:px-4 py-1.5 md:py-2.5 hidden md:flex items-center justify-between gap-2 min-w-0">
+        <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest leading-none min-w-0 truncate">
           Inventory value on hand
         </div>
         <div

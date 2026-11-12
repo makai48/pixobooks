@@ -101,15 +101,15 @@ export default function CountryDialPicker({
           setQuery("");
           setOpen((v) => !v);
         }}
-        className="input h-10 flex items-center gap-1.5 pr-2 cursor-pointer whitespace-nowrap"
+        className="input h-10 phone-dial flex items-center gap-1.5 pr-2 cursor-pointer whitespace-nowrap"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={`${label} country code`}
         title={iso ? `${iso.toUpperCase()} (+${dial})` : "Choose country code"}
       >
-        <FlagImg iso2={iso} />
+        <FlagImg iso2={iso} className="phone-dial__flag" />
         <span className="num text-sm font-semibold">+{dial || "···"}</span>
-        <ChevronDown className="w-3.5 h-3.5 text-ink-mute" />
+        <ChevronDown className="w-3.5 h-3.5 text-ink-mute phone-dial__chevron" />
       </button>
       {open && (
         <div className="absolute left-0 mt-1 w-64 paper-card p-1.5 z-50 shadow-lg">

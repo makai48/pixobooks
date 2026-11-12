@@ -40,6 +40,7 @@ export default function GlassSelect({
   menuHeadroom = 0.25,
   triggerChromePx = 36,
   menuChromePx = 48,
+  menuScale = 1,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -67,6 +68,8 @@ export default function GlassSelect({
   triggerChromePx?: number;
   /** Popup padding, gap and check-icon width added after headroom. */
   menuChromePx?: number;
+  /** Optional popup-only width scale. The trigger width is unchanged. */
+  menuScale?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<Pos | null>(null);
@@ -101,7 +104,7 @@ export default function GlassSelect({
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const width = Math.min(
-      Math.max(menuFitWidth ?? r.width, 64, menuMinWidth ?? 0),
+      Math.max((menuFitWidth ?? r.width) * menuScale, 64, menuMinWidth ?? 0),
       vw - 16
     );
     const height = options.length * 32 + (showSearch ? 44 : 10);
@@ -112,7 +115,7 @@ export default function GlassSelect({
       maxHeight: Math.max(96, (openUp ? r.top : vh - r.bottom) - 12),
       ...(openUp ? { bottom: vh - r.top + 4 } : { top: r.bottom + 4 }),
     });
-  }, [options.length, menuFitWidth, showSearch, menuMinWidth]);
+  }, [options.length, menuFitWidth, showSearch, menuMinWidth, menuScale]);
 
   useLayoutEffect(() => {
     if (open) place();

@@ -108,8 +108,10 @@ describe("receipt formatters", () => {
     expect(formatQty(1.23456)).toBe("1.235");
   });
 
-  it("formats timestamps in the requested zone and passes through invalid input", () => {
-    expect(formatStamp("2026-10-21T14:05:00Z", "UTC")).toBe("21 Oct 2026 14:05");
+  it("formats timestamps in the requested zone, preset and passes through invalid input", () => {
+    expect(formatStamp("2026-10-21T14:05:00Z", "UTC", "DD MMM YYYY")).toBe("21 Oct 2026 14:05");
+    expect(formatStamp("2026-10-21T14:05:00Z", "UTC", "DD/MM/YYYY")).toBe("21/10/2026 14:05");
+    expect(formatStamp("2026-10-21T14:05:00Z", "UTC", "YYYY-MM-DD")).toBe("2026-10-21 14:05");
     expect(formatStamp("not-a-date")).toBe("not-a-date");
   });
 });

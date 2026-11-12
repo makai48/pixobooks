@@ -10,24 +10,35 @@ export function splitMoney(value: string): [symbol: string, amount: string] {
   return [match[1], match[2]];
 }
 
+import { cn } from "@/lib/utils";
+
 /**
  * Money inside an info card. The currency symbol is drawn at three-quarters
- * of the amount size in a uniform grey darkened ~23% overall (brightness
- * 0.77 over the muted ink token, so it stays the same grey in every card
- * regardless of tone) while the digits keep the full visual weight.
+ * of the amount size. On bare paper it keeps the uniform grey; on tinted
+ * fills the parent passes muted={false} so the symbol inherits full ink.
  */
 export default function MoneyText({
   value,
   className,
+  symbolClassName,
+  muted = true,
 }: {
   value: string;
   className?: string;
+  symbolClassName?: string;
+  muted?: boolean;
 }) {
   const [symbol, amount] = splitMoney(value);
   if (!symbol) return <span className={className}>{value}</span>;
   return (
     <span className={className}>
-      <span className="text-[0.75em] font-semibold text-ink-mute brightness-[0.77] align-baseline whitespace-nowrap">
+      <span
+        className={cn(
+          "text-[0.75em] font-semibold align-baseline whitespace-nowrap",
+          muted ? "text-ink-mute brightness-[0.77]" : "text-current",
+          symbolClassName
+        )}
+      >
         {symbol}
       </span>
       {amount}

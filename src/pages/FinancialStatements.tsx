@@ -46,6 +46,7 @@ import MoneyText from "@/components/ui/MoneyText";
 import type { StandingOrder, StandingOrderKind, StandingOrderFrequency, BankDeposit } from "@/types";
 import { MONTH_NAMES } from "@/types";
 import { EMPTY_DAY_FLOW, effectiveBankedToday } from "@/lib/cashLedger";
+import "./financial-statements.css";
 
 type Tab = "cashbook" | "bank" | "pnl" | "orders";
 
@@ -926,21 +927,23 @@ function DailyBalancingModal({ onClose, currency, actor }: {
   const saving = create.isPending || persistBalancing.isPending;
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-2 md:p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-2xl overflow-hidden max-h-[95dvh] flex flex-col">
-        <div className="p-2.5 md:p-4 border-b flex items-center justify-between shrink-0">
-          <div>
-            <div className="td-kicker">
+    <div className="balancing-sheet fixed inset-0 z-50 bg-ink/50 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
+      <div className="balancing-card paper-card w-full max-w-2xl overflow-hidden max-h-[95dvh] flex flex-col">
+        <div className="p-2.5 md:p-4 border-b flex items-center justify-between gap-2 shrink-0">
+          <div className="min-w-0">
+            <div className="td-kicker truncate">
               End-of-day cashout · {formatDate(today)}
             </div>
             <h2 className="td-title">Daily Balancing &amp; Banking</h2>
           </div>
-          <button onClick={onClose} className="btn btn-ghost h-7 w-7 md:h-9 md:w-9 p-0"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="btn btn-outline btn-sm h-7 w-7 md:h-9 md:w-9 p-0 shrink-0">
+            <X className="w-3.5 h-3.5 md:w-4 md:h-4" />
+          </button>
         </div>
 
-        <form onSubmit={submit} className="overflow-auto scroll-lined p-2.5 md:p-5 space-y-2 md:space-y-4">
+        <form onSubmit={submit} className="overflow-auto scroll-lined p-2 md:p-3 space-y-1.5 md:space-y-2.5">
           {lastCompleted && (
-            <div className="paper-card td-card bg-success/10 border border-success/30 flex items-start gap-2 md:gap-3">
+            <div className="paper-card td-card !p-2 md:!p-3 bg-success/10 border border-success/30 flex items-start gap-2 md:gap-3">
               <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <div className="td-body font-semibold text-success">Balancing recorded</div>
@@ -952,7 +955,7 @@ function DailyBalancingModal({ onClose, currency, actor }: {
                     {formatCurrency(lastCompleted.cd, currency)}
                   </span>
                 </div>
-                <div className="td-hint mt-1">
+                <div className="td-hint mt-1 hidden md:block">
                   If more transactions come in you can bank again below —
                   the summary refreshes automatically. No need to wait for
                   a new day.
@@ -962,8 +965,8 @@ function DailyBalancingModal({ onClose, currency, actor }: {
           )}
 
           {/* Cash Flow Summary — ALL rows read-only, auto-derived */}
-          <div className="paper-card td-card">
-            <div className="td-flow-kicker mb-1.5 md:mb-3 flex items-center gap-1.5 md:gap-2">
+          <div className="paper-card td-card !p-2 md:!p-3">
+            <div className="td-flow-kicker mb-1.5 md:mb-2.5 flex items-center gap-1.5 md:gap-2">
               <Banknote className="w-3.5 h-3.5 md:w-4 md:h-4" /> Cash Flow Summary
             </div>
             <div className="space-y-0.5 md:space-y-1">
@@ -1018,7 +1021,7 @@ function DailyBalancingModal({ onClose, currency, actor }: {
                 </>
               )}
             </div>
-            <div className="td-flow-hint mt-2 md:mt-3 pt-1.5 md:pt-2 border-t flex items-start gap-1.5">
+            <div className="td-flow-hint mt-2 md:mt-3 pt-1.5 md:pt-2 border-t hidden md:flex items-start gap-1.5">
               <Info className="w-3 h-3 shrink-0 mt-0.5" />
               <span>
                 Balance b/f is LIVE-DERIVED from the full cash ledger
@@ -1031,8 +1034,8 @@ function DailyBalancingModal({ onClose, currency, actor }: {
           </div>
 
           {todayDeposits.length > 0 && (
-            <div className="paper-card td-card">
-              <div className="td-kicker mb-1.5 md:mb-2 flex items-center gap-1.5 md:gap-2">
+            <div className="paper-card td-card !p-2 md:!p-3">
+              <div className="td-kicker mb-1 md:mb-1.5 flex items-center gap-1.5 md:gap-2">
                 <Landmark className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 Banked today · {todayDeposits.length}{" "}
                 {todayDeposits.length === 1 ? "entry" : "entries"}
@@ -1064,69 +1067,138 @@ function DailyBalancingModal({ onClose, currency, actor }: {
             </div>
           )}
 
-          {/* Bank Deposit — the ONLY editable section */}
-          <div className="paper-card td-card">
-            <div className="td-kicker mb-1.5 md:mb-3 flex items-center gap-1.5 md:gap-2">
+          {/* Bank Deposit — the ONLY editable section. The calculated c/d and
+              the physical count sit at the foot of the same card so the whole
+              till position reads as one block. */}
+          <div className="paper-card td-card !p-2 md:!p-3">
+            <div className="td-kicker mb-1.5 md:mb-2 flex items-center gap-1.5 md:gap-2">
               <Landmark className="w-3.5 h-3.5 md:w-4 md:h-4" /> Cash Deposit to Bank
             </div>
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
-              <div>
-                <label htmlFor="fs-deposit-amount" className="td-label">Amount ({currency})</label>
-                <input
-                  id="fs-deposit-amount"
-                  type="number"
-                  min={0}
-                  max={Math.max(0, currentTillCash)}
-                  step="0.01"
-                  value={depositAmount || ""}
-                  onChange={(e) => setDepositAmount(Number(e.target.value) || 0)}
-                  placeholder="0"
-                  className="input input-sm mt-1 num text-right"
-                />
-              </div>
-              <div>
-                <span className="td-label">Date (today)</span>
-                <div className="input input-sm mt-1 num flex items-center pointer-events-none">
-                  {formatDate(today)}
+            <div className="space-y-1.5 md:space-y-2">
+              <div className="grid grid-cols-2 gap-1.5 md:gap-3">
+                <div>
+                  <label htmlFor="fs-deposit-ref" className="td-label">Reference / Slip #</label>
+                  <input
+                    id="fs-deposit-ref"
+                    value={reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    className="input input-sm mt-0.5 num"
+                    placeholder="Slip #"
+                  />
+                </div>
+                <div>
+                  <span className="td-label">Date (today)</span>
+                  <div className="input input-sm mt-0.5 num flex items-center pointer-events-none truncate">
+                    {formatDate(today)}
+                  </div>
                 </div>
               </div>
-              <div className="col-span-2">
-                <label htmlFor="fs-deposit-bank" className="td-label">
-                  Bank / Account
-                  {mruBank && (
-                    <span className="td-hint hidden md:inline font-normal ml-1 normal-case tracking-normal">
-                      — most-recently used auto-selected
-                    </span>
-                  )}
-                </label>
-                <input
-                  id="fs-deposit-bank"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  className="input input-sm mt-1"
-                  placeholder="Stanbic Business ##3456"
-                />
+              <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-1.5 md:gap-3">
+                <div>
+                  <label htmlFor="fs-deposit-amount" className="td-label">Amount ({currency})</label>
+                  <input
+                    id="fs-deposit-amount"
+                    type="number"
+                    min={0}
+                    max={Math.max(0, currentTillCash)}
+                    step="0.01"
+                    value={depositAmount || ""}
+                    onChange={(e) => setDepositAmount(Number(e.target.value) || 0)}
+                    placeholder="0"
+                    className="input input-sm mt-0.5 num text-right"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="fs-deposit-bank" className="td-label">
+                    Bank / Account
+                    {mruBank && (
+                      <span className="td-hint hidden md:inline font-normal ml-1 normal-case tracking-normal">
+                        — most-recently used auto-selected
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    id="fs-deposit-bank"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="input input-sm mt-0.5"
+                    placeholder="Stanbic Business ##3456"
+                  />
+                </div>
               </div>
-              <div className="col-span-2">
-                <label htmlFor="fs-deposit-ref" className="td-label">Reference / Slip #</label>
-                <input
-                  id="fs-deposit-ref"
-                  value={reference}
-                  onChange={(e) => setReference(e.target.value)}
-                  className="input input-sm mt-1 num"
-                />
-              </div>
-              <div className="col-span-2">
+              <div>
                 <label htmlFor="fs-deposit-notes" className="td-label">Notes</label>
                 <textarea
                   id="fs-deposit-notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="input input-sm mt-1 min-h-12 md:min-h-16"
+                  className="input input-sm mt-0.5 min-h-10 md:min-h-14"
+                  placeholder="Optional"
                 />
               </div>
             </div>
-            <div className="td-hint mt-2 md:mt-3 flex items-start gap-1.5">
+
+            {/* Calculated Balance c/d — read-only, promoted but compact */}
+            <div className={cn(
+              "mt-1.5 md:mt-2 rounded-md border px-2 md:px-3 py-1.5 md:py-2",
+              closingBalance >= 0 ? "bg-magenta-reg/5 border-magenta-reg/30" : "bg-danger/5 border-danger/30"
+            )}>
+              <div className="td-kicker">
+                Calculated Balance c/d · leftover cash (carries to tomorrow's b/f)
+              </div>
+              <div className={cn(
+                "td-value num mt-0.5 break-words",
+                "text-lg md:text-3xl",
+                closingBalance >= 0 ? "text-ink" : "text-danger"
+              )}>
+                <MoneyText value={formatCurrency(closingBalance, currency)} />
+              </div>
+              <div className="td-hint mt-0.5">
+                = Current till {formatCurrency(currentTillCash, currency)}
+                {depositAmount > 0 && ` - new deposit ${formatCurrency(depositAmount, currency)}`}
+              </div>
+            </div>
+
+            {/* Physical count + variance — read-only variance, optional count */}
+            <div className="mt-1.5 md:mt-2 pt-1.5 md:pt-2 border-t">
+              <div className="td-kicker mb-1 md:mb-1.5 flex items-center gap-1.5 md:gap-2">
+                <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" /> Physical Cash Count &amp; Variance (optional)
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 md:gap-3">
+                <div>
+                  <label htmlFor="fs-physical-count" className="td-label">Physical count in till ({currency})</label>
+                  <input
+                    id="fs-physical-count"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={physicalCashCount}
+                    onChange={(e) => setPhysicalCashCount(e.target.value)}
+                    placeholder="Leave blank to skip"
+                    className="input input-sm mt-0.5 num text-right"
+                  />
+                </div>
+                <div>
+                  <span className="td-label">Variance vs Calculated c/d</span>
+                  <div className={cn(
+                    "input input-sm mt-0.5 num text-right tabular-nums flex items-center justify-end pointer-events-none",
+                    variance === null && "text-ink-mute",
+                    variance !== null && variance > 0 && "text-success",
+                    variance !== null && variance < 0 && "text-danger",
+                  )}>
+                    {variance === null ? "—" : formatCurrency(variance, currency)}
+                  </div>
+                </div>
+              </div>
+              <div className="td-hint mt-1 md:mt-1.5 hidden md:block">
+                Recorded SEPARATELY from the Calculated c/d for audit purposes.
+                Positive variance = surplus cash in till; negative = shortage.
+                Both are persisted in the balancing snapshot without altering
+                the b/f → c/d accounting chain.
+              </div>
+            </div>
+
+            <div className="td-hint mt-1.5 md:mt-2 hidden md:flex items-start gap-1.5">
               <Info className="w-3 h-3 shrink-0 mt-0.5" />
               <span>
                 Banking is strictly a Till → Bank transfer — NOT a sale,
@@ -1134,65 +1206,6 @@ function DailyBalancingModal({ onClose, currency, actor }: {
                 the banked amount and increases the Bank Statement by the
                 same, in one audit-tracked movement (never duplicated).
               </span>
-            </div>
-          </div>
-
-          {/* Prominent, read-only Balance c/d card */}
-          <div className={cn(
-            "paper-card td-card border-2",
-            closingBalance >= 0 ? "bg-magenta-reg/5 border-magenta-reg/30" : "bg-danger/5 border-danger/30"
-          )}>
-            <div className="td-kicker">
-              Calculated Balance c/d · leftover cash (carries to tomorrow's b/f)
-            </div>
-            <div className={cn(
-              "td-value num mt-0.5 md:mt-1 break-words",
-              "text-xl md:text-4xl",
-              closingBalance >= 0 ? "text-ink" : "text-danger"
-            )}>
-              <MoneyText value={formatCurrency(closingBalance, currency)} />
-            </div>
-            <div className="td-hint mt-0.5 md:mt-1">
-              = Current till {formatCurrency(currentTillCash, currency)}
-              {depositAmount > 0 && ` - new deposit ${formatCurrency(depositAmount, currency)}`}
-            </div>
-          </div>
-
-          <div className="paper-card td-card">
-            <div className="td-kicker mb-1.5 md:mb-3 flex items-center gap-1.5 md:gap-2">
-              <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" /> Physical Cash Count &amp; Variance (optional)
-            </div>
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
-              <div>
-                <label htmlFor="fs-physical-count" className="td-label">Physical count in till ({currency})</label>
-                <input
-                  id="fs-physical-count"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={physicalCashCount}
-                  onChange={(e) => setPhysicalCashCount(e.target.value)}
-                  placeholder="Leave blank to skip"
-                  className="input input-sm mt-1 num text-right"
-                />
-              </div>
-              <div>
-                <span className="td-label">Variance vs Calculated c/d</span>
-                <div className={cn(
-                  "input input-sm mt-1 num text-right tabular-nums flex items-center justify-end pointer-events-none",
-                  variance === null && "text-ink-mute",
-                  variance !== null && variance > 0 && "text-success",
-                  variance !== null && variance < 0 && "text-danger",
-                )}>
-                  {variance === null ? "—" : formatCurrency(variance, currency)}
-                </div>
-              </div>
-            </div>
-            <div className="td-hint mt-1.5 md:mt-2">
-              Recorded SEPARATELY from the Calculated c/d for audit purposes.
-              Positive variance = surplus cash in till; negative = shortage.
-              Both are persisted in the balancing snapshot without altering
-              the b/f → c/d accounting chain.
             </div>
           </div>
 

@@ -4,7 +4,7 @@
    every other screen stay untouched. Tokens mirror the authoritative V3
    system: Manrope display / DM Sans body, oklch colours, brand-yellow CTA. */
 
-.register-page {
+:is(.register-page, .v3-scope) {
   /* V3 light tokens */
   --reg-brand: oklch(0.86 0.175 92); /* #FFCC08 */
   --reg-brand-foreground: oklch(0.18 0 0);
@@ -31,7 +31,11 @@
     0 12px 32px -12px oklch(0 0 0 / 0.08);
   --reg-shadow-brand: 0 8px 20px -8px oklch(0.86 0.175 92 / 0.6);
   --reg-control-h: 33px;
+}
 
+/* Page layout — the auth routes only. A `.v3-scope` host is a *component*
+   scope, never a page: it must never become a full-height canvas. */
+.register-page {
   position: relative;
   isolation: isolate;
   height: 100dvh;
@@ -412,7 +416,7 @@
 }
 
 .reg-label,
-.register-page .reg-field .label {
+:is(.register-page, .v3-scope) .reg-field .label {
   display: block;
   margin-bottom: 4px;
   font-family: var(--reg-font-sans);
@@ -425,7 +429,7 @@
 }
 
 .reg-req,
-.register-page .reg-field .label .text-danger {
+:is(.register-page, .v3-scope) .reg-field .label .text-danger {
   margin-left: 2px;
   color: var(--reg-danger);
 }
@@ -446,7 +450,7 @@
 }
 
 /* Fields: V3 33px mobile/tablet, 44px laptop+ */
-.register-page .reg-field .input {
+:is(.register-page, .v3-scope) .reg-field .input {
   width: 100%;
   height: var(--reg-control-h);
   padding: 0 16px;
@@ -463,40 +467,40 @@
     background-color 200ms ease;
 }
 
-.register-page .reg-field .input::placeholder {
+:is(.register-page, .v3-scope) .reg-field .input::placeholder {
   color: color-mix(in oklch, var(--reg-muted) 65%, transparent);
 }
 
-.register-page .reg-field .input:hover {
+:is(.register-page, .v3-scope) .reg-field .input:hover {
   border-color: var(--reg-field-border-hover);
 }
 
-.register-page .reg-field .input:focus {
+:is(.register-page, .v3-scope) .reg-field .input:focus {
   border-color: var(--reg-foreground);
   box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.25);
 }
 
 /* V3 invalid state: destructive border + destructive /15 ring. */
-.register-page .reg-field .input[aria-invalid="true"] {
+:is(.register-page, .v3-scope) .reg-field .input[aria-invalid="true"] {
   border-color: var(--reg-danger);
 }
 
-.register-page .reg-field .input[aria-invalid="true"]:hover {
+:is(.register-page, .v3-scope) .reg-field .input[aria-invalid="true"]:hover {
   border-color: var(--reg-danger);
 }
 
-.register-page .reg-field .input[aria-invalid="true"]:focus {
+:is(.register-page, .v3-scope) .reg-field .input[aria-invalid="true"]:focus {
   border-color: var(--reg-danger);
   box-shadow: 0 0 0 4px oklch(0.577 0.245 27.325 / 0.15);
 }
 
-.register-page .reg-field .input:disabled {
+:is(.register-page, .v3-scope) .reg-field .input:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
 /* Dropdown triggers keep the V3 field surface, not the frosted glass one. */
-.register-page .reg-field .input.select-glass {
+:is(.register-page, .v3-scope) .reg-field .input.select-glass {
   background: var(--reg-input);
   border-color: var(--reg-field-border);
   -webkit-backdrop-filter: none;
@@ -504,31 +508,31 @@
   box-shadow: none;
 }
 
-.register-page .reg-field .input.select-glass:hover {
+:is(.register-page, .v3-scope) .reg-field .input.select-glass:hover {
   border-color: var(--reg-field-border-hover);
 }
 
-.register-page .reg-field .input.select-glass:focus {
+:is(.register-page, .v3-scope) .reg-field .input.select-glass:focus {
   border-color: var(--reg-foreground);
   box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.25);
 }
 
-.register-page .reg-field .input.reg-with-icon {
+:is(.register-page, .v3-scope) .reg-field .input.reg-with-icon {
   padding-left: 44px;
 }
 
 /* The flag/dial trigger reads more naturally at a tighter horizontal pad. */
-.register-page .reg-field .relative.shrink-0 > button.input {
+:is(.register-page, .v3-scope) .reg-field .relative.shrink-0 > button.input {
   gap: 6px;
   padding-left: 10px;
   padding-right: 10px;
 }
 
-.register-page .reg-field .input.reg-with-eye {
+:is(.register-page, .v3-scope) .reg-field .input.reg-with-eye {
   padding-right: 48px;
 }
 
-.register-page .reg-field .input.reg-code {
+:is(.register-page, .v3-scope) .reg-field .input.reg-code {
   padding: 0 12px;
   font-family: var(--reg-font-mono);
   font-size: 18px;
@@ -538,14 +542,14 @@
 }
 
 /* Search / popup fields inside the shared country picker */
-.register-page .reg-field .paper-card {
+:is(.register-page, .v3-scope) .reg-field .paper-card {
   border: 1px solid var(--reg-border);
   border-radius: 12px;
   background: var(--reg-card);
   box-shadow: 0 24px 48px -24px oklch(0 0 0 / 0.45);
 }
 
-.register-page .reg-field .paper-card .input {
+:is(.register-page, .v3-scope) .reg-field .paper-card .input {
   height: 36px;
   padding: 0 12px;
   border-radius: 10px;
@@ -740,7 +744,7 @@
   box-shadow: 0 0 0 2px var(--reg-ring);
 }
 
-.register-page .reg-submit {
+:is(.register-page, .v3-scope) .reg-submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -760,26 +764,26 @@
     opacity 160ms ease;
 }
 
-.register-page .reg-submit:hover {
+:is(.register-page, .v3-scope) .reg-submit:hover {
   filter: brightness(0.96);
   box-shadow: var(--reg-shadow-brand);
 }
 
-.register-page .reg-submit:active {
+:is(.register-page, .v3-scope) .reg-submit:active {
   transform: scale(0.99);
 }
 
-.register-page .reg-submit:focus-visible {
+:is(.register-page, .v3-scope) .reg-submit:focus-visible {
   outline: none;
   box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.4);
 }
 
-.register-page .reg-submit:disabled {
+:is(.register-page, .v3-scope) .reg-submit:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.register-page .reg-submit:disabled:hover {
+:is(.register-page, .v3-scope) .reg-submit:disabled:hover {
   filter: none;
   box-shadow: none;
   transform: none;
@@ -1006,7 +1010,7 @@
   margin-top: 16px;
 }
 
-.register-page .reg-submit-login:disabled {
+:is(.register-page, .v3-scope) .reg-submit-login:disabled {
   cursor: wait;
   opacity: 0.8;
 }
@@ -1051,7 +1055,7 @@
 }
 
 /* Secondary/outline CTA — same geometry as the brand CTA, quieter surface. */
-.register-page .reg-secondary {
+:is(.register-page, .v3-scope) .reg-secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1071,16 +1075,16 @@
     box-shadow 160ms ease, transform 120ms ease;
 }
 
-.register-page .reg-secondary:hover {
+:is(.register-page, .v3-scope) .reg-secondary:hover {
   border-color: var(--reg-foreground);
   background: color-mix(in oklch, var(--reg-foreground) 4%, transparent);
 }
 
-.register-page .reg-secondary:active {
+:is(.register-page, .v3-scope) .reg-secondary:active {
   transform: scale(0.99);
 }
 
-.register-page .reg-secondary:focus-visible {
+:is(.register-page, .v3-scope) .reg-secondary:focus-visible {
   outline: none;
   box-shadow: 0 0 0 4px oklch(0.86 0.175 92 / 0.4);
 }
@@ -1392,8 +1396,8 @@
 /* Dark theme (V3 dark tokens, scoped)                                */
 /* ------------------------------------------------------------------ */
 
-[data-theme="dark"] .register-page,
-.dark .register-page {
+[data-theme="dark"] :is(.register-page, .v3-scope),
+.dark :is(.register-page, .v3-scope) {
   --reg-background: oklch(0.129 0.042 264.695);
   --reg-foreground: oklch(0.984 0.003 247.858);
   --reg-card: oklch(0.208 0.042 265.755);
@@ -1483,7 +1487,7 @@
 
 /* Laptop: full-width card in the 420px column + desktop control sizes. */
 @media (min-width: 1024px) {
-  .register-page {
+  :is(.register-page, .v3-scope) {
     --reg-control-h: 44px;
   }
 
@@ -1491,20 +1495,20 @@
     max-width: none;
   }
 
-  .register-page .reg-field .input {
+  :is(.register-page, .v3-scope) .reg-field .input {
     font-size: 14px;
   }
 
-  .register-page .reg-field .input.reg-code {
+  :is(.register-page, .v3-scope) .reg-field .input.reg-code {
     font-size: 20px;
   }
 
-  .register-page .reg-submit {
+  :is(.register-page, .v3-scope) .reg-submit {
     height: 48px;
     font-size: 16px;
   }
 
-  .register-page .reg-secondary {
+  :is(.register-page, .v3-scope) .reg-secondary {
     height: 44px;
     font-size: 15px;
   }

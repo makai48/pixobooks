@@ -45,6 +45,7 @@ stay valid unless a later section explicitly supersedes them.
 | `success` / `warning` / `danger` | semantic value tones |
 | `cyan-reg` | wire + paid badge accent |
 | `magenta.reg` | primary accent (POS pay, collect) |
+| `surface-brand` / `-ink` / `-success` / `-danger` / `-warning` / `-cyan` | tinted high-signal card surfaces (ink text) |
 
 ### Typography
 
@@ -92,12 +93,38 @@ mobile value is the base class.
 
 - Grid: 3-up on mobile. Desktop is 4-up: Revenue, Collected, Outstanding, **Sales in
   period** (the count is desktop-only; on mobile the meta line already reports the count).
-- Card: `p-2` mobile / `p-4` desktop. Height on mobile ≈ 42px — roughly −25% vs. the
-  pre-compaction card.
-- Label: `7px` mobile / `11px` desktop, uppercase, `leading-none`, truncates.
-- Value: `12px` mobile / `clamp(1rem, 5.5vw, 1.5rem)` desktop, `font-display`, bold, `.num`.
+- Card: standard `paper-card` with 14px radius, 1px line border and soft paper shadow;
+  Sales has no semantic fill, solid gradient, icon or folded tab.
+- Label: `7px` mobile / `11px` desktop, uppercase, tracked and `leading-none`.
+- Value: `12px` mobile / `clamp(1rem, 5.5vw, 1.5rem)` desktop, Fraunces `font-display`,
+  bold and tabular. Content uses the established compact card padding.
+- Foregrounds are chosen per fill so the large text always clears the colour: brand =
+  `brand-foreground`; success/danger/cyan = white in light, `brand-foreground` in dark;
+  warning = `ink` in light, `brand-foreground` in dark; ink = `paper` on `ink` in light,
+  white on `line` in dark. Hover lifts 2px only on fine pointers and only when motion
+  is allowed.
 - Amounts are written in full (`formatCurrency`) and only compact to `1.2M` style at
   ≥ 1,000,000. Double-click expands the exact value.
+- **Tinted fills are semantic, not decorative** — each colour owns one meaning:
+
+  | Card | Fill |
+  | --- | --- |
+  | Revenue | `brand` (skin identity) |
+  | Collected | `success` |
+  | Outstanding | `danger`; `ink` when nothing is owed |
+  | Sales in period | `ink` (neutral count) |
+  | Cost of goods | `ink` (neutral cost) |
+  | Gross profit | `success`; `danger` when negative |
+  | Tax collected | `warning` |
+
+- Sales solid cards use the skin's semantic token directly, so every skin yields its own
+  card colour (Papier mustard, Tidal teal, Grove green, Ember burnt orange, Nocturne
+  yellow). Never hardcode a fill.
+- Inventory keeps the quiet paper card: a low-alpha `surface-*` wash (brand/success/cyan
+  18%, warning 20%, danger 16%, ink 7%) with a matching 36–42% border. On that paper
+  tint everything stays full `ink`: the value never carries a separate `tone`, and the
+  label uses `.stat-label` (ink at 66%). Measured minimums across all ten skin/mode
+  combinations: labels ≥ 4.79:1, values ≥ 9.76:1.
 
 ### 4.3 Filter card
 
@@ -299,10 +326,17 @@ flow variants at ×1.3 rather than inventing new sizes.
 13. Expense rows are tap-to-edit; delete stays isolated and outline-free. Category and
     payment method are plain text — no chip, badge or background box.
 14. Expenses has no metric cards and no Export. The sticky bar is the only page header.
-15. Dates render through `formatDateByPreference`; months are always short. `D MMM YYYY`
-    means `7 Nov` on mobile/compact and `7 Nov 2026` on larger surfaces.
+15. Every date surface renders through the saved preset: range triggers, ledger rows,
+    summaries, tooltips, notices and document/PDF text. `formatDate`/`formatDateTime`
+    read the active preset, `GlassDatePicker` defaults to it, and print/PDF code passes
+    `settings.dateFormat`. Never use bare `toLocaleDateString`/`toLocaleString` for a
+    date. Months are always short; `D MMM YYYY` means `7 Nov` on mobile/compact and
+    `7 Nov 2026` on larger surfaces.
 16. Notifications centre on the viewport at every breakpoint; never remove the ≤600px
     Sonner track override in `src/styles/toaster.css`.
+17. Sales metric cards use the neutral `paper-card` treatment and established compact
+    typography; no Sales fill or gradient is applied. Inventory keeps the flat
+    `surface-*` wash and `.stat-label` at 66% ink. Never hardcode a fill.
 
 ---
 

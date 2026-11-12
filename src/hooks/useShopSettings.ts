@@ -6,11 +6,12 @@ import type { Settings } from "@/types";
 import { getActiveBusinessId, useActiveBusiness } from "@/hooks/useBusinesses";
 import { withBusiness } from "@/lib/tenant";
 
-export function useShopSettings() {
+export function useShopSettings(options: { enabled?: boolean } = {}) {
   const active = useActiveBusiness();
   const businessId = active === "none" ? null : active;
   return useQuery({
     queryKey: ["shop_settings", businessId],
+    enabled: options.enabled ?? true,
     queryFn: async () => {
       let q = supabase.from("shop_settings").select("*");
       q = businessId ? q.eq("business_id", businessId) : q.eq("id", "main");

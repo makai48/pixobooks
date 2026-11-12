@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import type { DocKind, Sale, SalePayment, Settings } from "@/types";
 import { formatCurrency } from "@/lib/utils";
+import { formatDateByPreference, formatDateTimeByPreference } from "@/lib/dateFormat";
 import { formatMoney } from "@/lib/referenceData";
 import { supabase, SUPABASE_URL, SUPABASE_KEY } from "@/lib/supabase";
 
@@ -348,14 +349,8 @@ function layoutThermal(c: TLay): number {
   tCenter(c, sale.number, 7.5, true, 4, 0.5);
   tRule(c);
 
-  // Same date shape as the on-screen preview (short month, no seconds).
-  const dt = new Date(sale.createdAt).toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // Same date shape as the on-screen preview (saved preset, no seconds).
+  const dt = formatDateTimeByPreference(sale.createdAt, s.dateFormat);
   const meta: [string, string, boolean][] = [
     ["Date", dt, false],
     ["Cashier", sale.cashierName || "—", false],
@@ -463,7 +458,7 @@ function layoutThermal(c: TLay): number {
     for (const p of payments) {
       tNeed(c, 3.5);
       if (c.ink) {
-        doc.text(`${new Date(p.createdAt).toLocaleDateString()} ${p.paymentMethod}`.slice(0, 30), c.L, c.y);
+        doc.text(`${formatDateByPreference(p.createdAt, s.dateFormat)} ${p.paymentMethod}`.slice(0, 30), c.L, c.y);
         doc.text(plain(p.amount, s), c.cols.amountRightX, c.y, { align: "right" });
       }
       c.y += 3.5;
@@ -587,10 +582,10 @@ function downloadCorporatePdf(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   const head: [string, string][] = [
-    ["Issued", new Date(sale.createdAt).toLocaleDateString()],
+    ["Issued", formatDateByPreference(sale.createdAt, settings.dateFormat)],
     ["Cashier", sale.cashierName || "—"],
     ...(sale.customerName ? [["Customer", sale.customerName] as [string, string]] : []),
-    ...(sale.dueDate ? [["Due", new Date(sale.dueDate).toLocaleDateString()] as [string, string]] : []),
+    ...(sale.dueDate ? [["Due", formatDateByPreference(sale.dueDate, settings.dateFormat)] as [string, string]] : []),
   ];
   for (const [k, v] of head) {
     doc.text(k, M, y);
@@ -658,7 +653,7 @@ function downloadCorporatePdf(
     y += 5;
     for (const p of payments) {
       need(4.5);
-      doc.text(`${new Date(p.createdAt).toLocaleString()} — ${p.paymentMethod}`.slice(0, 80), M, y);
+      doc.text(`${formatDateTimeByPreference(p.createdAt, settings.dateFormat)} — ${p.paymentMethod}`.slice(0, 80), M, y);
       doc.text(money(p.amount, cur), R, y, { align: "right" });
       y += 4.5;
     }

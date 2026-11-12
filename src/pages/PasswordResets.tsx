@@ -455,7 +455,7 @@ Your password on ${shopName} (PixoBooks) has been reset.
 
 Login email:        ${result.email}
 Temporary password: ${result.tempPassword}
-Expires:            ${new Date(result.expiresAt).toLocaleString()}
+Expires:            ${formatDateTime(result.expiresAt)}
 Login link:         ${loginUrl}
 
 Please sign in with the temporary password above. You will be asked to set
@@ -525,7 +525,7 @@ a new permanent password immediately after signing in.
             <ResultRow
               icon={<Clock className="w-3.5 h-3.5" />}
               label="Expires"
-              value={new Date(result.expiresAt).toLocaleString()}
+              value={formatDateTime(result.expiresAt)}
             />
             <ResultRow
               icon={<LinkIcon className="w-3.5 h-3.5" />}

@@ -62,7 +62,7 @@ export default function PhoneInput({
           {label} {required && <span className="text-danger">*</span>}
         </label>
       )}
-      <div className={cn("flex gap-2", label && "mt-1")}>
+      <div className={cn("phone-row flex gap-2", label && "mt-1")}>
         <CountryDialPicker
           dial={dial}
           onChange={(d) => {
@@ -88,7 +88,7 @@ export default function PhoneInput({
           }}
           placeholder={placeholder || "712 345 678"}
           aria-label={ariaLabel}
-          className={cn("input flex-1 min-w-0", inputClassName)}
+          className={cn("input phone-row__number flex-1 min-w-0", inputClassName)}
         />
       </div>
     </div>

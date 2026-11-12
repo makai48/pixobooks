@@ -1,5 +1,17 @@
 import { useEffect, useState } from "react";
-import { X, Plus, Trash2, Upload, User as UserIcon } from "lucide-react";
+import {
+  X,
+  Plus,
+  Trash2,
+  Truck,
+  User as UserIcon,
+  Mail,
+  Home,
+  MapPin,
+  StickyNote,
+  Camera,
+  Check,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useUpsertSupplier } from "@/hooks/useSuppliers";
 import { useItems } from "@/hooks/useItems";
@@ -8,6 +20,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { processImageFile } from "@/lib/imageUpload";
 import PhoneInput from "@/components/common/PhoneInput";
 import GlassSelect from "@/components/ui/GlassSelect";
+import AuthModal from "@/components/auth/AuthModal";
+import AuthField from "@/components/auth/AuthField";
+import "@/styles/sheet.css";
 import type { SupplierItem, SupplierRecord } from "@/types";
 
 type Draft = {
@@ -22,6 +37,13 @@ type Draft = {
   items: SupplierItem[];
 };
 
+/**
+ * Add / edit supplier sheet.
+ *
+ * Built on the shared V3 primitives (`AuthModal`, `AuthField`) and the shared
+ * sheet styles (`src/styles/sheet.css`), so it is a sibling of the customer
+ * sheet: same dialog, same fields, same footer. On phones it is a bottom sheet.
+ */
 export default function SupplierModal({
   supplier,
   onClose,
@@ -133,163 +155,199 @@ export default function SupplierModal({
     }
   };
 
+  const initials =
+    form.name.trim().charAt(0).toUpperCase() ||
+    supplier?.name.trim().charAt(0).toUpperCase() ||
+    "?";
+
   return (
-    <div className="fixed inset-0 z-50 bg-ink/40 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-3xl overflow-hidden max-h-[95dvh] flex flex-col rounded-t-2xl md:rounded-xl">
-        <div className="p-4 md:p-5 border-b flex items-center justify-between shrink-0">
-          <div>
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
-              {supplier ? "Edit supplier" : "New supplier"}
-            </div>
-            <h2 className="font-display text-xl md:text-2xl font-bold">
-              Purchase source
-            </h2>
-          </div>
-          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <form onSubmit={submit} className="p-4 md:p-5 space-y-5 overflow-auto">
-          {/* Profile */}
-          <div className="flex flex-col md:flex-row gap-4 items-start">
-            <div className="w-24 h-24 rounded-full border-2 overflow-hidden bg-paper flex items-center justify-center shrink-0">
+    <div className="v3-scope v3-scope-host v3-sheet-scope">
+      <AuthModal
+        wide
+        kicker={supplier ? "Supplier register" : "New supplier"}
+        title={supplier ? supplier.name : "Add a supplier"}
+        onClose={onClose}
+        footer={
+          <>
+            <button
+              type="submit"
+              form="supplier-form"
+              disabled={upsert.isPending || uploading}
+              className="reg-submit"
+            >
+              <Check aria-hidden="true" />
+              {upsert.isPending
+                ? "Saving…"
+                : supplier
+                ? "Save changes"
+                : "Add supplier"}
+            </button>
+            <button type="button" onClick={onClose} className="reg-back">
+              Cancel
+            </button>
+          </>
+        }
+      >
+        <form id="supplier-form" onSubmit={submit} className="v3-sheet">
+          {/* Identity strip — the supplier is the picture, the lines are the detail. */}
+          <div className="sheet-identity">
+            <div className="sheet-avatar">
               {form.avatarUrl ? (
-                <img src={form.avatarUrl} alt="" className="w-full h-full object-cover" />
+                <img src={form.avatarUrl} alt="" />
               ) : (
-                <UserIcon className="w-8 h-8 text-ink-mute" />
+                <span>{initials}</span>
               )}
             </div>
-            <div className="flex-1 w-full space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="btn btn-outline h-9 cursor-pointer">
-                  <Upload className="w-4 h-4" />
-                  {uploading ? "Uploading..." : "Photo"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) uploadAvatar(f);
-                    }}
-                  />
-                </label>
-                {form.avatarUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, avatarUrl: "" })}
-                    className="btn btn-ghost h-9 text-danger"
-                  >
-                    Remove
-                  </button>
-                )}
+            <div className="sheet-identity-copy">
+              <div className="sheet-identity-name">
+                {form.name.trim() || "New supplier"}
               </div>
-              <input
-                value={form.avatarUrl}
-                onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
-                className="input"
-                placeholder="Or paste image URL / base64"
-              />
+              <div className="sheet-identity-meta">
+                {form.location.trim() || form.contactPerson.trim() || "No contact details yet"}
+              </div>
+            </div>
+            <div className="sheet-identity-actions">
+              <label className="reg-secondary sheet-photo-btn">
+                <Camera aria-hidden="true" />
+                <span>{uploading ? "Uploading…" : "Photo"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadAvatar(f);
+                  }}
+                />
+              </label>
+              {form.avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, avatarUrl: "" })}
+                  className="sheet-photo-remove"
+                  title="Remove photo"
+                  aria-label="Remove photo"
+                >
+                  <X aria-hidden="true" />
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="sup-name" className="label">Supplier name *</label>
+          <div className="reg-fields">
+            <AuthField
+              htmlFor="sup-name"
+              label="Supplier name"
+              required
+              icon={Truck}
+            >
               <input
                 id="sup-name"
                 autoFocus
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="input mt-1"
                 placeholder="e.g. Kampala Paper Mills"
+                className="input reg-with-icon"
               />
-            </div>
-            <div>
-              <label htmlFor="sup-contact" className="label">Contact person</label>
+            </AuthField>
+
+            <AuthField
+              htmlFor="sup-contact"
+              label="Contact person"
+              icon={UserIcon}
+            >
               <input
                 id="sup-contact"
                 value={form.contactPerson}
                 onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
-                className="input mt-1"
                 placeholder="Full name"
+                className="input reg-with-icon"
               />
-            </div>
-            <div>
-              <label htmlFor="sup-email" className="label">Email</label>
+            </AuthField>
+
+            <AuthField htmlFor="sup-email" label="Email" icon={Mail}>
               <input
                 id="sup-email"
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="input mt-1"
                 placeholder="orders@example.com"
+                className="input reg-with-icon"
+              />
+            </AuthField>
+
+            <div className="reg-field">
+              <PhoneInput
+                label="Phone"
+                value={form.phone}
+                onChange={(v) => setForm({ ...form, phone: v })}
+                placeholder="712 345 678"
               />
             </div>
-            <PhoneInput
-              label="Phone"
-              value={form.phone}
-              onChange={(v) => setForm({ ...form, phone: v })}
-              placeholder="+256 700 000 000"
-            />
-            <div>
-              <label htmlFor="sup-address" className="label">Address</label>
+
+            <AuthField htmlFor="sup-address" label="Address" icon={Home}>
               <input
                 id="sup-address"
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
-                className="input mt-1"
                 placeholder="Street / building"
+                className="input reg-with-icon"
               />
-            </div>
-            <div>
-              <label htmlFor="sup-location" className="label">Location / City</label>
+            </AuthField>
+
+            <AuthField htmlFor="sup-location" label="Location / City" icon={MapPin}>
               <input
                 id="sup-location"
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
-                className="input mt-1"
                 placeholder="Kampala, Uganda"
+                className="input reg-with-icon"
               />
-            </div>
+            </AuthField>
           </div>
 
-          <div>
-            <label htmlFor="sup-notes" className="label">Notes</label>
+          <AuthField
+            htmlFor="sup-notes"
+            label="Notes"
+            icon={StickyNote}
+            hint="Payment terms, discounts, delivery days — anything the buyer should know."
+          >
             <textarea
               id="sup-notes"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="input mt-1 h-20"
-              placeholder="Payment terms, discounts, delivery days..."
+              placeholder="Optional"
+              rows={3}
+              className="input reg-with-icon sheet-notes"
             />
-          </div>
+          </AuthField>
 
-          {/* Items supplied */}
+          {/* Items supplied — the reason this supplier is on the register. */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between gap-2 mb-2">
               <div>
-                <div className="font-display font-bold">Items supplied</div>
-                <div className="text-xs text-ink-mute">
-                  Attach materials this supplier provides with typical quantities & prices.
+                <div className="font-display text-sm font-bold">Items supplied</div>
+                <div className="text-[12px] text-ink-mute">
+                  Typical quantities and prices for this supplier.
                 </div>
               </div>
-              <button type="button" onClick={addLine} className="btn btn-outline h-9">
-                <Plus className="w-4 h-4" /> Add item
+              <button type="button" onClick={addLine} className="reg-secondary sheet-photo-btn">
+                <Plus aria-hidden="true" />
+                <span>Add item</span>
               </button>
             </div>
 
             {form.items.length === 0 ? (
-              <div className="p-4 border border-dashed rounded-md text-sm text-ink-mute text-center">
-                No items yet. Click "Add item".
-              </div>
+              <div className="sheet-empty">No items yet — add the first one.</div>
             ) : (
-              <div className="space-y-2">
+              <div className="sheet-lines">
                 {form.items.map((line, i) => (
-                  <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-12 md:col-span-4">
-                      <label htmlFor={`sup-item-${i}`} className="label">Item</label>
+                  <div key={i} className="sheet-line">
+                    <div className="is-name">
+                      <label className="reg-label" htmlFor={`sup-item-${i}`}>
+                        Item
+                      </label>
                       <GlassSelect
                         id={`sup-item-${i}`}
                         value={line.itemId || ""}
@@ -299,7 +357,7 @@ export default function SupplierModal({
                           { value: "", label: "Custom / not tracked" },
                           ...items.map((it) => ({ value: it.id, label: it.name })),
                         ]}
-                        className="input select-glass mt-1"
+                        className="input select-glass"
                       />
                       {!line.itemId && (
                         <input
@@ -313,8 +371,10 @@ export default function SupplierModal({
                         />
                       )}
                     </div>
-                    <div className="col-span-4 md:col-span-2">
-                      <label htmlFor={`sup-qty-${i}`} className="label">Qty</label>
+                    <div className="is-qty">
+                      <label className="reg-label" htmlFor={`sup-qty-${i}`}>
+                        Qty
+                      </label>
                       <input
                         id={`sup-qty-${i}`}
                         type="number"
@@ -324,21 +384,24 @@ export default function SupplierModal({
                         onChange={(e) =>
                           updateLine(i, { qty: Number(e.target.value) })
                         }
-                        className="input mt-1 num text-right"
+                        className="input num text-right"
                       />
                     </div>
-                    <div className="col-span-4 md:col-span-2">
-                      <label htmlFor={`sup-uom-${i}`} className="label">UOM</label>
+                    <div className="is-uom">
+                      <label className="reg-label" htmlFor={`sup-uom-${i}`}>
+                        UOM
+                      </label>
                       <input
                         id={`sup-uom-${i}`}
                         value={line.unit}
                         onChange={(e) => updateLine(i, { unit: e.target.value })}
-                        className="input mt-1"
-                        placeholder="pc, ream, kg"
+                        placeholder="pc"
                       />
                     </div>
-                    <div className="col-span-4 md:col-span-3">
-                      <label htmlFor={`sup-price-${i}`} className="label">Unit price</label>
+                    <div className="is-price">
+                      <label className="reg-label" htmlFor={`sup-price-${i}`}>
+                        Unit price
+                      </label>
                       <input
                         id={`sup-price-${i}`}
                         type="number"
@@ -348,16 +411,18 @@ export default function SupplierModal({
                         onChange={(e) =>
                           updateLine(i, { unitPrice: Number(e.target.value) })
                         }
-                        className="input mt-1 num text-right"
+                        className="input num text-right"
                       />
                     </div>
-                    <div className="col-span-12 md:col-span-1 flex justify-end">
+                    <div className="is-remove">
                       <button
                         type="button"
                         onClick={() => removeLine(i)}
-                        className="btn btn-ghost h-9 w-9 p-0 text-danger"
+                        className="sheet-line-remove"
+                        title="Remove this item"
+                        aria-label="Remove this item"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 aria-hidden="true" />
                       </button>
                     </div>
                   </div>
@@ -366,19 +431,7 @@ export default function SupplierModal({
             )}
           </div>
         </form>
-        <div className="p-4 border-t flex justify-end gap-2 shrink-0">
-          <button type="button" onClick={onClose} className="btn btn-outline">
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={upsert.isPending || uploading}
-            className="btn btn-primary"
-          >
-            {upsert.isPending ? "Saving..." : supplier ? "Save" : "Add supplier"}
-          </button>
-        </div>
-      </div>
+      </AuthModal>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Sale, Settings, SalePayment } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { formatDateByPreference, formatDateTimeByPreference } from "@/lib/dateFormat";
 
 type Variant = "receipt" | "invoice" | "auto";
 
@@ -73,13 +74,7 @@ function ReceiptLayout({
   payments: SalePayment[];
 }) {
   const currency = settings.currency;
-  const dt = new Date(sale.createdAt).toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const dt = formatDateTimeByPreference(sale.createdAt, settings.dateFormat);
   const change = Math.max(0, sale.amountPaid - sale.total);
   const isNarrow = settings.receipt.paperWidthMm === 58;
   const widthMm = `${settings.receipt.paperWidthMm}mm`;
@@ -327,7 +322,7 @@ function ReceiptLayout({
             {payments.map((p) => (
               <div key={p.id} className="flex justify-between">
                 <span>
-                  {new Date(p.createdAt).toLocaleDateString()} · {p.paymentMethod}
+                  {formatDateByPreference(p.createdAt, settings.dateFormat)} · {p.paymentMethod}
                 </span>
                 <span className="num whitespace-nowrap">{plain(p.amount)}</span>
               </div>
@@ -421,11 +416,11 @@ function InvoiceLayout({
           <div className="text-sm font-mono text-gray-700">{sale.number}</div>
           <div className="text-[10px] mt-2 text-gray-700 space-y-0.5">
             <div>
-              <strong>Issued:</strong> {created.toLocaleDateString()}
+              <strong>Issued:</strong> {formatDateByPreference(created, settings.dateFormat)}
             </div>
             {due && (
               <div>
-                <strong>Due:</strong> {due.toLocaleDateString()}
+                <strong>Due:</strong> {formatDateByPreference(due, settings.dateFormat)}
               </div>
             )}
             {/*
@@ -580,7 +575,7 @@ function InvoiceLayout({
               {payments.map((p) => (
                 <tr key={p.id} className="border-b border-gray-100">
                   <td className="p-1">
-                    {new Date(p.createdAt).toLocaleDateString()}
+                    {formatDateByPreference(p.createdAt, settings.dateFormat)}
                   </td>
                   <td className="p-1 uppercase">{p.paymentMethod}</td>
                   <td className="p-1">{p.receivedByName || "—"}</td>

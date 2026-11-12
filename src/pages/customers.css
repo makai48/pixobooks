@@ -1,0 +1,95 @@
+/* Customers responsive contract. Phone density is deliberate; tablet, laptop
+   and desktop keep the shared app rhythm. Scoped under `.customer-page` so no
+   other screen is affected. */
+@media (max-width: 767px) {
+  .customer-page .input,
+  .customer-page .select-glass {
+    height: 34px;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  .customer-page textarea.input {
+    min-height: 44px;
+    height: 44px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .customer-page .btn:not(.btn-sm) {
+    height: 36px;
+    font-size: 12px;
+  }
+
+  /* Paired fields share one horizontal baseline: the control is bottom-aligned
+     inside its cell, so a wrapped label never shifts the row. */
+  .customer-page .customer-fields > * {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .customer-page .customer-fields > * > .mt-1 {
+    margin-top: auto;
+    padding-top: 4px;
+  }
+
+  .customer-page .customer-fields .input,
+  .customer-page .customer-fields .select-glass {
+    height: 30px;
+    font-size: 12px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .customer-page .customer-fields .label {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Phone field: no flag, a tight country-code box, and the digits get the
+     space the flag used to take. */
+  .customer-page .phone-dial__flag {
+    display: none;
+  }
+
+  .customer-page .phone-dial {
+    height: 30px;
+    gap: 2px;
+    padding-left: 6px;
+    padding-right: 4px;
+    font-size: 12px;
+  }
+
+  .customer-page .phone-dial .num {
+    font-size: 12px;
+  }
+
+  .customer-page .phone-dial__chevron {
+    width: 12px;
+    height: 12px;
+  }
+
+  .customer-page .phone-row {
+    gap: 4px;
+  }
+
+  .customer-page .phone-row__number {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  /* The country-code box must match the control height beside it. */
+  .customer-page .phone-dial {
+    height: 36px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .customer-page .phone-dial {
+    height: 36px;
+  }
+}

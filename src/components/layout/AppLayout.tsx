@@ -13,6 +13,7 @@ import {
 import { useItems } from "@/hooks/useItems";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useShopSettings } from "@/hooks/useShopSettings";
+import { DEFAULT_DATE_FORMAT, setActiveDateFormat } from "@/lib/dateFormat";
 import { useUoms } from "@/hooks/useUoms";
 import { useUnitConversions } from "@/hooks/useUnitConversions";
 import { useBranches } from "@/hooks/useBranches";
@@ -59,6 +60,15 @@ export default function AppLayout() {
   // are tenant-scoped from the very first render (never a combined dataset).
   const activeBusiness = useActiveBusiness();
   const { data: businesses = [] } = useBusinesses();
+
+  // Subscribe here (not inside the outlet) so the whole routed page re-renders
+  // when the saved preset arrives or changes. Skip the fetch until a business
+  // is active so the hook never bootstraps a stray `main` settings row.
+  const { data: shopSettings } = useShopSettings({
+    enabled: activeBusiness !== "none",
+  });
+  setActiveDateFormat(shopSettings?.dateFormat ?? DEFAULT_DATE_FORMAT);
+
   useEffect(() => {
     if (businesses.length === 0) return;
     const ids = businesses.map((b) => b.id);

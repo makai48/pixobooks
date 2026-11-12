@@ -306,23 +306,173 @@
   [data-theme="dark"] .paper-card {
     box-shadow: 0 1px 0 hsl(0 0% 0% / 0.45), 0 10px 30px -20px hsl(0 0% 0% / 0.9);
   }
+  /* The rail is an ink surface in light mode. In dark mode --ink flips to a
+     light text colour, so keep the rail on the card surface instead. */
+  [data-theme="dark"] .sb-sidebar {
+    background: hsl(var(--card));
+  }
 
-  /* Deliberate solid surfaces for high-signal cards and actions. */
+  /* Deliberate tinted surfaces for high-signal cards. Every skin supplies its
+     own hue from its palette; the fill stays quiet enough for ink numerals. */
   .surface-brand {
-    background: hsl(var(--brand));
-    color: hsl(var(--brand-foreground));
-    border-color: hsl(var(--brand) / 0.65) !important;
+    background: hsl(var(--brand) / 0.18);
+    color: hsl(var(--ink));
+    border-color: hsl(var(--brand) / 0.38) !important;
   }
   .surface-ink {
-    background: hsl(var(--ink));
-    color: hsl(var(--paper));
-    border-color: hsl(var(--ink)) !important;
+    background: hsl(var(--ink) / 0.07);
+    color: hsl(var(--ink));
+    border-color: hsl(var(--ink) / 0.22) !important;
   }
   .surface-soft {
     background: hsl(var(--brand) / 0.14);
     color: hsl(var(--ink));
     border-color: hsl(var(--brand) / 0.4) !important;
   }
+  .surface-success {
+    background: hsl(var(--success) / 0.18);
+    color: hsl(var(--ink));
+    border-color: hsl(var(--success) / 0.36) !important;
+  }
+  .surface-danger {
+    background: hsl(var(--danger) / 0.16);
+    color: hsl(var(--ink));
+    border-color: hsl(var(--danger) / 0.36) !important;
+  }
+  .surface-warning {
+    background: hsl(var(--warning) / 0.2);
+    color: hsl(var(--ink));
+    border-color: hsl(var(--warning) / 0.42) !important;
+  }
+  .surface-cyan {
+    background: hsl(var(--reg-cyan) / 0.18);
+    color: hsl(var(--ink));
+    border-color: hsl(var(--reg-cyan) / 0.38) !important;
+  }
+  /* Labels on tinted fills: 66% ink keeps 7px text above 4.5:1 on every skin. */
+  .stat-label {
+    color: hsl(var(--ink) / 0.66);
+  }
+  /* ------------------------------------------------------------------ */
+  /* Filled metric cards (Sales)                                        */
+  /* The opened-card.html treatment: a large-radius filled gradient,     */
+  /* bottom-left label/value in a high-contrast foreground, a soft       */
+  /* top-left sheen and a deep paper shadow. Every hue is the active     */
+  /* skin's semantic token.                                              */
+  /* ------------------------------------------------------------------ */
+  .stat-card--solid {
+    --stat-accent: var(--ink);
+    --stat-text: 0 0% 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 0 !important;
+    border-radius: 14px;
+    color: hsl(var(--stat-text));
+    background:
+      radial-gradient(
+        135% 105% at 18% -18%,
+        hsl(0 0% 100% / 0.1) 0%,
+        hsl(0 0% 100% / 0) 58%
+      ),
+      radial-gradient(
+        90% 60% at 50% -10%,
+        hsl(0 0% 100% / 0.1) 0%,
+        hsl(0 0% 100% / 0) 70%
+      ),
+      linear-gradient(
+        158deg,
+        hsl(0 0% 100% / 0.08) 0%,
+        hsl(0 0% 100% / 0) 45%,
+        hsl(0 0% 0% / 0.16) 100%
+      ),
+      hsl(var(--stat-accent));
+    box-shadow:
+      0 22px 44px -18px hsl(var(--ink) / 0.4),
+      0 8px 16px -10px hsl(var(--ink) / 0.28),
+      inset 0 1px 0 hsl(0 0% 100% / 0.16);
+  }
+  .stat-card--solid::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      90% 60% at 50% -10%,
+      hsl(0 0% 100% / 0.1),
+      transparent 70%
+    );
+  }
+  .stat-card--solid .stat-card__body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .stat-card--solid .stat-card__label {
+    color: hsl(var(--stat-text) / 0.88);
+  }
+
+  /* Foregrounds follow each fill's own lightness so the large label and
+     value always clear the colour behind them. */
+  .stat-card--solid.surface-brand {
+    --stat-accent: var(--brand);
+    --stat-text: var(--brand-foreground);
+  }
+  .stat-card--solid.surface-success { --stat-accent: var(--success); }
+  .stat-card--solid.surface-danger { --stat-accent: var(--danger); }
+  .stat-card--solid.surface-warning {
+    --stat-accent: var(--warning);
+    --stat-text: var(--ink);
+  }
+  .stat-card--solid.surface-cyan { --stat-accent: var(--reg-cyan); }
+  .stat-card--solid.surface-ink {
+    --stat-accent: var(--ink);
+    --stat-text: var(--paper);
+  }
+
+  [data-theme="dark"] .stat-card--solid {
+    box-shadow:
+      0 22px 44px -18px hsl(0 0% 0% / 0.65),
+      0 8px 16px -10px hsl(0 0% 0% / 0.5),
+      inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+  [data-theme="dark"] .stat-card--solid.surface-success,
+  [data-theme="dark"] .stat-card--solid.surface-danger,
+  [data-theme="dark"] .stat-card--solid.surface-warning,
+  [data-theme="dark"] .stat-card--solid.surface-cyan {
+    --stat-text: var(--brand-foreground);
+  }
+  [data-theme="dark"] .stat-card--solid.surface-ink {
+    --stat-accent: var(--line);
+    --stat-text: var(--ink);
+  }
+
+  @media (min-width: 768px) {
+    .stat-card--solid { border-radius: 22px; }
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .stat-card--solid {
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+    .stat-card--solid:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 28px 52px -20px hsl(var(--ink) / 0.45),
+        0 10px 20px -10px hsl(var(--ink) / 0.3),
+        inset 0 1px 0 hsl(0 0% 100% / 0.16);
+    }
+  }
+  [data-theme="dark"] .stat-card--solid:hover {
+    box-shadow:
+      0 28px 52px -20px hsl(0 0% 0% / 0.7),
+      0 10px 20px -10px hsl(0 0% 0% / 0.55),
+      inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
   .expense-workspace .btn {
     border: 1px solid hsl(var(--ink) / 0.28);
   }
@@ -677,6 +827,7 @@
   }
   .sidebar-collapsed .sb-create-badge { display: none !important; }
   .sidebar-collapsed .sb-footer-status { display: none !important; }
+  .sidebar-collapsed .sb-signout { display: none !important; }
   .sidebar-collapsed nav { padding: 8px 4px !important; }
 
   /* ---------- Print isolation using out-of-tree PrintablePortal ---------- */

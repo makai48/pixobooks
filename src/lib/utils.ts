@@ -1,6 +1,11 @@
 import { NO_DECIMAL_CURRENCIES } from "@/types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import {
+  formatDateByPreference,
+  formatDateTimeByPreference,
+  getActiveDateFormat,
+} from "./dateFormat";
 
 /** Conditional classnames (clsx) with Tailwind conflict resolution (twMerge). */
 export function cn(...inputs: ClassValue[]) {
@@ -76,23 +81,13 @@ export function formatNumber(amount: number, currency = "USD", locale = "en-US")
   }
 }
 
+/** Dates always follow the shop's saved preset (see `src/lib/dateFormat.ts`). */
 export function formatDate(d: string | number | Date) {
-  const date = new Date(d);
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatDateByPreference(d, getActiveDateFormat());
 }
 
 export function formatDateTime(d: string | number | Date) {
-  const date = new Date(d);
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeByPreference(d, getActiveDateFormat());
 }
 
 export function uid(prefix = "id") {

@@ -1,0 +1,42 @@
+/* Daily balancing form — phone density and sheet behaviour.
+   Scoped under `.balancing-sheet` so the rest of Financial Statements is
+   untouched. The form keeps the app's `td-*` role scale (docs/traditional-design.md
+   §4.9); only the phone treatment and field pairing are tightened here. */
+
+@media (max-width: 767px) {
+  /* Phone: the dialog becomes a bottom sheet, matching every other sheet. */
+  .balancing-sheet .balancing-card {
+    max-height: 92dvh;
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+  }
+
+  /* Phone controls are 34px — the app's standard touch rhythm, not the 28px
+     compact token, because these are money fields. */
+  .balancing-sheet .input.input-sm {
+    height: 34px;
+    font-size: 13px;
+  }
+
+  .balancing-sheet textarea.input {
+    min-height: 44px;
+    height: 44px;
+  }
+
+  .balancing-sheet .balancing-pair > * {
+    min-width: 0;
+  }
+
+  /* The native number spinner steals two pixels from a money field and
+     forces a scrollbar on a right-aligned figure. */
+  .balancing-sheet input[type="number"]::-webkit-outer-spin-button,
+  .balancing-sheet input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .balancing-sheet input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+}

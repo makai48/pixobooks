@@ -232,6 +232,7 @@ export type Permission =
   | "users.invite"
   | "users.permissions"
   | "users.delete"
+  | "users.avatar"
   | "payroll.view"
   | "payroll.run"
   | "attendance.view"
@@ -315,6 +316,7 @@ export const ALL_PERMISSIONS: { key: Permission; label: string; group: string }[
   { key: "users.invite", label: "Invite employees", group: "Admin" },
   { key: "users.permissions", label: "Change user permissions", group: "Admin" },
   { key: "users.delete", label: "Permanently delete users", group: "Admin" },
+  { key: "users.avatar", label: "Upload own photo", group: "Admin" },
   { key: "payroll.view", label: "View payroll & salaries", group: "Admin" },
   { key: "payroll.run", label: "Edit salaries & run payroll", group: "Admin" },
   { key: "attendance.view", label: "View attendance", group: "Admin" },

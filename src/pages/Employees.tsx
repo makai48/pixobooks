@@ -32,6 +32,7 @@ import {
   History,
   RefreshCw,
   Eye,
+  Images,
 } from "lucide-react";
 import {
   useEmployees,
@@ -76,7 +77,7 @@ import {
   type AttendanceStatus,
   type ApprovalStatus,
 } from "@/types";
-import { cn, formatCurrency, formatDate, getMonthMatrix, localISODate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatDateTime, getMonthMatrix, localISODate } from "@/lib/utils";
 import { deriveDisplayName, employeeInitials } from "@/lib/employeeName";
 import { processImageFile } from "@/lib/imageUpload";
 import PhoneInput from "@/components/common/PhoneInput";
@@ -87,6 +88,8 @@ import SubNav from "@/components/layout/SubNav";
 import SharedField from "@/components/common/Field";
 import { canAddUser, getPlanLimits } from "@/lib/billing";
 import { upgradeToast } from "@/components/billing/UpgradePrompt";
+import type { LucideIcon } from "lucide-react";
+import "./employees.css";
 
 type TabKey = "profile" | "payroll" | "attendance" | "permissions";
 
@@ -96,14 +99,23 @@ export default function Employees() {
   const { data: settings } = useShopSettings();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = employees.find((e) => e.id === selectedId) || employees[0];
+  const [mobileRosterOpen, setMobileRosterOpen] = useState(true);
   const [tab, setTab] = useState<TabKey>("profile");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invitesOpen, setInvitesOpen] = useState(false);
+  const [avatarsOpen, setAvatarsOpen] = useState(false);
   const del = useDeleteEmployee();
 
   const canInvite = can("employees.manage") || can("users.invite");
   const canDelete =
     can("employees.delete") || can("users.delete") || isAppAdmin;
+  /** Admins/managers may review every team photo; everyone else only ever
+   *  sees the photos inside the roster they already have access to. */
+  const canSeeAllAvatars = can("employees.manage");
+  /** A team member may set their own photo with the `users.avatar` right;
+   *  admins keep it through `can()`. */
+  const canUploadOwnPhoto =
+    !!selected && selected.id === profile?.id && can("users.avatar");
 
   // Imported staff cleanup (Report cashier duplicates): profiles that arrived
   // via file import carry no invite trail (`invitedAt`/`invitedBy` are only
@@ -296,6 +308,7 @@ export default function Employees() {
         onSuccess: () => {
           toast.success(`${e.name} deleted`);
           setSelectedId(null);
+          setMobileRosterOpen(true);
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : "Delete failed"),
       }
@@ -303,7 +316,7 @@ export default function Employees() {
   };
 
   return (
-    <div className="p-2.5 md:p-6 flex flex-col gap-2 md:gap-4 h-full">
+    <div className="team-page p-2.5 md:p-6 flex min-h-full flex-col gap-2 md:gap-4">
       <SubNav
         items={[
           { to: "/employees", label: "Team", icon: UserCog },
@@ -314,27 +327,29 @@ export default function Employees() {
         ]}
       />
       {txnPolicy?.enabled && canViewTxn && (
-        <div className="paper-card p-2.5 md:p-4">
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 md:gap-3">
-            <div className="flex-1 min-w-[160px] text-[10px] md:text-xs text-ink-mute leading-snug">
+        <div className="paper-card p-2.5 md:p-3">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 md:gap-3">
+            <div className="flex-1 min-w-[160px] text-[9px] md:text-[11px] text-ink-mute leading-snug">
               <span className="font-semibold text-ink">Transaction allowance</span>
-              {" · "}
-              {txnPolicy.threshold} txns /{" "}
-              {txnPolicy.period === "daily"
-                ? "day"
-                : txnPolicy.period === "weekly"
-                ? "week"
-                : "month"}{" "}
-              → {txnPolicy.allowanceName} (
-              {txnPolicy.amountType === "percentage"
-                ? `${txnPolicy.amount}% of base`
-                : formatCurrency(txnPolicy.amount, settings?.currency)}
-              ){txnPolicy.requireApproval ? ` · awaiting ${txnPolicy.approverRole === "accountant" ? "accounting" : "manager"}` : " · auto-post"}
+              <span className="hidden lg:inline">
+                {" · "}
+                {txnPolicy.threshold} txns /{" "}
+                {txnPolicy.period === "daily"
+                  ? "day"
+                  : txnPolicy.period === "weekly"
+                  ? "week"
+                  : "month"}{" "}
+                → {txnPolicy.allowanceName} (
+                {txnPolicy.amountType === "percentage"
+                  ? `${txnPolicy.amount}% of base`
+                  : formatCurrency(txnPolicy.amount, settings?.currency)}
+                ){txnPolicy.requireApproval ? ` · awaiting ${txnPolicy.approverRole === "accountant" ? "accounting" : "manager"}` : " · auto-post"}
+              </span>
             </div>
-            <button
-              onClick={evaluateTxnNow}
-              disabled={evaluatingTxn}
-              className="btn btn-outline btn-sm shrink-0"
+              <button
+                onClick={evaluateTxnNow}
+                disabled={evaluatingTxn}
+                className="btn btn-outline btn-sm shrink-0 max-md:w-7 max-md:px-0"
               title="Count this period's transactions for every active employee now"
             >
               <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -344,13 +359,13 @@ export default function Employees() {
           {txnPending.length > 0 && (
             <div className="mt-1.5 md:mt-2 divide-y border-t">
               {txnPending.map((p) => (
-                <div key={p.key} className="flex items-center gap-1.5 md:gap-3 py-1.5 md:py-2 text-[11px] md:text-sm">
+                <div key={p.key} className="flex min-h-[34px] items-center gap-1.5 py-1 md:gap-3 md:py-1.5 text-[10px] md:text-xs">
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold truncate">
                       {p.employeeName}
                       <span className="font-normal text-ink-mute"> · {p.periodLabel} · {p.count} txns</span>
                     </div>
-                    <div className="text-[9px] md:text-[10px] text-ink-mute uppercase tracking-wide">
+                    <div className="text-[8px] md:text-[9px] text-ink-mute uppercase tracking-wide">
                       {p.allowanceName}
                     </div>
                   </div>
@@ -385,32 +400,46 @@ export default function Employees() {
           )}
         </div>
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-2 md:gap-4 flex-1 min-h-0">
-      <div className="paper-card overflow-hidden flex flex-col">
-        <div className="p-2.5 md:p-4 border-b flex items-start justify-between gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-2 md:gap-4 flex-1 min-h-0">
+       <div
+         className={cn(
+           "paper-card overflow-hidden flex flex-col",
+           mobileRosterOpen ? "flex" : "hidden lg:flex"
+         )}
+       >
+        <div className="p-2.5 md:p-3 border-b flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">Team members</div>
             <h2 className="font-display text-sm md:text-lg font-bold">All employees</h2>
-            <p className="text-[10px] md:text-xs text-ink-mute mt-0.5 md:mt-1">Add, edit or remove any account below.</p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            {canSeeAllAvatars && (
+              <button
+                onClick={() => setAvatarsOpen(true)}
+                className="btn btn-outline btn-sm max-md:w-7 max-md:px-0"
+                title="See every team photo"
+              >
+                <Images className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Photos</span>
+              </button>
+            )}
             <button
               onClick={() => setInvitesOpen(true)}
-              className="btn btn-outline btn-sm"
+                className="btn btn-outline btn-sm max-md:w-7 max-md:px-0"
               title="Sent invites — status, resend and revoke"
             >
               <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Invites</span>
+                <span className="hidden sm:inline">Invites</span>
             </button>
             {canDelete && importedStaff.length > 0 && (
               <button
                 onClick={cleanImported}
                 disabled={cleaning}
-                className="btn btn-outline btn-sm text-danger border-danger/40"
+                className="btn btn-outline btn-sm max-md:w-7 max-md:px-0 text-danger border-danger/40"
                 title="Remove profiles that arrived via file import (no invite trail). Admin and invited employees are kept."
               >
                 <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">
+                  <span className="hidden sm:inline">
                   {cleaning ? "Cleaning..." : `Clean imported (${importedStaff.length})`}
                 </span>
               </button>
@@ -424,15 +453,15 @@ export default function Employees() {
                   }
                   setInviteOpen(true);
                 }}
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm max-md:w-7 max-md:px-0"
               >
                 <UserPlus className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Add</span>
+                 <span className="hidden sm:inline">Add</span>
               </button>
             )}
           </div>
         </div>
-        <div className="flex-1 overflow-auto max-h-[40vh] lg:max-h-none scroll-lined">
+        <div className="flex-1 overflow-auto max-h-[44vh] lg:max-h-none scroll-lined">
           {isLoading ? (
             <div className="p-4 md:p-6 text-ink-mute text-xs md:text-sm">Loading...</div>
           ) : employees.length === 0 ? (
@@ -442,15 +471,18 @@ export default function Employees() {
               <div
                 key={e.id}
                 className={cn(
-                  "w-full p-1.5 md:p-3 border-b flex items-center gap-1.5 md:gap-2 transition",
+                  "w-full h-[46px] md:h-[62px] px-2 md:px-3 border-b flex items-center gap-1.5 md:gap-2 transition",
                   selected?.id === e.id ? "bg-paper" : "hover:bg-paper/50"
                 )}
               >
-                <button
-                  onClick={() => setSelectedId(e.id)}
+             <button
+                   onClick={() => {
+                     setSelectedId(e.id);
+                     setMobileRosterOpen(false);
+                   }}
                   className="flex items-center gap-2 md:gap-3 flex-1 min-w-0 text-left"
                 >
-                  <div className="w-7 h-7 md:w-10 md:h-10 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold text-[10px] md:text-base flex items-center justify-center shrink-0 overflow-hidden">
+                    <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold text-[10px] md:text-sm flex items-center justify-center shrink-0 overflow-hidden">
                     {e.avatarUrl ? (
                       <img src={e.avatarUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
@@ -467,8 +499,14 @@ export default function Employees() {
                     <div className="text-[9px] md:text-[11px] text-ink-mute truncate flex items-center gap-1 leading-tight">
                       <span>{e.role} · {e.permissions.length} perms</span>
                     </div>
-                    <ApprovalPill status={e.approvalStatus} mustChange={e.mustChangePassword} />
+                    <div className="hidden md:block">
+                      <ApprovalPill status={e.approvalStatus} mustChange={e.mustChangePassword} />
+                    </div>
                   </div>
+                  <ApprovalDot
+                    status={e.approvalStatus}
+                    mustChange={e.mustChangePassword}
+                  />
                   {e.active ? (
                     <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-success shrink-0" />
                   ) : (
@@ -491,8 +529,31 @@ export default function Employees() {
       </div>
 
       {selected ? (
-        <div className="paper-card overflow-hidden flex flex-col">
-          <div className="border-b flex overflow-x-auto scrollbar-none">
+        <div
+          className={cn(
+            "paper-card overflow-hidden flex flex-col min-h-0",
+            mobileRosterOpen ? "hidden lg:flex" : "flex"
+          )}
+        >
+          <div className="flex items-center gap-1.5 border-b px-2.5 py-1.5 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileRosterOpen(true)}
+              className="btn btn-ghost btn-sm h-7 w-7 p-0 shrink-0"
+              aria-label="Back to team members"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-[10px] font-semibold truncate">{selected.name}</span>
+            {canUploadOwnPhoto && (
+              <SelfPhotoButton
+                employee={selected}
+                className="ml-auto shrink-0"
+              />
+            )}
+          </div>
+          <div className="border-b flex items-center gap-1.5 px-2.5 md:px-4">
+            <div className="flex overflow-x-auto scrollbar-none">
             {(
               [
                 { k: "profile", label: "Profile", icon: UserIcon, perms: ["employees.manage", "users.permissions"] },
@@ -507,7 +568,7 @@ export default function Employees() {
                   key={k}
                   onClick={() => setTab(k)}
                   className={cn(
-                    "px-2.5 md:px-4 h-9 md:h-12 flex items-center gap-1 md:gap-2 text-[10px] md:text-sm font-semibold border-b-2 transition whitespace-nowrap",
+                    "px-2.5 md:px-4 h-8 md:h-10 flex items-center gap-1 md:gap-2 text-[10px] md:text-sm font-semibold border-b-2 transition whitespace-nowrap",
                     tab === k
                       ? "border-magenta-reg text-magenta-reg"
                       : "border-transparent text-ink-mute hover:text-ink"
@@ -517,9 +578,13 @@ export default function Employees() {
                   {label}
                 </button>
               ))}
+            </div>
+            {canUploadOwnPhoto && (
+              <SelfPhotoButton employee={selected} className="ml-auto shrink-0" />
+            )}
           </div>
 
-          <div className="flex-1 overflow-auto p-2.5 md:p-6 scroll-lined">
+          <div className="team-details-scroll flex-1 overflow-auto p-2.5 md:p-4 scroll-lined">
             {tab === "profile" && (
               <ProfileTab
                 key={selected.id}
@@ -546,6 +611,12 @@ export default function Employees() {
           canDelete={canDelete}
           canResend={canInvite}
           onClose={() => setInvitesOpen(false)}
+        />
+      )}
+      {avatarsOpen && (
+        <AvatarsModal
+          employees={employees}
+          onClose={() => setAvatarsOpen(false)}
         />
       )}
       </div>
@@ -580,6 +651,35 @@ function ApprovalPill({
     <span className={cn("mt-0.5 inline-flex items-center gap-1 text-[9px] uppercase tracking-widest", meta.color)}>
       <Icon className="w-2.5 h-2.5" /> {meta.label}
     </span>
+  );
+}
+
+/** Mobile roster status dot — carries the approval state without adding a
+ *  third line to the pinned-height row (the full pill stays on `md`+). */
+function ApprovalDot({
+  status,
+  mustChange,
+}: {
+  status?: ApprovalStatus;
+  mustChange?: boolean;
+}) {
+  const meta =
+    status === "rejected"
+      ? { label: "Rejected", color: "bg-danger" }
+      : status === "pending_first_login"
+      ? { label: "Pending first login", color: "bg-yellow-reg" }
+      : status === "pending_approval"
+      ? { label: "Awaiting admin approval", color: "bg-yellow-reg" }
+      : mustChange
+      ? { label: "Must change password", color: "bg-yellow-reg" }
+      : null;
+  if (!meta) return null;
+  return (
+    <span
+      className={cn("md:hidden h-2 w-2 shrink-0 rounded-full", meta.color)}
+      title={meta.label}
+      aria-label={meta.label}
+    />
   );
 }
 
@@ -649,18 +749,18 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/50 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-2xl overflow-hidden max-h-[95dvh] flex flex-col rounded-t-2xl md:rounded-xl">
-        <div className="p-4 md:p-5 border-b flex items-center justify-between shrink-0">
+      <div className="team-modal paper-card w-full max-w-2xl overflow-hidden max-h-[95dvh] flex flex-col rounded-t-2xl md:rounded-xl">
+        <div className="px-2.5 py-2 md:p-4 border-b flex items-center justify-between gap-2 shrink-0">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+            <div className="text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute">
               Add employee
             </div>
-            <h2 className="font-display text-lg md:text-xl font-bold truncate">
+            <h2 className="font-display text-base md:text-xl font-bold truncate">
               {result ? "Share these credentials" : "Invite new team member"}
             </h2>
           </div>
-          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0 shrink-0">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="btn btn-outline btn-sm h-7 w-7 p-0 shrink-0">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
@@ -677,8 +777,8 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
               }}
             />
           ) : (
-            <form onSubmit={submit} className="p-4 md:p-5 space-y-4">
-              <p className="text-xs text-ink-mute">
+            <form onSubmit={submit} className="p-2.5 md:p-5 space-y-2.5 md:space-y-4">
+              <p className="hidden lg:block text-[10px] md:text-xs text-ink-mute">
                 A secure temporary password will be generated and displayed
                 here for you to share. The account is ready immediately — the
                 employee signs in with that password and is asked to choose a
@@ -716,7 +816,7 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
                       Suggest
                     </button>
                   </div>
-                  <p className="mt-1 text-[10px] text-ink-mute">
+                  <p className="hidden lg:block mt-1 text-[10px] text-ink-mute">
                     The convenient working name shown on POS and receipts.
                   </p>
                 </Field>
@@ -808,7 +908,7 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
                   }))}
                   className="input select-glass mt-1"
                 />
-                <div className="text-[10px] text-ink-mute mt-1">
+                <div className="hidden lg:block text-[10px] text-ink-mute mt-1">
                   After this window the temp password stops working and a fresh
                   invite is required.
                 </div>
@@ -841,7 +941,7 @@ function InviteEmployeeModal({ onClose }: { onClose: () => void }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] uppercase tracking-widest text-ink-mute border-t pt-3">
+    <div className="text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute border-t pt-2 md:pt-3">
       {children}
     </div>
   );
@@ -890,7 +990,7 @@ function InviteResultView({
       </div>
       <div className="text-center">
         <h3 className="font-display text-lg font-bold">Account created</h3>
-        <p className="text-xs text-ink-mute mt-1">
+        <p className="hidden lg:block text-xs text-ink-mute mt-1">
           The account is already email-verified and can sign in immediately
           with the temporary password below.{" "}
           {anySent
@@ -919,7 +1019,7 @@ function InviteResultView({
       <div className="rounded-lg border-2 border-magenta-reg/30 bg-magenta-reg/5 p-3 space-y-2">
         <FieldRow icon={<Mail className="w-3.5 h-3.5" />} label="Login email" value={result.email} onCopy={() => copy("Email", result.email)} />
         <FieldRow icon={<KeyRound className="w-3.5 h-3.5" />} label="Temporary password" value={result.tempPassword} mono onCopy={() => copy("Password", result.tempPassword)} highlight />
-        <FieldRow icon={<Clock className="w-3.5 h-3.5" />} label="Expires" value={new Date(result.expiresAt).toLocaleString()} />
+        <FieldRow icon={<Clock className="w-3.5 h-3.5" />} label="Expires" value={formatDateTime(result.expiresAt)} />
         <FieldRow icon={<LinkIcon className="w-3.5 h-3.5" />} label="Login link" value={loginUrl} mono onCopy={() => copy("Link", loginUrl)} />
       </div>
 
@@ -952,7 +1052,7 @@ function InviteResultView({
           <MessageCircle className="w-4 h-4" /> WhatsApp
         </a>
       </div>
-      <p className="text-[10px] text-ink-mute text-center">
+      <p className="hidden lg:block text-[10px] text-ink-mute text-center">
         {anySent
           ? "Email/SMS delivery happens on the server. The buttons above are a manual backup — they open your device's mail or messaging app with everything pre-filled."
           : "These buttons open your device's mail or messaging app with the recipient, subject and body pre-filled. Add RESEND_API_KEY + INVITE_EMAIL_FROM (email) or TWILIO_* secrets (SMS) to send automatically."}
@@ -1051,7 +1151,7 @@ You've been invited to join ${opts.shopName} on PixoBooks.
 
 Login email:        ${opts.email}
 Temporary password: ${opts.tempPassword}
-Expires:            ${new Date(opts.expiresAt).toLocaleString()}
+Expires:            ${formatDateTime(opts.expiresAt)}
 Login link:         ${opts.loginUrl}
 
 Please sign in with the temporary password above. You'll be asked to choose
@@ -1187,26 +1287,25 @@ function SentInvitesModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/50 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
-      <div className="paper-card w-full max-w-3xl overflow-hidden max-h-[95dvh] flex flex-col rounded-t-2xl md:rounded-xl">
-        <div className="p-4 md:p-5 border-b flex items-center justify-between shrink-0">
+      <div className="team-modal paper-card w-full max-w-3xl overflow-hidden max-h-[95dvh] flex flex-col rounded-t-2xl md:rounded-xl">
+        <div className="px-2.5 py-2 md:p-4 border-b flex items-center justify-between gap-2 shrink-0">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-widest text-ink-mute">
+            <div className="text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute">
               Users &amp; permissions
             </div>
-            <h2 className="font-display text-lg md:text-xl font-bold truncate">
+            <h2 className="font-display text-base md:text-xl font-bold truncate">
               Sent invites
             </h2>
-            <p className="text-xs text-ink-mute mt-0.5">
-              {invited.length} invite{invited.length === 1 ? "" : "s"} · status,
-              resend and revoke
+            <p className="text-[10px] md:text-xs text-ink-mute mt-0.5">
+              {invited.length} invite{invited.length === 1 ? "" : "s"}
             </p>
           </div>
-          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0 shrink-0">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="btn btn-outline btn-sm h-7 w-7 p-0 shrink-0">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="overflow-y-auto scroll-lined flex-1 p-3 md:p-4 space-y-3">
+        <div className="overflow-y-auto scroll-lined flex-1 p-2.5 md:p-4 space-y-2 md:space-y-3">
           {resent && (
             <div className="rounded-lg border border-success/40 bg-success/5 p-3 text-xs space-y-1">
               <div className="flex items-center gap-1.5 font-semibold text-success">
@@ -1254,7 +1353,7 @@ function SentInvitesModal({
                 )}
               </div>
               <div className="text-[10px] text-ink-mute">
-                Expires {new Date(resent.expiresAt).toLocaleString()}
+                Expires {formatDateTime(resent.expiresAt)}
               </div>
             </div>
           )}
@@ -1360,7 +1459,7 @@ function InviteDetail({
     : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 md:space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="font-display text-lg font-bold truncate">
@@ -1386,13 +1485,13 @@ function InviteDetail({
           label="Invited at"
           value={
             employee.invitedAt
-              ? new Date(employee.invitedAt).toLocaleString()
+              ? formatDateTime(employee.invitedAt)
               : "—"
           }
         />
         <DetailRow
           label="Temp password expires"
-          value={expires ? expires.toLocaleString() : "—"}
+          value={expires ? formatDateTime(expires) : "—"}
         />
         <DetailRow
           label="First sign-in"
@@ -1435,7 +1534,7 @@ function InviteDetail({
         </button>
       </div>
 
-      <p className="text-[10px] text-ink-mute">
+      <p className="hidden lg:block text-[10px] text-ink-mute">
         Resending replaces the temporary password — the previous one stops
         working. Revoking deletes the Supabase auth account, so the invite link
         and any session are dead immediately.
@@ -1457,7 +1556,11 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 /* ---------- Profile tab (split emergency contact into name + phone) ---------- */
 function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onDelete: () => void; canDelete: boolean; }) {
+  const { can, profile } = useAuth();
   const update = useUpdateEmployee();
+  /** Admins may set any photo; a team member may only set their own, and only
+   *  with the `users.avatar` permission. */
+  const canEditPhoto = can("employees.manage") || (employee.id === profile?.id && can("users.avatar"));
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     fullName: employee.fullName || employee.name,
@@ -1534,41 +1637,38 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-        <div className="w-20 h-20 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold text-2xl flex items-center justify-center shrink-0 overflow-hidden">
-          {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="w-full h-full object-cover" /> : employeeInitials(form.fullName || form.name)}
+    <div className="space-y-3 md:space-y-4">
+      <div className="flex flex-col gap-2 border-b border-line/70 pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold text-lg md:text-xl flex items-center justify-center shrink-0 overflow-hidden">
+            {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="w-full h-full object-cover" /> : employeeInitials(form.fullName || form.name)}
+          </div>
+          <div className="min-w-0">
+            <div className="text-[7px] uppercase tracking-[0.14em] text-ink-mute md:text-[9px]">Profile</div>
+            <h2 className="font-display text-base md:text-xl font-bold break-words">{form.name || form.fullName}</h2>
+            <div className="text-[9px] text-ink-mute break-all md:text-[10px]">{employee.email}</div>
+            <div className="text-[9px] text-ink-mute md:text-[10px]">Joined {formatDate(employee.createdAt)}</div>
+            <ApprovalPill status={employee.approvalStatus} mustChange={employee.mustChangePassword} />
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[11px] uppercase tracking-widest text-ink-mute truncate">{employee.email}</div>
-          <h2 className="font-display text-2xl font-bold break-words">{form.name || form.fullName}</h2>
-          {form.fullName && form.fullName !== form.name && (
-            <div className="text-xs text-ink-mute truncate">{form.fullName}</div>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {canEditPhoto && (
+            <label className="btn btn-outline btn-sm cursor-pointer max-md:w-7 max-md:px-0">
+              <Upload className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{uploading ? "Uploading..." : "Photo"}</span>
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); }} />
+            </label>
           )}
-          <div className="text-xs text-ink-mute">Joined {formatDate(employee.createdAt)}</div>
-          <ApprovalPill status={employee.approvalStatus} mustChange={employee.mustChangePassword} />
-          {employee.tempPasswordExpiresAt && employee.mustChangePassword && (
-            <div className="text-[10px] text-ink-mute mt-0.5">
-              Temp password expires {new Date(employee.tempPasswordExpiresAt).toLocaleString()}
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="btn btn-outline h-9 cursor-pointer">
-            <Upload className="w-4 h-4" />
-            {uploading ? "Uploading..." : "Photo"}
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); }} />
-          </label>
-          <div className="flex items-center gap-2 justify-end">
-            <span className="text-xs text-ink-mute">Active</span>
-            <button onClick={() => setForm({ ...form, active: !form.active })} className={cn("w-11 h-6 rounded-full transition relative", form.active ? "bg-success" : "bg-ink/20")}>
-              <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white transition", form.active ? "left-[22px]" : "left-0.5")} />
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-ink-mute md:text-xs">Active</span>
+            <button onClick={() => setForm({ ...form, active: !form.active })} className={cn("w-10 h-5 rounded-full transition relative", form.active ? "bg-success" : "bg-ink/20")}>
+              <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition", form.active ? "left-[21px]" : "left-0.5")} />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="team-fields team-compact grid grid-cols-2 md:grid-cols-2 gap-1.5 md:gap-3">
         <Field label="Full name">
           <input
             value={form.fullName}
@@ -1589,13 +1689,14 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
             <button
               type="button"
               onClick={() => setForm({ ...form, name: deriveDisplayName(form.fullName) })}
-              className="btn btn-outline btn-sm shrink-0"
+              className="btn btn-outline btn-sm shrink-0 max-md:w-7 max-md:px-0"
               title="Use first name + surname initial"
             >
-              Suggest
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Suggest</span>
             </button>
           </div>
-          <p className="mt-1 text-[10px] text-ink-mute">
+          <p className="mt-1 hidden text-[9px] text-ink-mute lg:block">
             The name colleagues and receipts use. Defaults to first name + surname
             initial, e.g. Sheillah K.
           </p>
@@ -1637,10 +1738,10 @@ function ProfileTab({ employee, onDelete, canDelete }: { employee: Employee; onD
       </div>
 
       <Field label="Notes">
-        <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input mt-1 h-20" placeholder="Skills, certifications, availability..." />
+        <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input mt-1 min-h-12 md:min-h-16" placeholder="Skills, certifications, availability..." />
       </Field>
 
-      <div className="flex flex-col-reverse md:flex-row md:justify-between sticky bottom-0 bg-card pt-3 gap-2">
+      <div className="flex flex-col-reverse md:flex-row md:justify-between sticky bottom-0 bg-card pt-2 md:pt-3 gap-1.5 md:gap-2">
         {canDelete && (
           <button onClick={onDelete} className="btn btn-outline text-danger border-danger/40">
             <Trash2 className="w-4 h-4" /> Delete employee
@@ -1714,8 +1815,21 @@ function PayrollTab({ employee }: { employee: Employee }) {
   return (
     <fieldset
       disabled={!canEdit}
-      className="space-y-6 border-0 p-0 m-0 min-w-0"
+      className="space-y-3 md:space-y-4 border-0 p-0 m-0 min-w-0"
     >
+      <TabHeader
+        icon={Wallet}
+        kicker="Payroll"
+        title={employee.name}
+        meta={`${salary.payCycle} base cycle`}
+        actions={
+          canEdit ? (
+            <span className="chip border border-success/30 bg-success/5 text-[9px] text-success">Editable</span>
+          ) : (
+            <span className="chip border border-line text-[9px] text-ink-mute">View only</span>
+          )
+        }
+      />
       {/*
         Overflow-safe salary stat grid. Uses `min-w-0`, `break-words` and a
         responsive font size so very large currency values (e.g. "10,000,000
@@ -1728,7 +1842,7 @@ function PayrollTab({ employee }: { employee: Employee }) {
         <SalaryStat label="Base pay cycle" value={salary.payCycle} textual />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="team-compact grid grid-cols-3 gap-1.5 md:gap-3">
         <Field label="Base salary">
           <input type="number" step="0.01" min={0} value={salary.base} onChange={(e) => setSalary({ ...salary, base: Number(e.target.value) })} className="input mt-1 num text-right" />
         </Field>
@@ -1738,7 +1852,7 @@ function PayrollTab({ employee }: { employee: Employee }) {
             onChange={(v) => setSalary({ ...salary, currency: v })}
             ariaLabel="Salary currency"
             options={CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol} ${c.code}` }))}
-            className="input select-glass mt-1"
+            className="input select-glass mt-1 max-md:px-1.5"
           />
         </Field>
         <Field label="Base pay cycle">
@@ -1751,23 +1865,23 @@ function PayrollTab({ employee }: { employee: Employee }) {
               { value: "biweekly", label: "Bi-weekly" },
               { value: "weekly", label: "Weekly" },
             ]}
-            className="input select-glass mt-1"
+            className="input select-glass mt-1 max-md:px-1.5"
           />
         </Field>
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between gap-2 mb-1.5 md:mb-2">
           <div>
-            <div className="font-display font-bold">Allowances</div>
-            <div className="text-xs text-ink-mute">Housing, transport, meals, medical, bonuses — each with its own pay cycle.</div>
+            <div className="font-display text-sm md:text-base font-bold">Allowances</div>
+            <div className="hidden lg:block text-[10px] text-ink-mute">Housing, transport, meals, medical, bonuses — each with its own pay cycle.</div>
           </div>
-          <button onClick={addAllowance} className="btn btn-outline h-9">
-            <Plus className="w-4 h-4" /> Add allowance
+          <button onClick={addAllowance} className="btn btn-outline btn-sm shrink-0">
+            <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Add allowance</span>
           </button>
         </div>
         {salary.allowances.length === 0 ? (
-          <div className="p-4 border border-dashed rounded-md text-sm text-ink-mute text-center">
+          <div className="p-3 border border-dashed rounded-md text-[10px] md:text-sm text-ink-mute text-center">
             No allowances defined.
           </div>
         ) : (
@@ -1824,7 +1938,7 @@ function PayrollTab({ employee }: { employee: Employee }) {
         )}
       </div>
 
-      <div className="flex justify-end items-center gap-2 sticky bottom-0 bg-card pt-3">
+      <div className="flex justify-end items-center gap-1.5 md:gap-2 sticky bottom-0 bg-card pt-2 md:pt-3">
         {canEdit ? (
           <button onClick={save} disabled={update.isPending} className="btn btn-primary">
             <Save className="w-4 h-4" /> Save payroll
@@ -1902,7 +2016,12 @@ function AttendanceTab({ employee }: { employee: Employee }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 md:space-y-4">
+      <TabHeader
+        icon={CalendarDays}
+        kicker="Attendance"
+        actions={<span className="chip border border-line text-[9px] text-ink-mute">{stats.totalHours}h tracked</span>}
+      />
       <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 md:gap-2">
         <Stat label="Present" value={String(stats.present)} tone="success" />
         <Stat label="Half-day" value={String(stats.halfday)} />
@@ -1911,8 +2030,8 @@ function AttendanceTab({ employee }: { employee: Employee }) {
         <Stat label="Hours" value={`${stats.totalHours}h`} />
       </div>
 
-      <div className="flex items-center justify-between gap-1">
-        <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="btn btn-ghost shrink-0"><ChevronLeft className="w-4 h-4" /></button>
+      <div className="paper-card p-1.5 md:p-2 flex items-center justify-between gap-1">
+        <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="btn btn-ghost btn-sm w-7 px-0 shrink-0"><ChevronLeft className="w-3.5 h-3.5" /></button>
         <div className="flex items-center gap-1 min-w-0">
           <GlassSelect
             value={String(month.month)}
@@ -1937,19 +2056,20 @@ function AttendanceTab({ employee }: { employee: Employee }) {
                 commitYear(yearText);
               }
             }}
-            className="input input-sm num w-20 text-center font-semibold"
+            className="input input-sm num w-16 text-center font-semibold"
           />
         </div>
-        <button onClick={() => changeMonth(1)} aria-label="Next month" className="btn btn-ghost shrink-0"><ChevronRight className="w-4 h-4" /></button>
+        <button onClick={() => changeMonth(1)} aria-label="Next month" className="btn btn-ghost btn-sm w-7 px-0 shrink-0"><ChevronRight className="w-3.5 h-3.5" /></button>
       </div>
       {!canEdit && (
-        <div className="text-xs text-ink-mute">
-          View only — the employees.attendance permission is required to mark days.
+        <div className="text-[10px] md:text-xs text-ink-mute">
+          <span className="lg:hidden">View only</span>
+          <span className="hidden lg:inline">View only — the employees.attendance permission is required to mark days.</span>
         </div>
       )}
 
-      <div className="rounded-lg border border-line bg-paper/60 px-3 py-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div className="text-[11px] text-ink-mute">
+      <div className="rounded-lg border border-line bg-paper/60 px-2.5 py-1.5 flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
+        <div className="hidden lg:block text-[10px] md:text-[11px] text-ink-mute">
           Automatic validation needs at least{" "}
           <strong className="text-ink">{ATTENDANCE_AUTO_MIN_TRANSACTIONS} transactions</strong>{" "}
           on that day. Days below the threshold must be marked manually.
@@ -1991,10 +2111,10 @@ function AttendanceTab({ employee }: { employee: Employee }) {
         )}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-widest text-ink-mute">
+      <div className="grid grid-cols-7 gap-0.5 md:gap-1 text-center text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (<div key={d} className="pb-1">{d}</div>))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5 md:gap-1">
         {days.map((d, i) => {
           const inMonth = d.getMonth() === month.month;
           const iso = localISODate(d);
@@ -2008,10 +2128,10 @@ function AttendanceTab({ employee }: { employee: Employee }) {
             : txnCount > 0
             ? `${txnCount} transaction${txnCount === 1 ? "" : "s"} — ${ATTENDANCE_AUTO_MIN_TRANSACTIONS - txnCount} more needed for automatic validation; mark manually`
             : "No transactions — mark attendance manually";
-          return (
+            return (
             <button key={i} onClick={() => canEdit && cycleStatus(d, record?.status)} disabled={!inMonth || !canEdit} className={cn("aspect-square border rounded-md text-xs flex flex-col items-center justify-center transition relative", !inMonth && "opacity-30 cursor-default", meta?.color, isToday && "ring-2 ring-magenta-reg")} title={canEdit ? `${whenTitle}${meta ? ` · ${meta.label}` : ""}` : "View only"}>
-              <div className="text-[11px] font-semibold">{d.getDate()}</div>
-              {meta && <div className="text-[10px] font-bold mt-0.5">{meta.symbol}</div>}
+              <div className="text-[10px] md:text-[11px] font-semibold">{d.getDate()}</div>
+              {meta && <div className="text-[9px] md:text-[10px] font-bold mt-0.5">{meta.symbol}</div>}
               {!meta && autoReady && (
                 <div className="mt-0.5 h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
               )}
@@ -2023,7 +2143,7 @@ function AttendanceTab({ employee }: { employee: Employee }) {
         })}
       </div>
 
-      <div className="flex flex-wrap gap-2 text-[11px]">
+      <div className="flex flex-wrap gap-1.5 text-[10px]">
         {Object.entries(ATTENDANCE_META).map(([k, v]) => (<span key={k} className={cn("chip", v.color)}>{v.symbol} · {v.label}</span>))}
       </div>
     </div>
@@ -2101,36 +2221,34 @@ function PermissionsTab({ employee }: { employee: Employee }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 md:space-y-4">
       {!canEdit && (
-        <div className="text-xs text-ink-mute">
-          View only — the employees.manage or users.permissions permission is required to change
-          permissions.
+        <div className="text-[10px] md:text-xs text-ink-mute">
+          <span className="lg:hidden">View only</span>
+          <span className="hidden lg:inline">View only — the employees.manage or users.permissions permission is required to change permissions.</span>
         </div>
       )}
 
-      <fieldset disabled={!canEdit} className="space-y-4 border-0 p-0 m-0 min-w-0">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-ink-mute" />
-            <div>
-              <div className="font-display font-bold">Permissions ({perms.length}/{ALL_PERMISSION_KEYS.length})</div>
-              <div className="text-xs text-ink-mute">Same per-user permissions apply on desktop and mobile.</div>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="label inline-flex items-center gap-1"><Sparkles className="w-3 h-3" /> Presets:</span>
-            <button onClick={() => applyPreset("cashier")} className="chip border hover:bg-ink/5">Cashier</button>
-            <button onClick={() => applyPreset("designer")} className="chip border hover:bg-ink/5">Designer</button>
-            <button onClick={() => applyPreset("manager")} className="chip border hover:bg-ink/5">Manager</button>
-            <button onClick={() => applyPreset("admin")} className="chip bg-magenta-reg/10 text-magenta-reg border border-magenta-reg/30">Admin (all)</button>
-            <button onClick={() => applyPreset("none")} className="chip border hover:bg-ink/5">Clear</button>
-          </div>
+      <TabHeader
+        icon={Shield}
+        kicker="Permissions"
+        title={employee.name}
+        meta={`${perms.length}/${ALL_PERMISSION_KEYS.length} granted`}
+      />
+
+      <fieldset disabled={!canEdit} className="space-y-2 md:space-y-4 border-0 p-0 m-0 min-w-0">
+        <div className="flex min-w-0 items-center gap-1 overflow-x-auto scrollbar-none pb-px">
+            <span className="label inline-flex shrink-0 items-center gap-1"><Sparkles className="w-3 h-3" /> Presets:</span>
+            <button type="button" onClick={() => applyPreset("cashier")} className="chip shrink-0 border hover:bg-ink/5">Cashier</button>
+            <button type="button" onClick={() => applyPreset("designer")} className="chip shrink-0 border hover:bg-ink/5">Designer</button>
+            <button type="button" onClick={() => applyPreset("manager")} className="chip shrink-0 border hover:bg-ink/5">Manager</button>
+            <button type="button" onClick={() => applyPreset("admin")} className="chip shrink-0 bg-magenta-reg/10 text-magenta-reg border border-magenta-reg/30">Admin (all)</button>
+            <button type="button" onClick={() => applyPreset("none")} className="chip shrink-0 border hover:bg-ink/5">Clear</button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-1.5 md:gap-3">
           {[...grouped.entries()].map(([group, list]) => (
-            <div key={group} className="paper-card p-2.5 md:p-4">
+            <div key={group} className="paper-card p-2.5 md:p-3">
               <div className="flex items-center justify-between">
                 <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest text-ink-mute">{group}</div>
                 <button
@@ -2145,9 +2263,9 @@ function PermissionsTab({ employee }: { employee: Employee }) {
                   Toggle all
                 </button>
               </div>
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-1.5 space-y-1">
                 {list.map((p) => (
-                  <label key={p.key} className="flex items-center gap-2 text-[11px] md:text-sm cursor-pointer">
+                  <label key={p.key} className="flex items-start gap-2 text-[10px] md:text-xs cursor-pointer leading-snug">
                     <input type="checkbox" checked={perms.includes(p.key)} onChange={() => toggle(p.key)} />
                     {p.label}
                   </label>
@@ -2157,7 +2275,7 @@ function PermissionsTab({ employee }: { employee: Employee }) {
           ))}
         </div>
 
-        <div className="flex justify-end sticky bottom-0 bg-card pt-3">
+        <div className="flex justify-end sticky bottom-0 bg-card pt-2 md:pt-3">
           {canEdit ? (
             <button onClick={save} disabled={setPerms.isPending || update.isPending} className="btn btn-primary">
               <UserCog className="w-4 h-4" /> Save permissions
@@ -2226,4 +2344,190 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "su
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <SharedField label={label}>{children}</SharedField>;
+}
+
+/**
+ * Self-service photo. Gated by the `users.avatar` permission and limited to
+ * the signed-in employee's own account, so nobody can set somebody else's
+ * picture. Admins keep it through `can()`.
+ */
+function SelfPhotoButton({
+  employee,
+  className,
+}: {
+  employee: Employee;
+  className?: string;
+}) {
+  const update = useUpdateEmployee();
+  const [busy, setBusy] = useState(false);
+
+  const pick = async (file: File) => {
+    setBusy(true);
+    try {
+      const avatarUrl = await processImageFile(file, "avatars");
+      update.mutate(
+        { id: employee.id, avatarUrl },
+        {
+          onSuccess: () => toast.success("Photo updated"),
+          onError: (err) =>
+            toast.error(err instanceof Error ? err.message : "Upload failed"),
+        }
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <label
+      className={cn(
+        "btn btn-outline btn-sm cursor-pointer max-md:w-7 max-md:px-0",
+        className
+      )}
+      title="Upload your own photo"
+    >
+      <Upload className="w-3.5 h-3.5" />
+      <span className="hidden sm:inline">{busy ? "Uploading..." : "My photo"}</span>
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void pick(f);
+        }}
+      />
+    </label>
+  );
+}
+
+/**
+ * Admin view of every team photo in one grid, with the people who still need
+ * to add one. Admin-only (gated by `employees.manage` at the call site).
+ */
+function AvatarsModal({
+  employees,
+  onClose,
+}: {
+  employees: Employee[];
+  onClose: () => void;
+}) {
+  const withPhoto = employees.filter((e) => !!e.avatarUrl);
+  const withoutPhoto = employees.filter((e) => !e.avatarUrl);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
+      <div className="team-modal paper-card w-full max-w-3xl overflow-hidden max-h-[95dvh] flex flex-col rounded-t-2xl md:rounded-xl">
+        <div className="px-2.5 py-2 md:p-4 border-b flex items-center justify-between gap-2 shrink-0">
+          <div className="min-w-0">
+            <div className="text-[8px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-ink-mute">
+              Team photos
+            </div>
+            <h2 className="font-display text-base md:text-xl font-bold truncate">
+              Everyone
+            </h2>
+            <p className="text-[10px] text-ink-mute md:text-xs md:mt-0.5">
+              {withPhoto.length} of {employees.length} with a photo
+            </p>
+          </div>
+          <button onClick={onClose} className="btn btn-outline btn-sm h-7 w-7 p-0 shrink-0">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto scroll-lined flex-1 p-2.5 md:p-4">
+          {employees.length === 0 ? (
+            <div className="p-8 text-center text-ink-mute text-sm">
+              No team members yet.
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1.5 md:gap-2">
+                {employees.map((e) => (
+                  <div
+                    key={e.id}
+                    className="paper-card p-1.5 md:p-2 flex flex-col items-center gap-1 text-center min-w-0"
+                  >
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-magenta-reg/10 text-magenta-reg font-bold text-sm md:text-base flex items-center justify-center shrink-0 overflow-hidden">
+                      {e.avatarUrl ? (
+                        <img src={e.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        employeeInitials(e.fullName || e.name)
+                      )}
+                    </div>
+                    <div className="min-w-0 w-full">
+                      <div className="text-[10px] md:text-[11px] font-semibold truncate">
+                        {e.name}
+                      </div>
+                      <div className="text-[9px] md:text-[10px] text-ink-mute truncate">
+                        {e.role}
+                      </div>
+                    </div>
+                    {!e.avatarUrl && (
+                      <span className="chip border border-yellow-reg/30 bg-yellow-reg/10 text-yellow-reg text-[8px] md:text-[9px]">
+                        No photo
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {withoutPhoto.length > 0 && (
+                <p className="mt-2 text-[10px] text-ink-mute">
+                  {withoutPhoto.length} team member
+                  {withoutPhoto.length === 1 ? "" : "s"} without a photo — grant
+                  them the &ldquo;Upload own photo&rdquo; permission.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="border-t p-2.5 md:p-3 flex items-center justify-end shrink-0">
+          <button onClick={onClose} className="btn btn-primary btn-sm">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TabHeader({
+  icon: Icon,
+  kicker,
+  title,
+  meta,
+  actions,
+}: {
+  icon: LucideIcon;
+  kicker: string;
+  title?: string;
+  meta?: string;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-b border-line/70 pb-2 md:flex-row md:items-center md:justify-between md:gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-brand/40 bg-brand/10 text-ink md:h-8 md:w-8">
+          <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={2} />
+        </span>
+        <div className="min-w-0">
+          <div className="text-[7px] uppercase tracking-[0.14em] text-ink-mute md:text-[9px]">
+            {kicker}
+          </div>
+          {title && (
+            <h2 className="font-display text-sm font-bold leading-tight md:text-lg">{title}</h2>
+          )}
+          {meta && <div className="text-[9px] text-ink-mute md:text-[10px]">{meta}</div>}
+        </div>
+      </div>
+      {actions && (
+        <div className="flex min-w-0 items-center gap-1.5 self-start md:self-auto">
+          {actions}
+        </div>
+      )}
+    </div>
+  );
 }

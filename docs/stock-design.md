@@ -32,7 +32,12 @@ Expenses, Stock Taking…). Shared primitives this culture depends on:
 
 1. **Stat grid** — `grid-cols-3/4`, gap-1.5, `StatCard` (or local `Stat` in
    the same compact shape: `p-2`, 7px tracked label, 12px–clamp value,
-   double-click expands `fullValue`).
+   double-click expands `fullValue`). **Inventory tints:** Products `brand`,
+   Ready `success`, Materials `cyan`, Low stock `danger` (falls back to `ink`
+   at zero); the desktop value strip is `surface-ink`. Fills are low-alpha
+   washes of the skin's own tokens (18–20%) — text stays full `ink`, labels
+   use `.stat-label` at 66% ink. Paper cards stay available for neutral
+   metrics on other pages.
 2. **Value strip** (optional) — desktop keeps the `paper-card` strip;
    on mobile it becomes a bare right-aligned full figure above the table.
 3. **Filter card** — ONE `paper-card p-2.5` row:
@@ -84,12 +89,17 @@ Wrap everything above the table in one container:
 - Sticky table heads inside scroll boxes must be fully opaque (`bg-paper`,
   never `/60`) or scrolled rows ghost through them.
 
-## 5. Money rules
+## 5. Money and date rules
 
 - All amounts render through `MoneyText`: full `formatCurrency` figures,
   never compact, with the currency symbol at 0.75em in uniform grey
   (`text-ink-mute brightness-[0.77]`) regardless of card tone.
 - `title` always carries the full figure wherever a compact form shows.
+- Dates obey the shop's saved preset everywhere — ranges, rows, summaries,
+  tooltips and document text. Use `formatDate` / `formatDateTime` from
+  `@/lib/utils` (they read the active preset) or `formatDateByPreference`
+  when a settings object is in hand. Never call `toLocaleDateString` /
+  `toLocaleString` for a date; month names stay short.
 
 ## 6. Modal culture
 
@@ -114,3 +124,13 @@ Wrap everything above the table in one container:
   that summarise the list at a glance may stay outside the drawer.
 - The sticky header recipe (§4) still applies — the toggle pins while the
   list scrolls beneath.
+
+## 8. Statistics header
+
+- Statistics keeps the active period summary visible while month/custom date
+  controls stay hidden by default behind one Filters toggle.
+- On mobile, the content-sized range `GlassSelect` stays left and the Filters
+  button aligns to the far right of the action row. Both trigger and popup use
+  tight 15% headroom with reduced chrome.
+- The cashflow panel renders live revenue and expense trend series rather than
+  a static-looking stacked bar block.

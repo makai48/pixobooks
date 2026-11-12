@@ -30,7 +30,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/hooks/useAuth";
 import { cn, download, formatCurrency, formatCompactCurrency, formatNumber, localISODate, todayISO } from "@/lib/utils";
 import { byTransactionDateDesc, inDayRange } from "@/lib/salesReport";
-import { formatDateByPreference } from "@/lib/dateFormat";
+import { DEFAULT_DATE_FORMAT, formatDateByPreference, formatDateTimeByPreference } from "@/lib/dateFormat";
 import {
   DEFAULT_WEEK_START,
   RANGE_PRESET_OPTIONS,
@@ -44,7 +44,7 @@ import PrintablePortal from "@/components/features/receipts/PrintablePortal";
 import ReceiptActions from "@/components/features/receipts/ReceiptActions";
 import GlassSelect from "@/components/ui/GlassSelect";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
-import MoneyText from "@/components/ui/MoneyText";
+import StatCard from "@/components/ui/StatCard";
 
 export default function SalesReport() {
   const { can, canViewCosts, profile } = useAuth();
@@ -294,25 +294,23 @@ export default function SalesReport() {
         ]}
       />
       <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 md:gap-3">
-        <Stat
+        <StatCard
           label="Revenue"
           value={money(totals.total)}
           fullValue={formatCurrency(totals.total, currency)}
         />
-        <Stat
+        <StatCard
           label="Collected"
           value={money(totals.paid)}
           fullValue={formatCurrency(totals.paid, currency)}
-          tone="success"
         />
-        <Stat
+        <StatCard
           label="Outstanding"
           value={money(totals.due)}
           fullValue={formatCurrency(totals.due, currency)}
-          tone={totals.due > 0 ? "danger" : undefined}
         />
         <div className="hidden md:block">
-          <Stat
+          <StatCard
             label="Sales in period"
             value={String(filtered.filter((s) => !s.voidedAt).length)}
           />
@@ -321,18 +319,17 @@ export default function SalesReport() {
 
       {canViewCosts && (
         <div className="grid grid-cols-3 gap-1.5 md:gap-3">
-          <Stat
+          <StatCard
             label="Cost of goods"
             value={money(totals.cost)}
             fullValue={formatCurrency(totals.cost, currency)}
           />
-          <Stat
+          <StatCard
             label="Gross profit"
             value={money(totals.profit)}
             fullValue={formatCurrency(totals.profit, currency)}
-            tone={totals.profit >= 0 ? "success" : "danger"}
           />
-          <Stat
+          <StatCard
             label="Tax collected"
             value={money(totals.tax)}
             fullValue={formatCurrency(totals.tax, currency)}
@@ -364,13 +361,14 @@ export default function SalesReport() {
           selectedLabel={rangeSessionLabel(
             rangePreset,
             rangeOffset,
-            settings?.dateFormat ?? "DD/MM/YYYY"
+            settings?.dateFormat ?? DEFAULT_DATE_FORMAT
           )}
           noTruncate
           triggerHeadroom={0.25}
           menuHeadroom={0.25}
           triggerChromePx={36}
           menuChromePx={48}
+          menuScale={0.83}
           className="input input-sm select-glass max-md:text-[9px]"
         />
         <button
@@ -472,11 +470,11 @@ export default function SalesReport() {
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
           <label htmlFor="sr-from" className="label max-md:text-[9px] max-md:whitespace-nowrap">From</label>
-          <GlassDatePicker id="sr-from" value={from} onChange={(v) => { setFrom(v); setRangePreset("custom"); setRangeOffset(0); }} ariaLabel="From date" className="input input-sm select-glass w-full min-w-0 whitespace-nowrap max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear fullWidth dateFormat={settings?.dateFormat ?? "DD/MM/YYYY"} />
+          <GlassDatePicker id="sr-from" value={from} onChange={(v) => { setFrom(v); setRangePreset("custom"); setRangeOffset(0); }} ariaLabel="From date" className="input input-sm select-glass w-full min-w-0 whitespace-nowrap max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear fullWidth dateFormat={settings?.dateFormat ?? DEFAULT_DATE_FORMAT} />
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
           <label htmlFor="sr-to" className="label max-md:text-[9px] max-md:whitespace-nowrap">To</label>
-          <GlassDatePicker id="sr-to" value={to} onChange={(v) => { setTo(v); setRangePreset("custom"); setRangeOffset(0); }} ariaLabel="To date" className="input input-sm select-glass w-full min-w-0 whitespace-nowrap max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear fullWidth dateFormat={settings?.dateFormat ?? "DD/MM/YYYY"} />
+          <GlassDatePicker id="sr-to" value={to} onChange={(v) => { setTo(v); setRangePreset("custom"); setRangeOffset(0); }} ariaLabel="To date" className="input input-sm select-glass w-full min-w-0 whitespace-nowrap max-md:px-1.5 md:mt-1" placeholder="Any date" allowClear fullWidth dateFormat={settings?.dateFormat ?? DEFAULT_DATE_FORMAT} />
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
           <label htmlFor="sr-payment" className="label max-md:text-[9px] max-md:whitespace-nowrap">Payment</label>
@@ -569,7 +567,7 @@ export default function SalesReport() {
                 key={s.id}
                 sale={s}
                 currency={currency}
-                dateFormat={settings?.dateFormat ?? "DD/MM/YYYY"}
+                dateFormat={settings?.dateFormat ?? DEFAULT_DATE_FORMAT}
                 initials={initialsByCashier.get(canonCashierKey(s.cashierName)) || canonCashierName(s.cashierName).slice(0, 2).toUpperCase()}
                 canViewCosts={canViewCosts}
                 canVoid={can("sales.void")}
@@ -667,7 +665,7 @@ function TransactionRow({
 
   const desktopWhen = transactionWhen(sale.createdAt, false, dateFormat);
   const mobileWhen = transactionWhen(sale.createdAt, true, dateFormat);
-  const fullWhen = new Date(sale.createdAt).toLocaleString();
+  const fullWhen = formatDateTimeByPreference(sale.createdAt, dateFormat);
 
   return (
     <div className="flex items-center h-[27px] max-md:h-[21px] hover:bg-paper/50 transition text-[11px] leading-tight">
@@ -709,7 +707,7 @@ function TransactionRow({
         {sale.voidedAt && (
           <span
             className="chip hidden lg:inline-flex border border-danger/40 bg-danger/10 text-danger shrink-0 text-[8px] md:text-[9px] px-1 md:px-1.5 py-px uppercase tracking-wide font-bold"
-            title={`Voided ${new Date(sale.voidedAt).toLocaleString()}${sale.voidedByName ? ` by ${sale.voidedByName}` : ""}${sale.voidReason ? ` — ${sale.voidReason}` : ""}`}
+            title={`Voided ${formatDateTimeByPreference(sale.voidedAt, dateFormat)}${sale.voidedByName ? ` by ${sale.voidedByName}` : ""}${sale.voidReason ? ` — ${sale.voidReason}` : ""}`}
           >
             void
           </span>
@@ -856,7 +854,7 @@ function TransactionViewer({
             <div className="border-b border-danger/30 bg-danger/10 px-3 sm:px-4 py-2 text-[11px] text-danger shrink-0">
               <span className="font-semibold uppercase tracking-wide">Voided</span>
               {" · "}
-              {new Date(sale.voidedAt).toLocaleString()}
+              {formatDateTimeByPreference(sale.voidedAt, settings.dateFormat)}
               {sale.voidedByName ? ` · ${sale.voidedByName}` : ""}
               {sale.voidReason ? ` · ${sale.voidReason}` : ""}
               <div className="text-[10px] text-danger/80">
@@ -1063,44 +1061,5 @@ function transactionWhen(
 /** Grouping key for a cashier name — case-insensitive, whitespace-insensitive. */
 function canonCashierKey(n: string): string {
   return canonCashierName(n).toLowerCase();
-}
-
-function Stat({
-  label,
-  value,
-  fullValue,
-  tone,
-}: {
-  label: string;
-  value: string;
-  fullValue?: string;
-  tone?: "success" | "danger";
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const showFull = expanded && !!fullValue;
-
-  return (
-    <div
-      className="paper-card p-2 md:p-4 min-w-0 cursor-pointer select-none"
-      onDoubleClick={() => setExpanded((e) => !e)}
-    >
-      <div className="text-[7px] md:text-[11px] uppercase tracking-wide md:tracking-widest leading-none text-ink-mute truncate">
-        {label}
-      </div>
-      <div
-        title={fullValue ?? value}
-        className={cn(
-          "font-display font-bold num mt-0.5 md:mt-1 leading-tight break-words",
-          showFull
-            ? "text-[7px] md:text-[clamp(0.65rem,3vw,0.95rem)]"
-            : "text-[12px] md:text-[clamp(1rem,5.5vw,1.5rem)]",
-          tone === "success" && "text-success",
-          tone === "danger" && "text-danger"
-        )}
-      >
-        {showFull && fullValue ? <MoneyText value={fullValue} /> : <MoneyText value={value} />}
-      </div>
-    </div>
-  );
 }
 

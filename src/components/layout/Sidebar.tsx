@@ -112,7 +112,7 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
     <>
     <aside
       className={cn(
-        "shrink-0 h-full bg-ink text-white flex flex-col border-r border-white/10 transition-[width] duration-200",
+        "shrink-0 h-full sb-sidebar bg-ink text-white flex flex-col border-r border-white/10 transition-[width] duration-200",
         collapsed ? "sidebar-collapsed" : "w-72 md:w-64"
       )}
     >
@@ -137,7 +137,7 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
             <div className="font-display text-[15px] md:text-base font-bold leading-tight text-white truncate">
               {shopName}
             </div>
-            <div className="sb-subtitle text-[9px] text-white/55 mt-0.5 uppercase tracking-[0.16em] truncate">
+            <div className="sb-subtitle text-[9px] leading-[1.3] text-white/55 mt-0.5 tracking-[0.01em] line-clamp-2">
               {settings?.address || "Business workspace"}
             </div>
           </div>
@@ -245,24 +245,31 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
 
       {/* Footer: signed-in identity remains anchored at the bottom. */}
       <div className="p-2.5 border-t border-white/10 space-y-2">
-        <div className="sb-signed-in rounded-xl bg-white/[0.045] border border-white/10 p-2.5">
-          <div className="sb-label text-[9px] uppercase tracking-[0.18em] text-white/55">
-            Signed in
-          </div>
-          <div className="mt-1.5 flex items-center gap-2.5">
-            <div className="sb-avatar w-8 h-8 rounded-full bg-brand flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden text-brand-fg">
+        <div className="sb-signed-in rounded-xl bg-white/[0.045] border-2 border-brand p-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="sb-avatar w-[42px] h-[42px] rounded-full bg-brand flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden text-brand-fg">
               {profile?.avatarUrl ? (
                 <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
                 profile?.name.charAt(0).toUpperCase() || "?"
               )}
             </div>
-            <div className="min-w-0 sb-label">
+            <div className="min-w-0 flex-1 sb-label">
               <div className="text-[12.5px] font-semibold truncate text-white">{profile?.name}</div>
-              <div className="text-[10px] text-white/60 truncate">
-                {profile?.role} · {profile?.email}
-              </div>
+              <div className="text-[10px] text-white/60 truncate">{profile?.role}</div>
             </div>
+            <button
+              onClick={async () => {
+                await logout();
+                nav("/login");
+                onNavigate?.();
+              }}
+              className="sb-signout grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/15 bg-white/5 text-white/70 transition hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
           </div>
         </div>
 
@@ -273,17 +280,6 @@ export default function Sidebar({ onNavigate, collapsed, onToggleCollapse }: Pro
         <div className="sb-label px-1 text-[8.5px] text-white/40 num">
           build {typeof __APP_BUILD_ID__ !== "undefined" ? __APP_BUILD_ID__ : "dev"}
         </div>
-
-        <button
-          onClick={async () => {
-            await logout();
-            nav("/login");
-            onNavigate?.();
-          }}
-          className="md:hidden w-full h-9 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5"
-        >
-          <LogOut className="w-4 h-4" strokeWidth={2} /> Sign out
-        </button>
       </div>
     </aside>
     {createOpen && <CreateWorkspaceDialog onClose={() => setCreateOpen(false)} />}

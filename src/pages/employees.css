@@ -1,0 +1,133 @@
+/* Team & Permissions responsive contract. Mobile/tablet/laptop intentionally
+   use a tighter control rhythm; desktop restores the shared app sizing. */
+.team-page .team-details-scroll {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .team-page .team-details-scroll {
+    padding: 10px;
+  }
+
+  .team-page .input,
+  .team-page .select-glass {
+    height: 34px;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  .team-page textarea.input {
+    min-height: 44px;
+    height: 44px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .team-page .btn:not(.btn-sm) {
+    height: 36px;
+    font-size: 12px;
+  }
+
+  .team-page .team-fields {
+    gap: 6px;
+  }
+
+  .team-page .team-compact .input,
+  .team-page .team-compact .select-glass {
+    height: 30px;
+    font-size: 12px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .team-page .team-compact .label {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
+  .team-page .team-compact textarea.input {
+    height: 44px;
+  }
+
+  /* Paired fields share one horizontal baseline: the control is pushed to
+     the bottom of its cell, so a wrapped label never shifts the row. */
+  .team-page .team-compact > * {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .team-page .team-compact > * > .mt-1 {
+    margin-top: auto;
+    padding-top: 4px;
+  }
+
+  /* Phone field: no flag, a tight country-code box, and the digits get the
+     space the flag used to take. */
+  .team-page .phone-dial__flag {
+    display: none;
+  }
+
+  .team-page .phone-dial {
+    height: 34px;
+    gap: 2px;
+    padding-left: 6px;
+    padding-right: 4px;
+    font-size: 12px;
+  }
+
+  .team-page .team-compact .phone-dial {
+    height: 30px;
+  }
+
+  .team-page .phone-dial .num {
+    font-size: 12px;
+  }
+
+  .team-page .phone-dial__chevron {
+    width: 12px;
+    height: 12px;
+  }
+
+  .team-page .phone-row {
+    gap: 4px;
+  }
+
+  .team-page .phone-row__number {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .team-page .team-modal .input,
+  .team-page .team-modal .select-glass {
+    height: 34px;
+  }
+
+  .team-page .team-modal form {
+    gap: 8px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .team-page .team-details-scroll {
+    padding: 14px;
+  }
+
+  .team-page .team-modal .input,
+  .team-page .team-modal .select-glass {
+    height: 36px;
+  }
+
+  /* The country-code box must match the control height beside it. */
+  .team-page .phone-dial {
+    height: 36px;
+  }
+}
+
+@media (min-width: 1280px) {
+  /* Desktop keeps the shared app rhythm: 36px controls. */
+  .team-page .phone-dial {
+    height: 36px;
+  }
+}

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { glassFitWidth } from "./glassFit";
+import { composeDateByPreference, getActiveDateFormat } from "@/lib/dateFormat";
 import type { DateFormat } from "@/types";
 
 type Pos = {
@@ -25,15 +26,8 @@ const formatLabel = (iso: string, dateFormat: DateFormat, compactMonth = false) 
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = String(date.getFullYear());
-  if (dateFormat === "D MMM YYYY") {
-    return `${compactMonth ? Number(day) : day} ${date.toLocaleDateString(undefined, { month: "short" })}${compactMonth ? "" : ` ${year}`}`;
-  }
-  if (dateFormat === "DD MMM YYYY" || dateFormat === "DD MMMM YYYY") {
-    return `${day} ${date.toLocaleDateString(undefined, { month: "short" })} ${year}`;
-  }
-  if (dateFormat === "MM/DD/YYYY") return `${month}/${day}/${year}`;
-  if (dateFormat === "YYYY-MM-DD") return `${year}-${month}-${day}`;
-  return `${day}/${month}/${year}`;
+  const monthName = date.toLocaleDateString(undefined, { month: "short" });
+  return composeDateByPreference(day, month, year, monthName, dateFormat, compactMonth);
 };
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -65,7 +59,7 @@ export default function GlassDatePicker({
   fullWidth = false,
   placeholder = "Select date",
   allowClear = false,
-  dateFormat = "DD MMM YYYY",
+  dateFormat = getActiveDateFormat(),
 }: {
   value: string;
   onChange: (iso: string) => void;

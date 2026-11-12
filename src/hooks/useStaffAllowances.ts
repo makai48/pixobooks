@@ -7,6 +7,7 @@ import type {
   TxnAllowancePeriod,
 } from "@/types";
 import { currentBusinessId, withBusiness } from "@/lib/tenant";
+import { formatDateByPreference, getActiveDateFormat } from "@/lib/dateFormat";
 
 /**
  * Automatically create staff-allowance expense entries when attendance
@@ -158,11 +159,7 @@ export function txnPeriodInfo(
   next.setDate(base.getDate() + 1);
   return {
     key: `D:${ref}`,
-    label: base.toLocaleDateString(undefined, {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }),
+    label: formatDateByPreference(base, getActiveDateFormat()),
     startISO: ref,
     endISO: isoDay(next),
   };

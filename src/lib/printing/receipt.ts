@@ -1,4 +1,5 @@
-import { PAYMENT_METHOD_META, type PaperSize, type Sale, type SaleLine, type SalePayment, type Settings } from "@/types";
+import { PAYMENT_METHOD_META, type DateFormat, type PaperSize, type Sale, type SaleLine, type SalePayment, type Settings } from "@/types";
+import { composeDateByPreference, DEFAULT_DATE_FORMAT } from "@/lib/dateFormat";
 import { EscPosWriter, type EscPosCodepage } from "./escpos";
 
 const PAPER_TO_MM: Partial<Record<PaperSize, number>> = {
@@ -43,12 +44,12 @@ export function formatQty(value: number): string {
   return String(Math.round(safe * 1000) / 1000);
 }
 
-export function formatStamp(iso: string, timeZone?: string): string {
+export function formatStamp(iso: string, timeZone?: string, dateFormat: DateFormat = DEFAULT_DATE_FORMAT): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
   const options: Intl.DateTimeFormatOptions = {
     year: "numeric",
-    month: "short",
+    month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
@@ -57,7 +58,18 @@ export function formatStamp(iso: string, timeZone?: string): string {
   try {
     const parts = new Intl.DateTimeFormat("en-GB", timeZone ? { ...options, timeZone } : options).formatToParts(date);
     const pick = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-    return `${pick("day")} ${pick("month")} ${pick("year")} ${pick("hour")}:${pick("minute")}`;
+    const monthName = new Intl.DateTimeFormat("en-GB", {
+      month: "short",
+      ...(timeZone ? { timeZone } : {}),
+    }).format(date);
+    const datePart = composeDateByPreference(
+      pick("day"),
+      pick("month"),
+      pick("year"),
+      monthName,
+      dateFormat
+    );
+    return `${datePart} ${pick("hour")}:${pick("minute")}`;
   } catch {
     return date.toISOString().slice(0, 16).replace("T", " ");
   }
@@ -146,12 +158,12 @@ export function buildReceiptBytes(input: ReceiptBuildInput): Uint8Array {
   rule(writer, cols);
 
   writer.line(padPair("No", sale.number, cols));
-  writer.line(padPair("Date", formatStamp(sale.createdAt, timeZone), cols));
+  writer.line(padPair("Date", formatStamp(sale.createdAt, timeZone, settings.dateFormat), cols));
   writer.line(padPair("Cashier", sale.cashierName, cols));
   if (sale.customerName) writer.line(padPair("Customer", sale.customerName, cols));
   writer.line(padPair("Method", PAYMENT_METHOD_META[sale.paymentMethod]?.label ?? sale.paymentMethod, cols));
   writer.line(padPair("Status", sale.paymentStatus.toUpperCase(), cols));
-  if (sale.dueDate) writer.line(padPair("Due", formatStamp(sale.dueDate, timeZone), cols));
+  if (sale.dueDate) writer.line(padPair("Due", formatStamp(sale.dueDate, timeZone, settings.dateFormat), cols));
   rule(writer, cols);
 
   for (const line of sale.lines) {
@@ -223,7 +235,7 @@ export function buildTestPrintBytes(settings: Settings, options: TestPrintOption
   writer.line(padPair("Bus", settings.printer.printerType.toUpperCase(), cols));
   writer.line(padPair("Paper", `${settings.printer.paperSize} / ${cols} cols`, cols));
   writer.line(padPair("Codepage", codepage, cols));
-  writer.line(padPair("Printed", formatStamp(new Date().toISOString(), options.timeZone ?? settings.timezone), cols));
+  writer.line(padPair("Printed", formatStamp(new Date().toISOString(), options.timeZone ?? settings.timezone, settings.dateFormat), cols));
   rule(writer, cols);
 
   writer.align("center");
