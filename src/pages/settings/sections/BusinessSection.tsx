@@ -1,20 +1,49 @@
-import { Image as ImageIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Image as ImageIcon, MapPin, MessageCircle, Phone, Smartphone } from "lucide-react";
 import CountrySelect from "@/components/common/CountrySelect";
 import PhoneInput from "@/components/common/PhoneInput";
 import GlassSelect from "@/components/ui/GlassSelect";
-import { BUSINESS_TYPES, COUNTRIES, DATE_FORMAT_OPTIONS, TIMEZONES, TIMEZONE_OPTIONS } from "@/lib/referenceData";
+import { BUSINESS_TYPES, COUNTRIES, TIMEZONES, TIMEZONE_OPTIONS } from "@/lib/referenceData";
 import { DEFAULT_WEEK_START, WEEK_START_OPTIONS } from "@/lib/week";
 import {
   addressHint,
   businessNameHint,
   emailHint,
 } from "@/lib/businessClues";
-import type { DateFormat, WeekStart } from "@/types";
+import type { WeekStart } from "@/types";
 import { Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
 
 export default function BusinessSection() {
   const { form, setForm, errors, canShop, countryIso2, uploading, handleLogoFile, logoError, setLogoError } = useSettings();
+  const addressRef = useRef<HTMLTextAreaElement>(null);
+
+  // The address grows with its content, so a long address wraps and stays
+  // fully readable instead of scrolling inside a fixed box. The box is
+  // re-fitted when its width changes (a rotation, a window resize) and once
+  // the webfont has settled, because the wrap points depend on the glyphs.
+  useEffect(() => {
+    const el = addressRef.current;
+    if (!el) return;
+    let lastWidth = el.clientWidth;
+    const apply = () => {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    apply();
+
+    const observer = new ResizeObserver(() => {
+      const width = el.clientWidth;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      apply();
+    });
+    observer.observe(el.parentElement ?? el);
+
+    document.fonts?.ready?.then(() => apply()).catch(() => undefined);
+
+    return () => observer.disconnect();
+  }, [form.address]);
 
   return (
     <>
@@ -25,8 +54,14 @@ export default function BusinessSection() {
               desc="Commercial identity, legal name, and contacts displayed on receipts and invoices"
               required
             >
-              <div className="grid-2">
-                <SField label="Shop Legal Name" htmlFor="set-shop-name" req error={errors.shopName}>
+              <div className="biz-grid">
+                <SField
+                  label="Shop Legal Name"
+                  htmlFor="set-shop-name"
+                  req
+                  error={errors.shopName}
+                  className="biz-shop"
+                >
                   <input
                     id="set-shop-name"
                     className="input"
@@ -35,7 +70,12 @@ export default function BusinessSection() {
                     placeholder={businessNameHint(form.businessType)}
                   />
                 </SField>
-                <SField label="Commercial Category" htmlFor="set-business-type" req>
+                <SField
+                  label="Commercial Category"
+                  htmlFor="set-business-type"
+                  req
+                  className="biz-type"
+                >
                   <GlassSelect
                     id="set-business-type"
                     value={form.businessType}
@@ -51,10 +91,8 @@ export default function BusinessSection() {
                     className="input select-glass"
                   />
                 </SField>
-              </div>
 
-              <div className="grid-3" style={{ marginTop: 14 }}>
-                <SField label="Primary Country" htmlFor="set-country">
+                <SField label="Primary Country" htmlFor="set-country" className="biz-country">
                   <CountrySelect
                     id="set-country"
                     ariaLabel="Primary Country"
@@ -68,7 +106,11 @@ export default function BusinessSection() {
                     }
                   />
                 </SField>
-                <SField label="Operating Time Zone" htmlFor="set-timezone">
+                <SField
+                  label="Operating Time Zone"
+                  htmlFor="set-timezone"
+                  className="biz-tz"
+                >
                   <GlassSelect
                     id="set-timezone"
                     value={form.timezone}
@@ -83,7 +125,12 @@ export default function BusinessSection() {
                     className="input select-glass"
                   />
                 </SField>
-                <SField label="Week Starts On" htmlFor="set-week-start">
+
+                <SField
+                  label="Week Starts On"
+                  htmlFor="set-week-start"
+                  className="biz-week"
+                >
                   <GlassSelect
                     id="set-week-start"
                     value={form.weekStart ?? DEFAULT_WEEK_START}
@@ -96,29 +143,13 @@ export default function BusinessSection() {
                     Drives This Week and Last Week in reports. Defaults to Monday.
                   </div>
                 </SField>
-              </div>
 
-              <div className="grid-3" style={{ marginTop: 14 }}>
-                <SField label="Date Format" htmlFor="set-date-format">
-                  <GlassSelect
-                    id="set-date-format"
-                    value={form.dateFormat}
-                    onChange={(v) => setForm({ ...form, dateFormat: v as DateFormat })}
-                    ariaLabel="Date format"
-                    options={DATE_FORMAT_OPTIONS.map((option) => ({
-                      value: option.value,
-                      label: option.label,
-                    }))}
-                    className="input select-glass"
-                  />
-                  <div className="field-hint" style={{ marginTop: 4 }}>
-                    Used for report and transaction dates.
-                  </div>
-                </SField>
-              </div>
-
-              <div className="grid-2" style={{ marginTop: 14 }}>
-                <SField label="Support Email" htmlFor="set-email" req>
+                <SField
+                  label="Support Email"
+                  htmlFor="set-email"
+                  req
+                  className="biz-email flat-field"
+                >
                   <input
                     id="set-email"
                     type="email"
@@ -128,19 +159,13 @@ export default function BusinessSection() {
                     placeholder={emailHint(form.shopName)}
                   />
                 </SField>
-                <SField label="Physical Shop Address" htmlFor="set-address">
-                  <input
-                    id="set-address"
-                    className="input"
-                    value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    placeholder={addressHint(form.businessType, form.country)}
-                  />
-                </SField>
-              </div>
 
-              <div className="grid-3" style={{ marginTop: 14 }}>
-                <SField label="Primary Mobile" htmlFor="set-mobile">
+                <SField
+                  label="Primary Mobile"
+                  htmlFor="set-mobile"
+                  className="biz-mobile flat-field"
+                  icon={Smartphone}
+                >
                   <PhoneInput
                     id="set-mobile"
                     ariaLabel="Primary Mobile"
@@ -150,7 +175,12 @@ export default function BusinessSection() {
                     placeholder="712 345 678"
                   />
                 </SField>
-                <SField label="Office Telephone" htmlFor="set-office">
+                <SField
+                  label="Office Telephone"
+                  htmlFor="set-office"
+                  className="biz-office flat-field"
+                  icon={Phone}
+                >
                   <PhoneInput
                     id="set-office"
                     ariaLabel="Office Telephone"
@@ -160,7 +190,12 @@ export default function BusinessSection() {
                     placeholder="414 555 012"
                   />
                 </SField>
-                <SField label="Official WhatsApp" htmlFor="set-whatsapp">
+                <SField
+                  label="Official WhatsApp"
+                  htmlFor="set-whatsapp"
+                  className="biz-whatsapp flat-field"
+                  icon={MessageCircle}
+                >
                   <PhoneInput
                     id="set-whatsapp"
                     ariaLabel="Official WhatsApp"
@@ -168,6 +203,24 @@ export default function BusinessSection() {
                     value={form.whatsapp}
                     onChange={(whatsapp) => setForm({ ...form, whatsapp })}
                     placeholder="712 345 678"
+                  />
+                </SField>
+
+                <SField
+                  label="Physical Shop Address"
+                  htmlFor="set-address"
+                  className="biz-address flat-field"
+                  icon={MapPin}
+                >
+                  <textarea
+                    id="set-address"
+                    ref={addressRef}
+                    className="input"
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    placeholder={addressHint(form.businessType, form.country)}
+                    rows={2}
+                    style={{ resize: "none" }}
                   />
                 </SField>
               </div>
@@ -209,32 +262,18 @@ export default function BusinessSection() {
                     )}
                   </label>
                   <div className="logo-meta">
-                    <SField label="Image URL / Asset Identifier" htmlFor="set-logo-url">
-                      <input
-                        id="set-logo-url"
-                        className="input"
-                        value={form.logoUrl || ""}
-                        onChange={(e) => {
-                          setForm({ ...form, logoUrl: e.target.value });
-                          setLogoError(false);
-                        }}
-                        placeholder="https://cdn.pixobooks.com/logo.png or data:image/..."
-                      />
-                    </SField>
-                    <div className="logo-remove-row">
-                      <div className="field-hint" style={{ marginTop: 0 }}>
-                        Tap the circular frame to upload a file directly. Recommends 512×512px square PNG.
-                      </div>
-                      {form.logoUrl && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost-danger btn-sm"
-                          onClick={() => setForm({ ...form, logoUrl: "" })}
-                        >
-                          Remove
-                        </button>
-                      )}
+                    <div className="field-hint" style={{ marginTop: 0 }}>
+                      Tap the circular frame to upload a file directly. Recommends 512×512px square PNG.
                     </div>
+                    {form.logoUrl && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost-danger btn-sm"
+                        onClick={() => setForm({ ...form, logoUrl: "" })}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -82,6 +82,7 @@ import { deriveDisplayName, employeeInitials } from "@/lib/employeeName";
 import { processImageFile } from "@/lib/imageUpload";
 import PhoneInput from "@/components/common/PhoneInput";
 import GlassSelect from "@/components/ui/GlassSelect";
+import AmountInput from "@/components/ui/AmountInput";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import MoneyText from "@/components/ui/MoneyText";
 import SubNav from "@/components/layout/SubNav";
@@ -116,6 +117,11 @@ export default function Employees() {
    *  admins keep it through `can()`. */
   const canUploadOwnPhoto =
     !!selected && selected.id === profile?.id && can("users.avatar");
+  /** The Profile tab owns the photo control for anyone who can open it. The
+   *  header shortcut stays only for staff who have no Profile tab at all. */
+  const canOpenProfileTab =
+    can("employees.manage") || can("users.permissions");
+  const showHeaderPhoto = canUploadOwnPhoto && !canOpenProfileTab;
 
   // Imported staff cleanup (Report cashier duplicates): profiles that arrived
   // via file import carry no invite trail (`invitedAt`/`invitedBy` are only
@@ -545,12 +551,6 @@ export default function Employees() {
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
             <span className="text-[10px] font-semibold truncate">{selected.name}</span>
-            {canUploadOwnPhoto && (
-              <SelfPhotoButton
-                employee={selected}
-                className="ml-auto shrink-0"
-              />
-            )}
           </div>
           <div className="border-b flex items-center gap-1.5 px-2.5 md:px-4">
             <div className="flex overflow-x-auto scrollbar-none">
@@ -579,7 +579,7 @@ export default function Employees() {
                 </button>
               ))}
             </div>
-            {canUploadOwnPhoto && (
+            {showHeaderPhoto && (
               <SelfPhotoButton employee={selected} className="ml-auto shrink-0" />
             )}
           </div>
@@ -1844,7 +1844,7 @@ function PayrollTab({ employee }: { employee: Employee }) {
 
       <div className="team-compact grid grid-cols-3 gap-1.5 md:gap-3">
         <Field label="Base salary">
-          <input type="number" step="0.01" min={0} value={salary.base} onChange={(e) => setSalary({ ...salary, base: Number(e.target.value) })} className="input mt-1 num text-right" />
+          <AmountInput step="0.01" min={0} value={salary.base} onChange={(v) => setSalary({ ...salary, base: v })} className="input mt-1 num text-right" ariaLabel="Base salary" />
         </Field>
         <Field label="Currency">
           <GlassSelect
@@ -1908,7 +1908,7 @@ function PayrollTab({ employee }: { employee: Employee }) {
                 </div>
                 <div className="col-span-6 md:col-span-2">
                   <label htmlFor={`emp-allow-amount-${i}`} className="label">Amount {a.type === "percentage" ? "(%)" : `(${salary.currency})`}</label>
-                  <input id={`emp-allow-amount-${i}`} type="number" step="0.01" min={0} value={a.amount} onChange={(e) => updateAllowance(i, { amount: Number(e.target.value) })} className="input mt-1 num text-right" />
+                  <AmountInput id={`emp-allow-amount-${i}`} step="0.01" min={0} value={a.amount} onChange={(v) => updateAllowance(i, { amount: v })} className="input mt-1 num text-right" ariaLabel={`Allowance amount ${i + 1}`} />
                 </div>
                 <div className="col-span-10 md:col-span-3">
                   <label htmlFor={`emp-allow-cycle-${i}`} className="label">Pay cycle</label>

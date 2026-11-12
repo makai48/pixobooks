@@ -117,3 +117,48 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+/* ------------------------------------------------------------------ *
+ * Push notifications
+ * The server sends a payload of { title, body, tag, link, severity }.
+ * Anything unexpected is ignored rather than throwing inside the worker.
+ * ------------------------------------------------------------------ */
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { title: "PixoBooks", body: event.data ? event.data.text() : "" };
+  }
+
+  const title = payload.title || "PixoBooks";
+  const options = {
+    body: payload.body || "",
+    icon: payload.icon || scopeBase() + "pwa-192.png",
+    badge: payload.badge || scopeBase() + "pwa-192.png",
+    tag: payload.tag || payload.title || "pixobooks",
+    renotify: false,
+    requireInteraction: payload.severity === "critical",
+    data: { link: payload.link || "/" },
+    actions: [{ action: "open", title: "Open" }],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const link = (event.notification.data && event.notification.data.link) || "/";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) {
+          client.postMessage({ type: "pixobooks:notification-click", link });
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(link);
+    })
+  );
+});

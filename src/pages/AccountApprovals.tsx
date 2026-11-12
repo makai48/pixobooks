@@ -287,9 +287,10 @@ function RequestCard({
               {r.employeeName || "Unknown"}
             </div>
           </div>
-          <div className="mt-1 flex items-center gap-2 text-[11px] text-ink-mute min-w-0">
-            <Mail className="w-3 h-3 shrink-0" />
-            <span className="truncate">{r.email}</span>
+          <div className="mt-1 flex items-start gap-2 text-[11px] text-ink-mute min-w-0">
+            <Mail className="w-3 h-3 shrink-0 mt-px" />
+            {/* The address is shown in full — it wraps instead of being cut. */}
+            <span className="break-all">{r.email}</span>
           </div>
           {r.role && (
             <div className="mt-0.5 text-[11px] text-ink-mute">Role: {r.role}</div>

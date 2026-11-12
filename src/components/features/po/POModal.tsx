@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassSelect from "@/components/ui/GlassSelect";
+import AmountInput from "@/components/ui/AmountInput";
 import MoneyText from "@/components/ui/MoneyText";
 import VendorSelect from "@/components/features/suppliers/VendorSelect";
 import { relatedUoms, validateCompatibility, validateTransactionQty } from "@/lib/uom";
@@ -276,14 +277,13 @@ export default function POModal({
                             options={unitOptions(l.materialId).map((u) => ({ value: u, label: u }))}
                             className="input select-glass input-sm w-[52px] shrink-0 px-1 text-[11px]"
                           />
-                          <input
-                            type="number"
+                          <AmountInput
                             step="0.001"
                             min={0}
                             value={l.unitCost}
-                            onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
+                            onChange={(v) => updateLine(idx, { unitCost: v })}
                             className="input input-sm num flex-1 min-w-0 text-right"
-                            aria-label={`Unit cost for ${l.name} (per ${unit})`}
+                            ariaLabel={`Unit cost for ${l.name} (per ${unit})`}
                           />
                           <span
                             className="num w-16 shrink-0 truncate text-right text-[11px] font-semibold"

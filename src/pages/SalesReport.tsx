@@ -663,8 +663,12 @@ function TransactionRow({
     credit: "bg-danger/10 text-danger border-danger/30",
   }[sale.paymentStatus];
 
+  // A total of ten million or more is eight figures wide — wider than the
+  // phone's amount track, so the phone shows it in millions ("10.9m") and
+  // drops the "Abt" prefix from the recency. Desktop keeps both in full.
+  const bigTotal = Math.abs(sale.total) > 9_999_999;
   const desktopWhen = transactionWhen(sale.createdAt, false, dateFormat);
-  const mobileWhen = transactionWhen(sale.createdAt, true, dateFormat);
+  const mobileWhen = transactionWhen(sale.createdAt, true, dateFormat, bigTotal);
   const fullWhen = formatDateTimeByPreference(sale.createdAt, dateFormat);
 
   return (
@@ -744,7 +748,12 @@ function TransactionRow({
           )}
         >
           <span className="hidden md:inline">{formatCurrency(sale.total, currency)}</span>
-          <span className="md:hidden">{formatNumber(sale.total, currency)}</span>
+          <span
+            className="md:hidden"
+            title={bigTotal ? formatCurrency(sale.total, currency) : undefined}
+          >
+            {bigTotal ? compactMillions(sale.total) : formatNumber(sale.total, currency)}
+          </span>
         </span>
         {sale.amountDue > 0 && !sale.voidedAt && (
           <span className="num text-danger shrink-0 hidden md:inline text-[10px]">
@@ -1029,7 +1038,8 @@ function resolveSessionRange(
 function transactionWhen(
   createdAt: string,
   compact: boolean,
-  dateFormat: DateFormat
+  dateFormat: DateFormat,
+  dropAbt = false
 ): string {
   const created = new Date(createdAt);
   const now = new Date();
@@ -1044,18 +1054,33 @@ function transactionWhen(
     const minutes = Math.max(1, Math.floor((elapsedHours * 60)));
     if (minutes < 60) {
       return compact
-        ? `Abt ${minutes}min ago`
+        ? `${dropAbt ? "" : "Abt "}${minutes}min ago`
         : `About ${minutes} min${minutes === 1 ? "" : "s"} ago`;
     }
 
     const hours = Math.max(1, Math.floor(minutes / 60));
     return compact
-      ? `Abt ${hours}hr${hours === 1 ? "" : "s"} ago`
+      ? `${dropAbt ? "" : "Abt "}${hours}hr${hours === 1 ? "" : "s"} ago`
       : `About ${hours} hr${hours === 1 ? "" : "s"} ago`;
   }
 
   if (createdDay === yesterday) return "Yesterday";
   return formatDateByPreference(createdAt, dateFormat, compact);
+}
+
+/**
+ * Phone-only contraction of a big total: 10,900,000 reads "10.9m".
+ *
+ * From ten million up (`bigTotal`), the eight-figure amount is wider than the
+ * phone's amount track and would spill leftwards over the quantity, so it is
+ * shown in millions with one decimal. The digits are TRUNCATED, never rounded
+ * up, so the row cannot overstate what was taken. Desktop still prints the
+ * full amount, and the cell keeps the full value in its `title`.
+ */
+function compactMillions(value: number): string {
+  const millions = Math.trunc((Math.abs(value) / 1_000_000) * 10) / 10;
+  const text = Number.isInteger(millions) ? `${millions}` : millions.toFixed(1);
+  return `${value < 0 ? "-" : ""}${text}m`;
 }
 
 /** Grouping key for a cashier name — case-insensitive, whitespace-insensitive. */

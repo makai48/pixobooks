@@ -243,8 +243,12 @@ Deno.serve(async (req: Request) => {
     if (profErr) throw new Error(`Profile upsert: ${profErr.message}`);
 
     // Attach the invitee to the active business so tenant RLS grants access.
+    // The tenant role must mirror the profile tier: Admin/Owner are privileged,
+    // Manager gets manager rights, everyone else is staff.
     if (businessId) {
-      const memberRole = role.toLowerCase() === "manager" ? "manager" : "staff";
+      const tier = role.trim().toLowerCase();
+      const memberRole =
+        tier === "owner" ? "owner" : tier === "admin" ? "admin" : tier === "manager" ? "manager" : "staff";
       const { error: memberErr } = await admin
         .from("business_members")
         .upsert(

@@ -1,4 +1,5 @@
 import { Coins, Percent } from "lucide-react";
+import AmountInput from "@/components/ui/AmountInput";
 import { cn } from "@/lib/utils";
 import { safeNum } from "../constants";
 import { CheckboxRow, Section, SField } from "../fields";
@@ -71,20 +72,19 @@ export default function DiscountsSection() {
                       htmlFor="set-max-amount"
                       error={errors.maxAmount}
                     >
-                      <input
+                      <AmountInput
                         id="set-max-amount"
-                        type="number"
                         min={0}
-                        step="0.01"
+                        step={0.01}
                         className="input num"
-                        style={{ textAlign: "right" }}
                         value={form.discount.maxAmount}
-                        onChange={(e) =>
+                        onChange={(v) =>
                           setForm({
                             ...form,
-                            discount: { ...form.discount, maxAmount: safeNum(e.target.value, 0) },
+                            discount: { ...form.discount, maxAmount: v },
                           })
                         }
+                        ariaLabel="Absolute order amount cap"
                       />
                     </SField>
                   </div>
@@ -126,7 +126,7 @@ export default function DiscountsSection() {
                     }
                     label="Enable loyalty points"
                   />
-                  <div className="grid-2">
+                  <div className="grid-2 pair-mobile">
                     <SField
                       label={`Points Earned per ${currencySymbol}1 Spent`}
                       htmlFor="set-points-earned"
@@ -152,21 +152,20 @@ export default function DiscountsSection() {
                       label={`Redemption Cash Value per Point (${currencySymbol})`}
                       htmlFor="set-points-value"
                     >
-                      <input
+                      <AmountInput
                         id="set-points-value"
-                        type="number"
-                        step="0.0001"
+                        step={0.0001}
                         min={0}
                         className="input num"
-                        style={{ textAlign: "right" }}
                         value={form.loyalty.dollarPerPoint}
-                        onChange={(e) =>
+                        onChange={(v) =>
                           setForm({
                             ...form,
-                            loyalty: { ...form.loyalty, dollarPerPoint: safeNum(e.target.value, 0) },
+                            loyalty: { ...form.loyalty, dollarPerPoint: v },
                           })
                         }
                         disabled={!form.loyalty.enabled}
+                        ariaLabel="Redemption cash value per point"
                       />
                     </SField>
                   </div>

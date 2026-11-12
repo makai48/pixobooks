@@ -159,15 +159,17 @@ export default function Customers() {
                       <span className="block truncate font-semibold text-[11px] md:text-sm">
                         {c.name}
                       </span>
-                      <span className="hidden md:inline-flex items-center gap-1 text-[10px] text-ink-mute min-w-0">
+                      <span className="hidden md:inline-flex items-start gap-1 text-[10px] text-ink-mute min-w-0">
                         {c.email ? (
                           <>
-                            <Mail className="w-2.5 h-2.5 shrink-0" />
-                            <span className="truncate">{c.email}</span>
+                            <Mail className="w-2.5 h-2.5 shrink-0 mt-px" />
+                            {/* The address is shown in full — it wraps instead
+                                of being cut. */}
+                            <span className="break-all">{c.email}</span>
                           </>
                         ) : c.phone ? (
                           <>
-                            <Phone className="w-2.5 h-2.5 shrink-0" />
+                            <Phone className="w-2.5 h-2.5 shrink-0 mt-px" />
                             <span className="truncate">{c.phone}</span>
                           </>
                         ) : null}

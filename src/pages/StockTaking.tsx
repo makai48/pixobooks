@@ -14,6 +14,7 @@ import {
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { cn, download, formatCurrency, formatDate, formatMoney, localISODate, todayISO } from "@/lib/utils";
+import { formatMonthByPreference } from "@/lib/dateFormat";
 import {
   buildWorksheetRows,
   parseCsv,
@@ -374,8 +375,8 @@ export default function StockTaking() {
   const currency = settings?.currency || "USD";
   const periodLabel =
     rangeMode === "custom"
-      ? `${customFrom} \u2192 ${customTo}`
-      : `${MONTH_NAMES[month]} ${year}`;
+      ? `${formatDate(customFrom)} \u2192 ${formatDate(customTo)}`
+      : formatMonthByPreference(new Date(year, month, 1));
 
   const exportCsv = (kind: "summary" | "adjustments") => {
     if (kind === "summary") {

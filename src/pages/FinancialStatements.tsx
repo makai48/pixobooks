@@ -40,6 +40,7 @@ import {
 import { useClientReceivablesTotals } from "@/hooks/useClients";
 import { cn, formatCurrency, formatDate, formatDateTime, formatMoney, todayISO, localISODate } from "@/lib/utils";
 import GlassSelect from "@/components/ui/GlassSelect";
+import AmountInput from "@/components/ui/AmountInput";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import StatCard from "@/components/ui/StatCard";
 import MoneyText from "@/components/ui/MoneyText";
@@ -631,14 +632,14 @@ function BankDepositModal({ deposit, currency, actor, onClose }: {
           <div className="grid grid-cols-2 gap-2 md:gap-3">
             <div>
               <label htmlFor="fs-edit-deposit-amount" className="td-label">Amount ({currency})</label>
-              <input
+              <AmountInput
                 id="fs-edit-deposit-amount"
-                type="number"
                 min={0}
                 step="0.01"
                 value={amount || ""}
-                onChange={(e) => setAmount(Number(e.target.value) || 0)}
+                onChange={(v) => setAmount(v || 0)}
                 className="input input-sm mt-1 num text-right"
+                ariaLabel="Deposit amount"
               />
             </div>
             <div>
@@ -1096,16 +1097,16 @@ function DailyBalancingModal({ onClose, currency, actor }: {
               <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-1.5 md:gap-3">
                 <div>
                   <label htmlFor="fs-deposit-amount" className="td-label">Amount ({currency})</label>
-                  <input
+                  <AmountInput
                     id="fs-deposit-amount"
-                    type="number"
                     min={0}
                     max={Math.max(0, currentTillCash)}
                     step="0.01"
                     value={depositAmount || ""}
-                    onChange={(e) => setDepositAmount(Number(e.target.value) || 0)}
+                    onChange={(v) => setDepositAmount(v || 0)}
                     placeholder="0"
                     className="input input-sm mt-0.5 num text-right"
+                    ariaLabel="Deposit amount"
                   />
                 </div>
                 <div>
@@ -1167,15 +1168,15 @@ function DailyBalancingModal({ onClose, currency, actor }: {
               <div className="grid grid-cols-2 gap-1.5 md:gap-3">
                 <div>
                   <label htmlFor="fs-physical-count" className="td-label">Physical count in till ({currency})</label>
-                  <input
+                  <AmountInput
                     id="fs-physical-count"
-                    type="number"
                     min={0}
                     step="0.01"
                     value={physicalCashCount}
-                    onChange={(e) => setPhysicalCashCount(e.target.value)}
+                    onChange={(v) => setPhysicalCashCount(v === 0 ? "" : String(v))}
                     placeholder="Leave blank to skip"
                     className="input input-sm mt-0.5 num text-right"
+                    ariaLabel="Physical cash count in till"
                   />
                 </div>
                 <div>
@@ -1324,7 +1325,7 @@ function StandingOrderModal({ order, currency, onClose, createdBy }: {
             </div>
             <div>
               <label htmlFor="fs-order-amount" className="td-label">Amount ({currency})</label>
-              <input id="fs-order-amount" type="number" min={0} step="0.01" required value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} className="input input-sm mt-1 num text-right" />
+              <AmountInput id="fs-order-amount" min={0} step="0.01" required value={form.amount} onChange={(v) => setForm({ ...form, amount: v })} className="input input-sm mt-1 num text-right" ariaLabel="Recurring order amount" />
             </div>
             <div>
               <label htmlFor="fs-order-frequency" className="td-label">Frequency</label>
@@ -1360,8 +1361,8 @@ function StandingOrderModal({ order, currency, onClose, createdBy }: {
           </div>
           {form.kind === "loan" && (
             <div className="grid grid-cols-2 gap-3 border-t pt-3">
-              <div><label htmlFor="fs-loan-principal" className="td-label">Loan principal</label><input id="fs-loan-principal" type="number" min={0} step="0.01" value={form.loanPrincipal} onChange={(e) => setForm({ ...form, loanPrincipal: Number(e.target.value) })} className="input input-sm mt-1 num text-right" /></div>
-              <div><label htmlFor="fs-loan-balance" className="td-label">Current balance</label><input id="fs-loan-balance" type="number" min={0} step="0.01" value={form.loanBalance} onChange={(e) => setForm({ ...form, loanBalance: Number(e.target.value) })} className="input input-sm mt-1 num text-right" /></div>
+              <div><label htmlFor="fs-loan-principal" className="td-label">Loan principal</label><AmountInput id="fs-loan-principal" min={0} step="0.01" value={form.loanPrincipal} onChange={(v) => setForm({ ...form, loanPrincipal: v })} className="input input-sm mt-1 num text-right" ariaLabel="Loan principal" /></div>
+              <div><label htmlFor="fs-loan-balance" className="td-label">Current balance</label><AmountInput id="fs-loan-balance" min={0} step="0.01" value={form.loanBalance} onChange={(v) => setForm({ ...form, loanBalance: v })} className="input input-sm mt-1 num text-right" ariaLabel="Current loan balance" /></div>
               <div><label htmlFor="fs-loan-rate" className="td-label">Interest rate (% APR)</label><input id="fs-loan-rate" type="number" min={0} step="0.01" value={form.loanRate} onChange={(e) => setForm({ ...form, loanRate: Number(e.target.value) })} className="input input-sm mt-1 num text-right" /></div>
               <div><label htmlFor="fs-loan-term" className="td-label">Term (months)</label><input id="fs-loan-term" type="number" min={0} step="1" value={form.loanTermMonths} onChange={(e) => setForm({ ...form, loanTermMonths: Number(e.target.value) })} className="input input-sm mt-1 num text-right" /></div>
             </div>

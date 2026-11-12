@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { processImageFile } from "@/lib/imageUpload";
 import PhoneInput from "@/components/common/PhoneInput";
 import GlassSelect from "@/components/ui/GlassSelect";
+import AmountInput from "@/components/ui/AmountInput";
 import AuthModal from "@/components/auth/AuthModal";
 import AuthField from "@/components/auth/AuthField";
 import "@/styles/sheet.css";
@@ -402,16 +403,14 @@ export default function SupplierModal({
                       <label className="reg-label" htmlFor={`sup-price-${i}`}>
                         Unit price
                       </label>
-                      <input
+                      <AmountInput
                         id={`sup-price-${i}`}
-                        type="number"
                         step="0.01"
                         min={0}
                         value={line.unitPrice}
-                        onChange={(e) =>
-                          updateLine(i, { unitPrice: Number(e.target.value) })
-                        }
+                        onChange={(v) => updateLine(i, { unitPrice: v })}
                         className="input num text-right"
+                        ariaLabel={`Unit price for line ${i + 1}`}
                       />
                     </div>
                     <div className="is-remove">

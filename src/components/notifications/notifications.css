@@ -1,0 +1,818 @@
+/* ==========================================================================
+   NOTIFICATIONS — scoped under `.nt`
+   --------------------------------------------------------------------------
+   One bell in the top bar, one inbox, one delivery-gate screen. Every
+   surface, ink and status colour comes from the active skin's semantic
+   tokens so Papier / Tidal / Grove / Ember / Nocturne all work in light and
+   dark without a second stylesheet.
+
+   Responsive contract: mobile (<768) turns the popover into a bottom sheet,
+   tablet (768–1023) and laptop (1024–1279) keep a floating panel that
+   widens with the screen, desktop (>=1280) adds the two-column gate table.
+   ========================================================================== */
+
+.nt {
+  --nt-hair: hsl(var(--line) / 0.5);
+  --nt-hair-soft: hsl(var(--line) / 0.32);
+  --nt-tint: hsl(var(--ink) / 0.04);
+  --nt-tint-strong: hsl(var(--ink) / 0.07);
+  --nt-accent: hsl(var(--brand));
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Bell                                                                       */
+/* -------------------------------------------------------------------------- */
+
+.nt-bell {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: hsl(var(--ink-soft));
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.nt-bell:hover {
+  background: var(--nt-tint);
+  color: hsl(var(--ink));
+}
+
+/* An unread bell carries the alert; the counter itself stays on the ink
+   surface so it keeps its contrast in every skin and both modes. */
+.nt-bell.has-unread {
+  color: hsl(var(--danger));
+}
+
+.nt-bell:focus-visible {
+  outline: 2px solid var(--nt-accent);
+  outline-offset: 2px;
+}
+
+.nt-bell svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nt-badge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: hsl(var(--ink));
+  color: hsl(var(--card));
+  border: 2px solid hsl(var(--card));
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Popover / sheet                                                            */
+/* -------------------------------------------------------------------------- */
+
+.nt-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: 340px;
+  max-height: min(70dvh, 560px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: hsl(var(--card));
+  border: 1px solid var(--nt-hair);
+  border-radius: 14px;
+  box-shadow: 0 1px 0 hsl(0 0% 0% / 0.04), 0 24px 48px -24px hsl(0 0% 0% / 0.45);
+  animation: nt-pop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes nt-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nt-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: hsl(0 0% 0% / 0.35);
+  animation: nt-fade 0.16s ease;
+}
+
+@keyframes nt-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.nt-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 12px 10px 14px;
+  border-bottom: 1px solid var(--nt-hair-soft);
+}
+
+.nt-popover-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: hsl(var(--ink));
+}
+
+.nt-popover-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--ink-mute));
+}
+
+.nt-popover-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.nt-popover-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--nt-hair-soft);
+  background: hsl(var(--ink) / 0.03);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rows                                                                       */
+/* -------------------------------------------------------------------------- */
+
+.nt-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px 10px 14px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--nt-hair-soft);
+  cursor: pointer;
+  transition: background-color 0.14s ease;
+}
+
+.nt-row:hover {
+  background: var(--nt-tint);
+}
+
+.nt-row:focus-visible {
+  outline: 2px solid var(--nt-accent);
+  outline-offset: -2px;
+}
+
+.nt-row.is-unread {
+  background: hsl(var(--brand) / 0.06);
+}
+
+.nt-row.is-unread::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--nt-accent);
+}
+
+.nt-glyph {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+}
+
+.nt-glyph svg {
+  width: 15px;
+  height: 15px;
+}
+
+.nt-glyph.is-info {
+  background: hsl(var(--brand) / 0.16);
+  border-color: hsl(var(--brand) / 0.38);
+  color: hsl(var(--ink));
+}
+
+.nt-glyph.is-success {
+  background: hsl(var(--success) / 0.16);
+  border-color: hsl(var(--success) / 0.36);
+  color: hsl(var(--ink));
+}
+
+.nt-glyph.is-warning {
+  background: hsl(var(--warning) / 0.2);
+  border-color: hsl(var(--warning) / 0.4);
+  color: hsl(var(--ink));
+}
+
+.nt-glyph.is-critical {
+  background: hsl(var(--danger) / 0.16);
+  border-color: hsl(var(--danger) / 0.38);
+  color: hsl(var(--ink));
+}
+
+.nt-row-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nt-row-title {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: hsl(var(--ink));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nt-row.is-read .nt-row-title {
+  font-weight: 550;
+}
+
+.nt-row-body {
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nt-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: hsl(var(--ink-mute));
+}
+
+.nt-row-tag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--nt-hair);
+  background: var(--nt-tint);
+  white-space: nowrap;
+}
+
+.nt-empty {
+  padding: 26px 18px;
+  text-align: center;
+}
+
+.nt-empty-glyph {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: hsl(var(--brand) / 0.14);
+  border: 1px solid hsl(var(--brand) / 0.34);
+  color: hsl(var(--ink));
+}
+
+.nt-empty-glyph svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nt-empty-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: hsl(var(--ink));
+}
+
+.nt-empty-text {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Full page                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.nt-page {
+  min-height: 100%;
+  padding: 18px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nt-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nt-page-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: hsl(var(--ink));
+}
+
+.nt-page-sub {
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+  max-width: 70ch;
+}
+
+.nt-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.nt-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.nt-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--nt-hair);
+  background: transparent;
+  color: hsl(var(--ink-mute));
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.nt-tab:hover {
+  color: hsl(var(--ink));
+  background: var(--nt-tint);
+}
+
+.nt-tab.is-active {
+  background: hsl(var(--brand));
+  border-color: hsl(var(--brand));
+  color: hsl(var(--brand-foreground));
+}
+
+/* The counter on the active tab sits on the brand fill, which is bright in
+   every skin — it gets its own card-filled chip so the number never relies
+   on the brand/foreground pairing for its contrast. */
+.nt-tab.is-active .num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: hsl(var(--card));
+  color: hsl(var(--ink));
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nt-tab:focus-visible {
+  outline: 2px solid var(--nt-accent);
+  outline-offset: 2px;
+}
+
+.nt-panel {
+  border: 1px solid var(--nt-hair);
+  border-radius: 14px;
+  background: hsl(var(--card));
+  overflow: hidden;
+}
+
+.nt-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--nt-hair-soft);
+}
+
+.nt-panel-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: hsl(var(--ink));
+}
+
+.nt-panel-sub {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+  max-width: 68ch;
+}
+
+.nt-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nt-chip {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--nt-hair);
+  background: transparent;
+  color: hsl(var(--ink-mute));
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.nt-chip:hover {
+  color: hsl(var(--ink));
+  background: var(--nt-tint);
+}
+
+.nt-chip.is-active {
+  background: hsl(var(--ink));
+  border-color: hsl(var(--ink));
+  color: hsl(var(--card));
+}
+
+.nt-chip:focus-visible {
+  outline: 2px solid var(--nt-accent);
+  outline-offset: 2px;
+}
+
+/* Gate table ---------------------------------------------------------------- */
+
+.nt-gate {
+  display: flex;
+  flex-direction: column;
+}
+
+.nt-gate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--nt-hair-soft);
+}
+
+.nt-gate-row:last-child {
+  border-bottom: 0;
+}
+
+.nt-gate-lead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.nt-gate-title {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: hsl(var(--ink));
+}
+
+.nt-gate-desc {
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+}
+
+.nt-gate-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nt-select,
+.nt-input {
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--nt-hair);
+  background: hsl(var(--card));
+  color: hsl(var(--ink));
+  padding: 0 9px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.nt-select:focus,
+.nt-input:focus {
+  border-color: hsl(var(--ink-mute));
+  box-shadow: 0 0 0 3px hsl(var(--brand) / 0.3);
+}
+
+.nt-select {
+  padding-right: 26px;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 14px) 14px, calc(100% - 9px) 14px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  color: hsl(var(--ink-soft));
+  cursor: pointer;
+}
+
+/* Switch -------------------------------------------------------------------- */
+
+.nt-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.nt-switch-track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: hsl(var(--ink) / 0.14);
+  border: 1px solid var(--nt-hair);
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.nt-switch-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: hsl(var(--card));
+  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.25);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nt-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.nt-switch input:checked + .nt-switch-track {
+  background: hsl(var(--brand));
+  border-color: hsl(var(--brand));
+}
+
+.nt-switch input:checked + .nt-switch-track .nt-switch-thumb {
+  transform: translateX(16px);
+}
+
+.nt-switch input:focus-visible + .nt-switch-track {
+  outline: 2px solid var(--nt-accent);
+  outline-offset: 2px;
+}
+
+.nt-switch-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--ink-soft));
+}
+
+/* Recipients preview -------------------------------------------------------- */
+
+.nt-recipients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.nt-recipient {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px 2px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--nt-hair);
+  background: var(--nt-tint);
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--ink-soft));
+}
+
+.nt-recipient-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: hsl(var(--brand) / 0.24);
+  color: hsl(var(--ink));
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.nt-note {
+  display: flex;
+  gap: 9px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--brand) / 0.3);
+  background: hsl(var(--brand) / 0.09);
+  font-size: 12px;
+  line-height: 1.45;
+  color: hsl(var(--ink-soft));
+}
+
+.nt-note svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: hsl(var(--ink));
+}
+
+/* --------------------------------------------------------------------------
+   Mobile (<768): the popover becomes a bottom sheet.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  .nt-popover {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 82dvh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    animation: nt-sheet 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .nt-popover::before {
+    content: "";
+    display: block;
+    width: 38px;
+    height: 4px;
+    margin: 8px auto 2px;
+    border-radius: 999px;
+    background: hsl(var(--ink) / 0.18);
+  }
+
+  @keyframes nt-sheet {
+    from {
+      transform: translateY(18px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .nt-page {
+    padding: 14px 12px 32px;
+  }
+
+  .nt-panel {
+    border-radius: 12px;
+  }
+
+  .nt-row {
+    padding: 11px 12px 11px 14px;
+  }
+
+  /* Touch widths get taller controls so a thumb never misses a filter. */
+  .nt-chip {
+    height: 34px;
+    padding: 0 14px;
+  }
+
+  .nt-tab {
+    height: 36px;
+  }
+
+  .nt-switch {
+    min-height: 32px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tablet (768–1023) and laptop (1024–1279): a wider floating panel.
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 768px) {
+  .nt-popover {
+    width: 360px;
+  }
+
+  .nt-page {
+    padding: 20px 20px 44px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .nt-popover {
+    width: 380px;
+  }
+
+  .nt-page {
+    padding: 24px 28px 48px;
+  }
+
+  .nt-gate-row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Desktop (>=1280): the gate table gains a third column.
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 1280px) {
+  .nt-popover {
+    width: 400px;
+  }
+
+  .nt-page {
+    padding: 26px 36px 56px;
+  }
+
+  .nt-gate-row {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt *,
+  .nt *::before,
+  .nt *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -7,7 +7,11 @@ import type {
   TxnAllowancePeriod,
 } from "@/types";
 import { currentBusinessId, withBusiness } from "@/lib/tenant";
-import { formatDateByPreference, getActiveDateFormat } from "@/lib/dateFormat";
+import {
+  formatDateByPreference,
+  formatMonthByPreference,
+  getActiveDateFormat,
+} from "@/lib/dateFormat";
 
 /**
  * Automatically create staff-allowance expense entries when attendance
@@ -124,6 +128,7 @@ export function txnPeriodInfo(
   const ref = refISO || new Date().toISOString().slice(0, 10);
   const [y, m, d] = ref.split("-").map(Number);
   const base = new Date(y || 1970, (m || 1) - 1, d || 1);
+  const dateFormat = getActiveDateFormat();
   if (period === "weekly") {
     const monday = new Date(base);
     monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
@@ -131,10 +136,7 @@ export function txnPeriodInfo(
     next.setDate(monday.getDate() + 7);
     return {
       key: `W:${isoDay(monday)}`,
-      label: `Week of ${monday.toLocaleDateString(undefined, {
-        day: "numeric",
-        month: "short",
-      })}`,
+      label: `Week of ${formatDateByPreference(monday, dateFormat, true)}`,
       startISO: isoDay(monday),
       endISO: isoDay(next),
     };
@@ -147,10 +149,7 @@ export function txnPeriodInfo(
     const next = new Date(base.getFullYear(), base.getMonth() + 1, 1);
     return {
       key: `M:${s.slice(0, 7)}`,
-      label: base.toLocaleDateString(undefined, {
-        month: "long",
-        year: "numeric",
-      }),
+      label: formatMonthByPreference(base, dateFormat),
       startISO: s,
       endISO: isoDay(next),
     };
@@ -159,7 +158,7 @@ export function txnPeriodInfo(
   next.setDate(base.getDate() + 1);
   return {
     key: `D:${ref}`,
-    label: formatDateByPreference(base, getActiveDateFormat()),
+    label: formatDateByPreference(base, dateFormat),
     startISO: ref,
     endISO: isoDay(next),
   };

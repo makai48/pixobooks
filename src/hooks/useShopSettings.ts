@@ -4,7 +4,6 @@ import { mapSettings } from "@/lib/mappers";
 import { toError } from "@/lib/utils";
 import type { Settings } from "@/types";
 import { getActiveBusinessId, useActiveBusiness } from "@/hooks/useBusinesses";
-import { withBusiness } from "@/lib/tenant";
 
 export function useShopSettings(options: { enabled?: boolean } = {}) {
   const active = useActiveBusiness();
@@ -34,6 +33,15 @@ export function useShopSettings(options: { enabled?: boolean } = {}) {
               .single();
         const { data: inserted, error: insertErr } = insertRes;
         if (insertErr || !inserted) {
+          // A non-admin (or a legacy row the policies hide) cannot create the
+          // row. Reading settings must still work, so fall back to defaults
+          // instead of taking down every page that prefetches this query.
+          if ((insertErr as { code?: string } | null)?.code === "42501") {
+            console.warn(
+              "shop_settings bootstrap blocked by row-level security — using defaults"
+            );
+            return mapSettings({ id: businessId ?? "main" });
+          }
           console.error("shop_settings bootstrap failed", insertErr);
           throw toError(insertErr, "Failed to initialize settings");
         }
@@ -87,49 +95,104 @@ export function useUpdateShopSettings() {
       if (patch.pendingTxnAllowances !== undefined)
         payload.pending_txn_allowances = patch.pendingTxnAllowances;
 
-      const row = await settingsRow(payload);
-      let { error } = await supabase
-        .from("shop_settings")
-        .upsert(row, { onConflict: "id" });
+      const businessId = getActiveBusinessId();
+      const existing = await findSettingsRow(businessId);
 
-      // Older deployments may not have run the week_start/date_format
-      // migrations yet. Never block an unrelated settings save because of
-      // one new column; retry without the missing field(s).
-      if (error && /week_start|date_format/i.test(error.message)) {
-        if (import.meta.env.DEV) {
-          console.warn(
-            "[settings] newer settings column missing — apply the pending shop settings migration"
+      // Update the row we already read instead of upserting. An upsert also
+      // runs the INSERT policy's WITH CHECK against the proposed row, so a
+      // legacy `main` row (or a row whose business_id comes from an older
+      // workspace) can raise 42501 even though the UPDATE itself is allowed.
+      if (existing) {
+        const result = await writeSettingsRow(payload, existing.id);
+        if (result.error) {
+          console.error("shop_settings save failed", result.error);
+          throw saveError(result.error);
+        }
+        if (!result.data || result.data.length === 0) {
+          throw new Error(
+            "Settings were not saved — your role can read this workspace but cannot change it. Ask an owner, manager or admin to update your access."
           );
         }
-        const fallback = { ...row } as Record<string, unknown>;
-        if (/week_start/i.test(error.message)) delete fallback.week_start;
-        if (/date_format/i.test(error.message)) delete fallback.date_format;
-        ({ error } = await supabase
-          .from("shop_settings")
-          .upsert(fallback, { onConflict: "id" }));
+        return;
       }
 
-      if (error) {
-        console.error("shop_settings save failed", error);
-        throw toError(error, "Save failed");
+      // No row yet: create it with an explicit tenant so the INSERT policy can
+      // evaluate `business_id` (never rely on the column default, which picks
+      // the caller's oldest membership and can point at another workspace).
+      const id = businessId ?? "main";
+      const insertRow: Record<string, unknown> = { ...payload, id };
+      if (businessId) insertRow.business_id = businessId;
+
+      let result = await writeSettingsRow(insertRow);
+      // A concurrent bootstrap can create the row between the read and insert.
+      if (result.error?.code === "23505") {
+        result = await writeSettingsRow(payload, id);
+      }
+      if (result.error) {
+        console.error("shop_settings save failed", result.error);
+        throw saveError(result.error);
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["shop_settings"] }),
   });
 }
 
+type SettingsRowRef = { id: string; business_id: string | null };
+type SaveError = { message: string; code?: string };
+type WriteResult = { data: SettingsRowRef[] | null; error: SaveError | null };
+
+/** Locate the settings row the same way the read hook does. */
+async function findSettingsRow(
+  businessId: string | null
+): Promise<SettingsRowRef | null> {
+  let q = supabase.from("shop_settings").select("id, business_id");
+  q = businessId ? q.eq("business_id", businessId) : q.eq("id", "main");
+  const { data, error } = await q.maybeSingle();
+  if (error) throw toError(error, "Failed to locate settings");
+  return data ? { id: String(data.id), business_id: data.business_id ?? null } : null;
+}
+
 /**
- * Resolve the settings row for the active business. The original shop keeps
- * `id = 'main'`; each additional business gets a row keyed by its uuid.
+ * Update by row id, or insert when `rowId` is omitted. Retries once without a
+ * newly-added column when the deployment has not run that migration yet, so an
+ * unrelated settings save is never blocked by one missing column.
  */
-async function settingsRow(payload: Record<string, unknown>) {
-  const businessId = getActiveBusinessId();
-  if (!businessId) return { id: "main", ...payload };
-  const { data } = await supabase
-    .from("shop_settings")
-    .select("id")
-    .eq("business_id", businessId)
-    .maybeSingle();
-  const id = data?.id || businessId;
-  return withBusiness({ id, ...payload });
+async function writeSettingsRow(
+  row: Record<string, unknown>,
+  rowId?: string
+): Promise<WriteResult> {
+  const run = async (candidate: Record<string, unknown>): Promise<WriteResult> => {
+    const query = rowId
+      ? supabase.from("shop_settings").update(candidate).eq("id", rowId).select("id, business_id")
+      : supabase.from("shop_settings").insert(candidate).select("id, business_id");
+    const { data, error } = await query;
+    return {
+      data: (data as SettingsRowRef[] | null) ?? null,
+      error: (error as SaveError | null) ?? null,
+    };
+  };
+
+  let result = await run(row);
+  if (result.error && /week_start|date_format/i.test(result.error.message)) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        "[settings] newer settings column missing — apply the pending shop settings migration"
+      );
+    }
+    const fallback = { ...row };
+    if (/week_start/i.test(result.error.message)) delete fallback.week_start;
+    if (/date_format/i.test(result.error.message)) delete fallback.date_format;
+    result = await run(fallback);
+  }
+  return result;
+}
+
+/** Turn a policy denial into an actionable message instead of raw PostgREST. */
+function saveError(error: SaveError): Error {
+  if (error.code === "42501") {
+    return new Error(
+      "Your role can view this workspace but cannot save its settings. Ask an owner or admin to grant your team role Owner, Manager or Admin, then save again."
+    );
+  }
+  return toError(error, "Save failed");
 }

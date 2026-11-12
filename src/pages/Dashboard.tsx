@@ -74,6 +74,7 @@ import ReceiptActions from "@/components/features/receipts/ReceiptActions";
 import SaleCompletion from "@/components/features/receipts/SaleCompletion";
 import CustomerCombobox from "@/components/features/customers/CustomerCombobox";
 import GlassSelect from "@/components/ui/GlassSelect";
+import AmountInput from "@/components/ui/AmountInput";
 import MoneyText from "@/components/ui/MoneyText";
 import CustomerModal from "@/components/features/customers/CustomerModal";
 import OnboardingChecklist from "@/components/onboarding/OnboardingChecklist";
@@ -1407,7 +1408,7 @@ function PartialPaymentModal({ total, currency, onClose, onConfirm, pending }: {
           </div>
           <div>
             <label htmlFor="partial-cash-input" className="label text-[9px] md:text-xs">Cash paid now</label>
-            <input id="partial-cash-input" autoFocus type="number" min={0} max={total} step={1} value={amount} onChange={(e) => setAmount(Math.max(0, Math.min(total, Number(e.target.value))))} className="input mt-1 num text-right" />
+            <AmountInput id="partial-cash-input" autoFocus min={0} max={total} step={1} value={amount} onChange={(v) => setAmount(Math.max(0, Math.min(total, v)))} className="input mt-1 num text-right" ariaLabel="Cash paid now" />
           </div>
           <div className="flex items-baseline justify-between border-t pt-3">
             <span className="label text-[9px] md:text-xs">Remaining as credit</span>

@@ -58,6 +58,7 @@ import OfficerCombobox from "@/components/features/clientbilling/OfficerCombobox
 
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassSelect from "@/components/ui/GlassSelect";
+import AmountInput from "@/components/ui/AmountInput";
 import GlassMonthPicker from "@/components/ui/GlassMonthPicker";
 import MoneyText from "@/components/ui/MoneyText";
 import {
@@ -68,6 +69,7 @@ import {
   localISODate,
   download,
 } from "@/lib/utils";
+import { formatMonthByPreference } from "@/lib/dateFormat";
 import type {
   ClientAccount,
   ClientService,
@@ -1321,10 +1323,7 @@ function PeriodsTab({
             const dbRow = periods.find(
               (p) => p.clientId === r.clientId && p.periodStart === `${r.period}-01`
             );
-            const label = new Date(r.period + "-01T12:00:00").toLocaleDateString(undefined, {
-              month: "long",
-              year: "numeric",
-            });
+            const label = formatMonthByPreference(r.period);
             const client = clients.find((c) => c.id === r.clientId);
             const canBill = r.unbilledCount > 0 && r.validatedCount > 0 && !dbRow?.invoiceId;
             return (
@@ -2409,14 +2408,14 @@ function ServicesModal({
               </div>
               <div>
                 <label htmlFor="cb-service-price" className="label">Price</label>
-                <input
+                <AmountInput
                   id="cb-service-price"
-                  type="number"
                   min={0}
                   value={price || ""}
-                  onChange={(e) => setPrice(Number(e.target.value) || 0)}
+                  onChange={(v) => setPrice(v || 0)}
                   className="input mt-1 num text-right"
                   placeholder="0"
+                  ariaLabel="Service price"
                 />
               </div>
               <button onClick={add} className="btn btn-primary h-9">
@@ -2472,14 +2471,14 @@ function ServiceRow({
         <div className="text-sm font-semibold truncate">{service.name}</div>
         <div className="text-[10px] text-ink-mute">Unit: {service.unit}</div>
       </div>
-      <input
-        type="number"
+      <AmountInput
         min={0}
         value={price || ""}
-        onChange={(e) => setPrice(Number(e.target.value) || 0)}
+        onChange={(v) => setPrice(v || 0)}
         onBlur={save}
         className="input h-8 w-24 num text-right"
         placeholder="0"
+        ariaLabel={`Price for ${service.name}`}
       />
       <span className="text-[10px] text-ink-mute w-12">{currency}</span>
       <button
@@ -2798,29 +2797,29 @@ function WorkEntryModal({
             </div>
             <div>
               <label htmlFor="cb-work-price" className="label">Unit price *</label>
-              <input
+              <AmountInput
                 id="cb-work-price"
-                type="number"
                 required
                 min={0}
                 step="0.01"
                 value={form.unitPrice || ""}
-                onChange={(e) => setForm({ ...form, unitPrice: Number(e.target.value) || 0 })}
+                onChange={(v) => setForm({ ...form, unitPrice: v || 0 })}
                 className="input mt-1 num text-right"
                 placeholder="0"
+                ariaLabel="Unit price"
               />
             </div>
             <div>
               <label htmlFor="cb-work-discount" className="label">Discount</label>
-              <input
+              <AmountInput
                 id="cb-work-discount"
-                type="number"
                 min={0}
                 step="0.01"
                 value={form.discount || ""}
-                onChange={(e) => setForm({ ...form, discount: Number(e.target.value) || 0 })}
+                onChange={(v) => setForm({ ...form, discount: v || 0 })}
                 className="input mt-1 num text-right"
                 placeholder="0"
+                ariaLabel="Discount"
               />
             </div>
             <div className="col-span-2">
@@ -2883,12 +2882,7 @@ function GenerateMonthlyNowModal({
   const generate = useGenerateMonthlyInvoicesNow();
   const [result, setResult] = useState<GenerateMonthlyInvoicesNowResult | null>(null);
 
-  const label = period
-    ? new Date(period + "-01T12:00:00").toLocaleDateString(undefined, {
-        month: "long",
-        year: "numeric",
-      })
-    : "";
+  const label = period ? formatMonthByPreference(period) : "";
 
   const submit = async () => {
     if (!/^\d{4}-\d{2}$/.test(period)) {
@@ -3047,10 +3041,7 @@ function GenerateInvoiceModal({
   const generate = useGenerateMonthlyInvoice();
   const validate = useValidateClientWorkEntry();
   const total = validated.reduce((s, e) => s + e.amount, 0);
-  const label = new Date(period + "-01T12:00:00").toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-  });
+  const label = formatMonthByPreference(period);
   const [dueDate, setDueDate] = useState<string>("");
   const [otherCharges, setOtherCharges] = useState(0);
   const [notes, setNotes] = useState("");
@@ -3133,15 +3124,15 @@ function GenerateInvoiceModal({
             </div>
             <div>
               <label htmlFor="cb-gen-charges" className="label">Other charges</label>
-              <input
+              <AmountInput
                 id="cb-gen-charges"
-                type="number"
                 min={0}
                 step="0.01"
                 value={otherCharges || ""}
-                onChange={(e) => setOtherCharges(Number(e.target.value) || 0)}
+                onChange={(v) => setOtherCharges(v || 0)}
                 className="input mt-1 num text-right"
                 placeholder="0"
+                ariaLabel="Other charges"
               />
             </div>
             <div className="col-span-2">
@@ -3333,7 +3324,7 @@ function InvoiceViewModal({
                 <div className="text-xs text-ink-mute">{client.phone}</div>
               )}
               {client.email && (
-                <div className="text-xs text-ink-mute">{client.email}</div>
+                <div className="text-xs text-ink-mute break-all">{client.email}</div>
               )}
               {client.tin && (
                 <div className="text-xs text-ink-mute">TIN: {client.tin}</div>
@@ -3694,17 +3685,17 @@ function PaymentModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="cb-pay-amount" className="label">Amount *</label>
-              <input
+              <AmountInput
                 id="cb-pay-amount"
-                type="number"
                 required
                 min={0}
                 max={invoice.amountDue}
                 step="0.01"
                 value={amount || ""}
-                onChange={(e) => setAmount(Number(e.target.value) || 0)}
+                onChange={(v) => setAmount(v || 0)}
                 className="input mt-1 num text-right"
                 placeholder="0"
+                ariaLabel="Payment amount"
               />
             </div>
             <div>
@@ -3823,17 +3814,17 @@ function OutstandingInvoiceModal({
 
           <div>
             <label htmlFor="cb-out-amount" className="label">Amount to bill *</label>
-            <input
+            <AmountInput
               id="cb-out-amount"
-              type="number"
               required
               min={0}
               max={parent.amountDue}
               step="0.01"
               value={amount || ""}
-              onChange={(e) => setAmount(Number(e.target.value) || 0)}
+              onChange={(v) => setAmount(v || 0)}
               className="input mt-1 num text-right"
               placeholder="0"
+              ariaLabel="Amount to bill"
             />
             <div className="text-[10px] text-ink-mute mt-1">
               Original outstanding: {formatCurrency(parent.amountDue, currency)}

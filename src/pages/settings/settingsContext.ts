@@ -29,6 +29,8 @@ export type SettingsContextValue = {
   countryIso2: string;
   currencySymbol: string;
   moneyExample: string;
+  /** The SAVED expense categories (the pool the category manager edits). */
+  savedExpenseCategories: string[];
   uploading: boolean;
   handleLogoFile: (file: File) => Promise<void>;
   logoError: boolean;

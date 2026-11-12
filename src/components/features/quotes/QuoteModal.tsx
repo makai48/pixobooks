@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { computeTotals } from "@/lib/pos";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassSelect from "@/components/ui/GlassSelect";
+import AmountInput from "@/components/ui/AmountInput";
 import MoneyText from "@/components/ui/MoneyText";
 import type { Quote, QuoteStatus, SaleLine } from "@/types";
 
@@ -229,14 +230,13 @@ export default function QuoteModal({
                           className="input input-sm num w-14 shrink-0 text-right"
                           aria-label={`Quantity for ${l.name}`}
                         />
-                        <input
-                          type="number"
+                        <AmountInput
                           step="0.01"
                           min={0}
                           value={l.unitPrice}
-                          onChange={(e) => updateLine(idx, { unitPrice: Number(e.target.value) })}
+                          onChange={(v) => updateLine(idx, { unitPrice: v })}
                           className="input input-sm num flex-1 min-w-0 text-right"
-                          aria-label={`Unit price for ${l.name}`}
+                          ariaLabel={`Unit price for ${l.name}`}
                         />
                         <span
                           className="num w-16 shrink-0 truncate text-right text-[11px] font-semibold"

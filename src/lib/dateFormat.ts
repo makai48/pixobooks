@@ -40,7 +40,16 @@ export function formatDateByPreference(
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = String(date.getFullYear());
   const monthName = date.toLocaleDateString(undefined, { month: "short" });
-  return composeDateByPreference(day, month, year, monthName, dateFormat, compact);
+  const longMonthName = date.toLocaleDateString(undefined, { month: "long" });
+  return composeDateByPreference(
+    day,
+    month,
+    year,
+    monthName,
+    dateFormat,
+    compact,
+    longMonthName
+  );
 }
 
 /**
@@ -54,17 +63,54 @@ export function composeDateByPreference(
   year: string,
   monthName: string,
   dateFormat: DateFormat,
-  compact = false
+  compact = false,
+  longMonthName?: string
 ): string {
   if (dateFormat === "D MMM YYYY") {
     return `${compact ? Number(day) : day} ${monthName}${compact ? "" : ` ${year}`}`;
   }
-  if (dateFormat === "DD MMM YYYY" || dateFormat === "DD MMMM YYYY") {
+  if (dateFormat === "DD MMMM YYYY") {
+    return `${day} ${longMonthName ?? monthName} ${year}`;
+  }
+  if (dateFormat === "DD MMM YYYY") {
     return `${day} ${monthName} ${year}`;
   }
   if (dateFormat === "MM/DD/YYYY") return `${monthNumber}/${day}/${year}`;
   if (dateFormat === "YYYY-MM-DD") return `${year}-${monthNumber}-${day}`;
   return `${day}/${monthNumber}/${year}`;
+}
+
+/**
+ * Month + year (for billing periods, salary months and report ranges) in the
+ * saved preset. Input may be a `YYYY-MM` key or any date value.
+ *
+ * The preset decides the shape, not just the separator: name formats read
+ * `Nov 2026` / `November 2026`, numeric formats read `11/2026`, and the ISO
+ * preset reads `2026-11`. That keeps a month label from being the one date
+ * surface that ignores the shop setting.
+ */
+export function formatMonthByPreference(
+  value: string | number | Date,
+  dateFormat: DateFormat = getActiveDateFormat()
+): string {
+  let date: Date;
+  if (typeof value === "string" && /^\d{4}-\d{2}$/.test(value)) {
+    const [y, m] = value.split("-").map(Number);
+    date = new Date(y, m - 1, 1);
+  } else {
+    date = new Date(value);
+  }
+  if (Number.isNaN(date.getTime())) return "—";
+  const monthNumber = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear());
+  const monthName = date.toLocaleDateString(undefined, { month: "short" });
+  const longMonthName = date.toLocaleDateString(undefined, { month: "long" });
+  if (dateFormat === "YYYY-MM-DD") return `${year}-${monthNumber}`;
+  if (dateFormat === "MM/DD/YYYY" || dateFormat === "DD/MM/YYYY") {
+    return `${monthNumber}/${year}`;
+  }
+  if (dateFormat === "DD MMMM YYYY") return `${longMonthName} ${year}`;
+  return `${monthName} ${year}`;
 }
 
 /** Date + time in the saved preset, e.g. `07/11/2026 · 14:30`. */

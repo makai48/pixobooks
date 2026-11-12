@@ -32,6 +32,7 @@ import type {
 } from "@/types";
 import { useActiveBusiness } from "@/hooks/useBusinesses";
 import { currentBusinessId, withBusiness } from "@/lib/tenant";
+import { formatMonthByPreference, getActiveDateFormat } from "@/lib/dateFormat";
 
 /** Shared query-key suffix + filter for client-billing reads. */
 function useClientTenant() {
@@ -517,8 +518,7 @@ function consolidateWork(entries: ClientWorkEntry[]): {
 }
 
 function periodLabelOf(periodStart: string): string {
-  const d = new Date(periodStart + "T12:00:00");
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  return formatMonthByPreference(periodStart, getActiveDateFormat());
 }
 
 function endOfPeriod(periodStart: string): string {

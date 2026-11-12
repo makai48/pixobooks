@@ -27,7 +27,16 @@ const formatLabel = (iso: string, dateFormat: DateFormat, compactMonth = false) 
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = String(date.getFullYear());
   const monthName = date.toLocaleDateString(undefined, { month: "short" });
-  return composeDateByPreference(day, month, year, monthName, dateFormat, compactMonth);
+  const longMonthName = date.toLocaleDateString(undefined, { month: "long" });
+  return composeDateByPreference(
+    day,
+    month,
+    year,
+    monthName,
+    dateFormat,
+    compactMonth,
+    longMonthName
+  );
 };
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];

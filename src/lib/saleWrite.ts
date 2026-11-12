@@ -145,6 +145,11 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
     return { ...l, unitFactor: f ? f.value : 1 };
   });
 
+  // ONE timestamp for the whole document. Calling the clock twice can land
+  // on either side of a millisecond and leave `created_at` and `updated_at`
+  // disagreeing — or the payment row stamped a moment after its sale.
+  const stamp = input.createdAt || new Date().toISOString();
+
   const salePayload = {
     number,
     business_id: input.businessId ?? currentBusinessId() ?? undefined,
@@ -152,8 +157,8 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
     // every column omitted from the payload with NULL — including columns
     // whose DEFAULT would otherwise apply. Stamp the transaction time here so
     // `created_at` is never null (and offline replay keeps the real sale time).
-    created_at: input.createdAt || new Date().toISOString(),
-    updated_at: input.createdAt || new Date().toISOString(),
+    created_at: stamp,
+    updated_at: stamp,
     cashier_id: cashierId,
     cashier_name: cashierName,
     customer_id: linkedCustomerId,
@@ -185,7 +190,7 @@ export function buildSaleWrite(input: CheckoutInput): BuiltSale {
           // field, so a missing id / timestamp would insert NULL instead of
           // letting the table defaults run.
           id: newUuid(),
-          created_at: input.createdAt || new Date().toISOString(),
+          created_at: stamp,
           business_id: input.businessId ?? currentBusinessId() ?? undefined,
           amount: paid,
           payment_method: paymentMethod === "partial" ? "cash" : paymentMethod,

@@ -228,6 +228,7 @@ export default function GlassSelect({
           className
         )}
          style={!fullWidth && !hasWidthClass && triggerFitWidth ? { width: triggerFitWidth } : undefined}
+        title={selectedLabel ?? selected?.label ?? undefined}
       >
         <span className={noTruncate ? "whitespace-nowrap" : "truncate"}>
           {selectedLabel ?? selected?.label ?? "—"}

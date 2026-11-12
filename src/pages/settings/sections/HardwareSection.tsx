@@ -147,7 +147,7 @@ export default function HardwareSection() {
                     </p>
                   </div>
                 </div>
-                <div className="grid-3">
+                <div className="grid-3 pair-mobile">
                   <SField label="Device alias" htmlFor="set-printer-alias">
                     <input
                       id="set-printer-alias"
@@ -181,6 +181,7 @@ export default function HardwareSection() {
                     label="Character codepage"
                     htmlFor="set-printer-codepage"
                     hint="Must match the printer firmware for accented text."
+                    className="pair-mobile-full"
                   >
                     <GlassSelect
                       id="set-printer-codepage"
@@ -543,9 +544,9 @@ export default function HardwareSection() {
                   />
                 </div>
 
-                <div className="grid-2" style={{ marginTop: 14 }}>
+                <div className="grid-2 pair-mobile" style={{ marginTop: 14 }}>
                   <SField
-                    label="Sale confirmation popup"
+                    label="Sale confirmation delay"
                     htmlFor="set-success-popup"
                     hint="How long the animated tick stays in front of the receipt."
                   >
@@ -558,7 +559,7 @@ export default function HardwareSection() {
                           printer: { ...form.printer, successPopupMs: Number(v) },
                         })
                       }
-                      ariaLabel="Sale confirmation popup duration"
+                      ariaLabel="Sale confirmation delay"
                       options={[
                         { value: "800", label: "0.8 seconds" },
                         { value: "1200", label: "1.2 seconds" },
@@ -572,7 +573,7 @@ export default function HardwareSection() {
                   <SField
                     label="Receipt preview"
                     htmlFor="set-receipt-preview"
-                    hint="How long the receipt stays on screen after the popup, or turn the preview off."
+                    hint="How long the receipt stays on screen after the delay, or turn the preview off."
                   >
                     <GlassSelect
                       id="set-receipt-preview"

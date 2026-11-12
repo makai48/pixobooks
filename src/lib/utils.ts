@@ -1,4 +1,3 @@
-import { NO_DECIMAL_CURRENCIES } from "@/types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
@@ -6,24 +5,27 @@ import {
   formatDateTimeByPreference,
   getActiveDateFormat,
 } from "./dateFormat";
+import {
+  formatMoneyWithFormat,
+  formatPlainNumber,
+  getActiveNumberFormat,
+} from "./numberFormat";
 
 /** Conditional classnames (clsx) with Tailwind conflict resolution (twMerge). */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Money in the shop's own format.
+ *
+ * The currency symbol and its placement still come from `Intl`, but the
+ * digits use the workspace's thousand separator, decimal mark, precision and
+ * digit grouping — the same values the Settings preview shows. A shop that
+ * chose "1.234,56" sees it everywhere, not only in the settings screen.
+ */
 export function formatCurrency(amount: number, currency = "USD", locale = "en-US") {
-  const decimals = NO_DECIMAL_CURRENCIES.includes(currency) ? 0 : 2;
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency,
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }).format(amount || 0);
-  } catch {
-    return `${currency} ${(amount || 0).toFixed(decimals)}`;
-  }
+  return formatMoneyWithFormat(amount, currency, locale);
 }
 
 /** Compact currency formatting — e.g. $1.2K, $3.4M, $2.1B — used in
@@ -68,17 +70,10 @@ export function formatMoney(amount: number, currency = "USD", locale = "en-US") 
 }
 
 /** Format a numeric amount without any currency prefix — used in the POS
- *  current-ticket table to keep the layout compact and unambiguous. */
-export function formatNumber(amount: number, currency = "USD", locale = "en-US") {
-  const decimals = NO_DECIMAL_CURRENCIES.includes(currency) ? 0 : 2;
-  try {
-    return new Intl.NumberFormat(locale, {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }).format(amount || 0);
-  } catch {
-    return (amount || 0).toFixed(decimals);
-  }
+ *  current-ticket table to keep the layout compact and unambiguous. The
+ *  digits follow the shop's saved number format. */
+export function formatNumber(amount: number, currency = "USD", _locale = "en-US") {
+  return formatPlainNumber(amount, getActiveNumberFormat(), currency);
 }
 
 /** Dates always follow the shop's saved preset (see `src/lib/dateFormat.ts`). */

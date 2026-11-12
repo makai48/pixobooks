@@ -8,7 +8,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import type { PrinterType, Settings, ThemePreset } from "@/types";
 import { THEME_PRESETS } from "@/types";
-import { COUNTRIES, currencyByCode, formatMoney } from "@/lib/referenceData";
+import { COUNTRIES, currencyByCode } from "@/lib/referenceData";
+import { formatMoneyWithFormat } from "@/lib/numberFormat";
 import { processImageFile } from "@/lib/imageUpload";
 import { cn, toErrorMessage } from "@/lib/utils";
 import { fitControlWidths, startFitControlWidths } from "@/lib/fitControlWidths";
@@ -21,7 +22,7 @@ import {
   RAW_PRINT_PORT,
   testPrinter,
 } from "@/lib/printing";
-import { PRINTER_OPTIONS, SECTIONS, hexId } from "./settings/constants";
+import { PRINTER_OPTIONS, SECTION_GROUPS, SECTIONS, hexId } from "./settings/constants";
 import {
   SettingsContext,
   type SettingsContextValue,
@@ -60,7 +61,9 @@ export default function SettingsPage() {
   const [netHost, setNetHost] = useState<string | null>(null);
   const [netPort, setNetPort] = useState<string | null>(null);
   const activeBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const navRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const barRef = useRef<HTMLElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
   const flightTo = useRef<string | null>(null);
   const flightTimer = useRef<number | null>(null);
   const noticeTimer = useRef<number | null>(null);
@@ -180,16 +183,44 @@ export default function SettingsPage() {
     };
   }, [visibleIds]);
 
-  // Keep the active pill visible in the horizontal nav without scrolling the page.
+  // Keep the active destination visible. The rail scrolls vertically on
+  // desktop and horizontally as a chip strip below 1024px, so the axis is
+  // chosen from the rendered overflow rather than from a breakpoint guess.
   useEffect(() => {
     const wrap = navRef.current;
     const btn = activeBtnRefs.current.get(activeSection);
     if (!wrap || !btn) return;
+    if (wrap.scrollHeight > wrap.clientHeight + 4) {
+      wrap.scrollTo({
+        top: btn.offsetTop - wrap.clientHeight / 2 + btn.clientHeight / 2,
+        behavior: "smooth",
+      });
+      return;
+    }
     wrap.scrollTo({
       left: btn.offsetLeft - wrap.clientWidth / 2 + btn.clientWidth / 2,
       behavior: "smooth",
     });
   }, [activeSection]);
+
+  // The bar and the rail are both sticky, so the rail needs the bar's real
+  // height (it changes when the title wraps on narrow screens).
+  useEffect(() => {
+    const bar = barRef.current;
+    const shell = shellRef.current;
+    if (!bar || !shell) return;
+    const apply = () => {
+      shell.style.setProperty("--folio-bar-h", `${bar.offsetHeight}px`);
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(bar);
+    window.addEventListener("resize", apply);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", apply);
+    };
+  }, [isLoading, anyAccess, visibleIds]);
 
   useEffect(() => {
     if (!justSaved) return;
@@ -210,37 +241,51 @@ export default function SettingsPage() {
 
   if (isLoading || !form) {
     return (
-      <div className="st">
+      <div className="st" ref={shellRef}>
         <div className="settings-window">
-          <div className="window-handle" />
-          <header className="settings-header">
-            <div className="header-top">
-              <div className="header-title-block" style={{ width: "45%" }}>
-                <div className="skeleton-line" style={{ width: "35%", height: 9 }} />
-                <div className="skeleton-line" style={{ width: "75%", height: 20, marginTop: 6 }} />
+          <header className="folio-bar" aria-hidden="true">
+            <div className="folio-id">
+              <span className="folio-mark skeleton-line is-square" />
+              <div className="folio-id-copy">
+                <div className="skeleton-line" style={{ width: 178, height: 22 }} />
+                <div className="skeleton-line" style={{ width: 124, height: 9, marginTop: 9 }} />
               </div>
-              <div className="skeleton-line" style={{ width: 110, height: 34 }} />
             </div>
-            <div className="section-nav-wrapper">
-              <div className="section-nav">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <div key={i} className="skeleton-line" style={{ width: 74, height: 30 }} />
+            <div className="folio-bar-actions">
+              <div className="skeleton-line" style={{ width: 112, height: 30 }} />
+              <div className="skeleton-line" style={{ width: 84, height: 34 }} />
+            </div>
+          </header>
+          <div className="folio-grid">
+            <div className="folio-rail">
+              <div className="folio-nav is-skeleton">
+                {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="skeleton-line" style={{ height: 34 }} />
                 ))}
               </div>
             </div>
-          </header>
-          <div className="settings-body">
-            {[0, 1, 2].map((i) => (
-              <section key={i} className="config-section">
-                <div className="skeleton-line" style={{ width: 190, marginBottom: 18 }} />
-                <div className="grid-2">
-                  <div className="skeleton-line tall" />
-                  <div className="skeleton-line tall" />
-                  <div className="skeleton-line tall" />
-                  <div className="skeleton-line tall" />
-                </div>
-              </section>
-            ))}
+            <div className="folio-pane">
+              {[0, 1, 2].map((i) => (
+                <section key={i} className="config-section">
+                  <div className="sec-head">
+                    <span className="sec-glyph skeleton-line is-square" />
+                    <div className="sec-head-copy">
+                      <div className="skeleton-line" style={{ width: 196, height: 15 }} />
+                      <div
+                        className="skeleton-line"
+                        style={{ width: "58%", height: 9, marginTop: 9 }}
+                      />
+                    </div>
+                  </div>
+                  <div className="sec-body grid-2">
+                    <div className="skeleton-line tall" />
+                    <div className="skeleton-line tall" />
+                    <div className="skeleton-line tall" />
+                    <div className="skeleton-line tall" />
+                  </div>
+                </section>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -262,17 +307,16 @@ export default function SettingsPage() {
 
   if (!anyAccess) {
     return (
-      <div className="st">
+      <div className="st" ref={shellRef}>
         <div className="settings-window">
-          <div className="window-handle" />
-          <div className="settings-body" style={{ justifyContent: "center" }}>
-            <div className="config-section no-access-card">
-              <ShieldCheck className="icon" />
-              <h2 className="no-access-title">No settings access</h2>
-              <p className="no-access-text">
-                Your role has no settings permissions. Ask the shop admin to grant access.
-              </p>
-            </div>
+          <div className="folio-empty">
+            <span className="folio-empty-glyph" aria-hidden="true">
+              <ShieldCheck strokeWidth={1.5} />
+            </span>
+            <h1 className="folio-empty-title">No settings access</h1>
+            <p className="folio-empty-text">
+              Your role has no settings permissions. Ask the shop admin to grant access.
+            </p>
           </div>
         </div>
       </div>
@@ -286,8 +330,9 @@ export default function SettingsPage() {
     if (f.thousandSeparator === f.decimalSeparator) e.separators = "Thousand and decimal separators must differ.";
     if (f.thousandSeparator.length > 1 || f.decimalSeparator.length > 1)
       e.separators = "Separators must be a single character (space allowed).";
-    if (f.invoice.nextNumber < 1 || !Number.isInteger(f.invoice.nextNumber))
-      e.nextNumber = "Next number must be a whole number of 1 or more.";
+    // The invoice sequence is no longer editable from Settings, so it is not
+    // validated here either — a stale stored value must never block a save
+    // the shop can no longer correct.
     if (f.discount.maxPct < 0 || f.discount.maxPct > 100) e.maxPct = "Max % must be 0–100.";
     if (f.discount.maxAmount < 0) e.maxAmount = "Max amount can't be negative.";
     return e;
@@ -380,12 +425,15 @@ export default function SettingsPage() {
   };
 
   const currencySymbol = currencyByCode(form.currency)?.symbol || form.currency;
-  const moneyExample = formatMoney(999999999.99, {
+  // The preview is produced by the very formatter the app uses, so what the
+  // shop sees here is exactly what the ledger, the POS ticket and every
+  // report will print once the settings are saved.
+  const moneyExample = formatMoneyWithFormat(999999999.99, form.currency, "en-US", {
     thousand: form.thousandSeparator,
     decimal: form.decimalSeparator,
     places: form.decimalPlaces,
     grouping: form.digitGrouping,
-    symbol: currencySymbol,
+    currency: form.currency,
   });
   const saveLabel = update.isPending
     ? "Saving..."
@@ -482,6 +530,7 @@ export default function SettingsPage() {
     countryIso2,
     currencySymbol,
     moneyExample,
+    savedExpenseCategories: settings?.expenseCategories ?? [],
     uploading,
     handleLogoFile,
     logoError,
@@ -510,113 +559,134 @@ export default function SettingsPage() {
     runTestPrint,
   };
 
+  const shopInitial = (form.shopName || "P").trim().charAt(0).toUpperCase();
+  const activeLabel =
+    visibleSections.find((section) => section.id === activeSection)?.label ?? "Profile";
+
   return (
     <SettingsContext.Provider value={settingsValue}>
-    <div className="st">
+    <div className="st" ref={shellRef}>
       <div className="settings-window">
-        <div className="window-handle" />
-
-        <header className="settings-header">
-          <div className="header-top">
-            <div className="header-title-block">
-              <div className="eyebrow-category">
-                <span>PIXOBOOKS</span>
-                <span>•</span>
-                <span>SETTINGS</span>
-              </div>
-              <h1 className="header-main-title">Store &amp; Ledger</h1>
-              <div className="header-badge-row">
-                <span className="badge-tag">
-                  <span className="badge-tag-dot" />
-                  {dirty ? "UNSAVED" : "ACTIVE"}
-                </span>
-              </div>
-            </div>
-            <div className="header-actions">
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                onClick={reset}
-                disabled={!dirty || update.isPending}
-                title="Reset changes"
-              >
-                <RefreshCw className="icon" />
-                Reset
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={save}
-                disabled={!dirty || update.isPending || uploading}
-                title={!dirty ? "No unsaved changes" : "Save all settings"}
-              >
-                <Save className="icon" />
-                <span>{saveLabel}</span>
-              </button>
+        <header className="folio-bar" ref={barRef}>
+          <div className="folio-id">
+            <span className="folio-mark" aria-hidden="true">
+              {shopInitial}
+            </span>
+            <div className="folio-id-copy">
+              <h1 className="folio-main-title">Store &amp; ledger</h1>
+              <p className="folio-meta">
+                <span className="folio-shop">{form.shopName || "Untitled shop"}</span>
+                <span className="folio-meta-dot" aria-hidden="true">·</span>
+                <span className="folio-here">{activeLabel}</span>
+              </p>
             </div>
           </div>
 
-          <div className="section-nav-wrapper" ref={navRef}>
-            <nav className="section-nav" aria-label="Settings sections">
-              {visibleSections.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  ref={(el) => {
-                    if (el) activeBtnRefs.current.set(s.id, el);
-                    else activeBtnRefs.current.delete(s.id);
-                  }}
-                  onClick={() => scrollTo(s.id)}
-                  aria-current={activeSection === s.id ? "true" : undefined}
-                  className={cn("nav-pill", activeSection === s.id && "active")}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </nav>
+          <div className="folio-bar-actions">
+            <span
+              className={cn(
+                "folio-state",
+                update.isPending ? "is-busy" : dirty ? "is-dirty" : "is-clean",
+              )}
+              role="status"
+              aria-live="polite"
+            >
+              <span className="folio-state-dot" aria-hidden="true" />
+              <span className="folio-state-text">
+                {update.isPending ? "Saving" : dirty ? "Unsaved" : "Saved"}
+              </span>
+            </span>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={reset}
+              disabled={!dirty || update.isPending}
+              title="Reset changes"
+            >
+              <RefreshCw className="icon" />
+              <span className="folio-btn-label">Reset</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={save}
+              disabled={!dirty || update.isPending || uploading}
+              title={!dirty ? "No unsaved changes" : "Save all settings"}
+            >
+              <Save className="icon" />
+              <span>{saveLabel}</span>
+            </button>
           </div>
         </header>
 
-        <div className="settings-body">
+        <div className="folio-grid">
+          <div className="folio-rail">
+            <nav className="folio-nav" ref={navRef} aria-label="Settings sections">
+              {SECTION_GROUPS.map((group) => {
+                const items = group.items.filter((s) => sectionPerm[s.id]);
+                if (items.length === 0) return null;
+                return (
+                  <div className="folio-group" key={group.name}>
+                    <div className="folio-group-label" aria-hidden="true">
+                      {group.name}
+                    </div>
+                    {items.map((s) => {
+                      const Glyph = s.icon;
+                      const active = activeSection === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          ref={(el) => {
+                            if (el) activeBtnRefs.current.set(s.id, el);
+                            else activeBtnRefs.current.delete(s.id);
+                          }}
+                          onClick={() => scrollTo(s.id)}
+                          aria-current={active ? "true" : undefined}
+                          className={cn("folio-nav-item", active && "is-active")}
+                          title={s.label}
+                        >
+                          <Glyph
+                            className="folio-nav-icon"
+                            strokeWidth={1.7}
+                            aria-hidden="true"
+                          />
+                          <span className="folio-nav-label">{s.label}</span>
+                          <span className="folio-nav-short">{s.short}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </nav>
+          </div>
 
-          <BusinessSection />
-          <MoneySection />
-          <CategoriesSection />
-          <DocsSection />
-          <HardwareSection />
-          <DiscountsSection />
-          <BranchesSection />
-          <ThemeSection />
-          <BillingPlanSection />
-          <ExportSection />
+          <div className="folio-pane">
+            <BusinessSection />
+            <MoneySection />
+            <CategoriesSection />
+            <DocsSection />
+            <HardwareSection />
+            <DiscountsSection />
+            <BranchesSection />
+            <ThemeSection />
+            <BillingPlanSection />
+            <ExportSection />
+          </div>
         </div>
 
-        <footer className="settings-footer">
-          <div className="footer-buttons">
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={reset}
-              disabled={!dirty || update.isPending}
-            >
-              Reset Defaults
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={save}
-              disabled={!dirty || update.isPending || uploading}
-            >
-              {update.isPending ? "Saving…" : "Save Settings"}
-            </button>
-          </div>
-          <div className="footer-status-clue">
+        <footer className="folio-foot">
+          <span className="folio-foot-state">
             <span
-              className="status-indicator-dot"
-              style={{ background: dirty ? "var(--warning)" : "var(--success)" }}
+              className={cn("folio-foot-dot", dirty ? "is-dirty" : "is-clean")}
+              aria-hidden="true"
             />
-            <span>{dirty ? "Unsaved changes — not yet synced" : "Synced with PixoBooks Cloud Ledger"}</span>
-          </div>
+            {dirty
+              ? "Unsaved changes — not yet synced"
+              : "Synced with PixoBooks Cloud Ledger"}
+          </span>
+          <span className="folio-foot-brand" aria-hidden="true">PixoBooks</span>
         </footer>
       </div>
 

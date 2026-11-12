@@ -1,12 +1,12 @@
 import type { ReceiptWidthMm } from "@/types";
 import GlassSelect from "@/components/ui/GlassSelect";
 import { receiptFooterHint, receiptHeaderHint } from "@/lib/businessClues";
-import { safeNum } from "../constants";
+import { cn } from "@/lib/utils";
 import { CheckboxRow, Section, SField } from "../fields";
 import { useSettings } from "../settingsContext";
 
 export default function DocsSection() {
-  const { form, setForm, errors, canReceipt, canInvoice } = useSettings();
+  const { form, setForm, canReceipt, canInvoice } = useSettings();
 
   return (
     <>
@@ -51,7 +51,10 @@ export default function DocsSection() {
               )}
 
               <div
-                className={canReceipt && canInvoice ? "grid-3" : "grid-2"}
+                className={cn(
+                  canReceipt && canInvoice ? "grid-3" : "grid-2",
+                  "pair-mobile",
+                )}
                 style={{ marginTop: 14 }}
               >
                 {canReceipt && (
@@ -79,41 +82,19 @@ export default function DocsSection() {
                   </SField>
                 )}
                 {canInvoice && (
-                  <>
-                    <SField label="Invoice Prefix" htmlFor="set-invoice-prefix" req>
-                      <input
-                        id="set-invoice-prefix"
-                        className="input num"
-                        value={form.invoice.prefix}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            invoice: { ...form.invoice, prefix: e.target.value },
-                          })
-                        }
-                      />
-                    </SField>
-                    <SField label="Next Serial Sequence" htmlFor="set-invoice-next" error={errors.nextNumber}>
-                      <input
-                        id="set-invoice-next"
-                        type="number"
-                        min={1}
-                        step={1}
-                        className="input num"
-                        style={{ textAlign: "right" }}
-                        value={form.invoice.nextNumber}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            invoice: {
-                              ...form.invoice,
-                              nextNumber: Math.max(1, Math.round(safeNum(e.target.value, 1))),
-                            },
-                          })
-                        }
-                      />
-                    </SField>
-                  </>
+                  <SField label="Invoice Prefix" htmlFor="set-invoice-prefix" req>
+                    <input
+                      id="set-invoice-prefix"
+                      className="input num"
+                      value={form.invoice.prefix}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          invoice: { ...form.invoice, prefix: e.target.value },
+                        })
+                      }
+                    />
+                  </SField>
                 )}
               </div>
 

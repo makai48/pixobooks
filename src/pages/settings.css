@@ -17,10 +17,13 @@
   --teal-border: hsl(var(--reg-cyan) / 0.35);
   --teal-text: hsl(var(--reg-cyan));
   --teal-sub: hsl(var(--reg-cyan) / 0.8);
-  --success: hsl(var(--success));
-  --warning: hsl(var(--warning));
-  --danger: hsl(var(--danger));
-  --danger-hover: hsl(var(--danger) / 0.82);
+  /* Aliases keep the global HSL component tokens intact. Naming a token after
+     itself (--danger: hsl(var(--danger))) is a cycle and resolves to the
+     guaranteed-invalid value, which silently dropped every status colour. */
+  --st-success: hsl(var(--success));
+  --st-warning: hsl(var(--warning));
+  --st-danger: hsl(var(--danger));
+  --st-danger-hover: hsl(var(--danger) / 0.82);
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   min-height: 100%;
@@ -220,18 +223,17 @@
   box-shadow: 0 4px 14px rgba(0, 122, 255, 0.36);
 }
 
-/* `--danger` inside `.st` is a hex token (var(--danger)), not HSL components like
- * the global theme — `hsl(var(--danger))` is invalid here and made the button
- * render white-on-white. Always use the token directly. */
+/* `--st-danger` is a resolved colour inside `.st`; the global `--danger` stays
+ * HSL components so tints can be written as hsl(var(--danger) / α). */
 .st .btn-danger {
-  background: var(--danger);
-  color: var(--bg-card);
-  border: 1px solid var(--danger);
+  background: var(--st-danger);
+  color: hsl(var(--card));
+  border: 1px solid var(--st-danger);
   box-shadow: 0 3px 10px rgba(220, 38, 38, 0.28);
 }
 
 .st .btn-danger:hover:not(:disabled) {
-  background: var(--danger-hover);
+  background: var(--st-danger-hover);
   transform: translateY(-1px) scale(1.02);
   box-shadow: 0 5px 14px rgba(220, 38, 38, 0.34);
 }
@@ -239,7 +241,7 @@
 .st .data-panel-badge.is-danger {
   background: rgba(220, 38, 38, 0.1);
   border: 1px solid rgba(220, 38, 38, 0.3);
-  color: var(--danger);
+  color: var(--st-danger);
 }
 
 /* The wipe control sits below the import/export panels, full width. */
@@ -269,14 +271,14 @@
 }
 
 .st .btn-ghost-danger {
-  color: var(--danger);
+  color: var(--st-danger);
   background: transparent;
   border: none;
 }
 
 .st .btn-ghost-danger:hover:not(:disabled) {
   background: rgba(220, 38, 38, 0.08);
-  color: var(--danger-hover);
+  color: var(--st-danger-hover);
 }
 
 .st .section-nav-wrapper {
@@ -378,7 +380,7 @@
 }
 
 .st .sec-req-mark {
-  color: var(--danger);
+  color: var(--st-danger);
   font-weight: 700;
   font-size: 13px;
   margin-left: 2px;
@@ -410,7 +412,7 @@
 }
 
 .st .field-label .req {
-  color: var(--danger);
+  color: var(--st-danger);
   font-weight: 800;
   margin-left: 2px;
 }
@@ -513,7 +515,7 @@
 
 .st .field-error {
   font-size: 11px;
-  color: var(--danger);
+  color: var(--st-danger);
   margin-top: 4px;
   line-height: 1.4;
 }
@@ -854,7 +856,7 @@
 }
 
 .st .chip-remove-btn:hover {
-  color: var(--danger);
+  color: var(--st-danger);
   background: rgba(220, 38, 38, 0.1);
 }
 
@@ -982,7 +984,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--success);
+  background: var(--st-success);
   flex-shrink: 0;
 }
 
@@ -1019,7 +1021,7 @@
 .st .toast-notice .icon {
   width: 16px;
   height: 16px;
-  color: var(--success);
+  color: var(--st-success);
   flex-shrink: 0;
 }
 
@@ -1269,7 +1271,7 @@
   border-radius: 8px;
   border: 1px solid rgba(220, 38, 38, 0.28);
   background: hsl(var(--danger) / 0.08);
-  color: var(--danger);
+  color: var(--st-danger);
   font-size: 12.5px;
   font-weight: 500;
 }
@@ -1480,7 +1482,7 @@
 }
 
 .st .printer-cap.is-ready {
-  color: var(--success);
+  color: var(--st-success);
   border-color: hsl(var(--success) / 0.3);
   background: hsl(var(--success) / 0.08);
 }
@@ -1494,7 +1496,7 @@
 }
 
 .st .printer-cap.is-ready .printer-cap-dot {
-  background: var(--success);
+  background: var(--st-success);
 }
 
 .st .printer-cap-state {
@@ -1567,7 +1569,7 @@
 }
 
 .st .printer-status.is-ready {
-  color: var(--success);
+  color: var(--st-success);
   background: hsl(var(--success) / 0.08);
   border-color: hsl(var(--success) / 0.3);
 }
@@ -1617,7 +1619,7 @@
 .st .printer-test-note.is-error {
   border-color: hsl(var(--danger) / 0.3);
   background: hsl(var(--danger) / 0.08);
-  color: var(--danger-hover);
+  color: var(--st-danger-hover);
 }
 
 .st .printer-subpanel {
@@ -2003,7 +2005,7 @@
 .st .picker-notice.is-error {
   border-color: hsl(var(--danger) / 0.3);
   background: hsl(var(--danger) / 0.08);
-  color: var(--danger-hover);
+  color: var(--st-danger-hover);
 }
 
 .st .picker-notice-dot {
@@ -2622,4 +2624,2457 @@
 }
 
 
+
+
+/* ==========================================================================
+   SETTINGS — "Ledger folio" redesign layer
+   --------------------------------------------------------------------------
+   Scoped to `.st`. Every surface, ink and status colour comes from the active
+   skin's semantic tokens, so Papier / Tidal / Grove / Ember / Nocturne all
+   render in light and dark without a second stylesheet.
+
+   The page is one paper folio: a compact sticky bar, a rail of destinations
+   (a vertical index at ≥1024px, a scrollable chip strip below it), and one
+   continuous document of sections separated by hairlines — not ten floating
+   cards. Shared component classes (fields, buttons, opt-cards, data panels,
+   printer, billing, theme previews) are restyled in place because
+   ImportDataModal, WipeDataPanel, BillingSection and PrinterDevicePicker mount
+   inside this same scope.
+   ========================================================================== */
+
+.st {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --st-hair: hsl(var(--line) / 0.5);
+  --st-hair-soft: hsl(var(--line) / 0.3);
+  --st-tint: hsl(var(--ink) / 0.035);
+  --st-tint-strong: hsl(var(--ink) / 0.06);
+  /* The section strip is black glass, so the active destination uses the
+     skin's LIGHT surface: the card in a light theme, the ink in a dark one.
+     Either way it is a pale pill on a black bar with dark text on top —
+     legible in every skin, unlike a brand fill. */
+  --folio-on-ink: hsl(var(--card));
+  --folio-on-ink-ink: hsl(var(--ink));
+  /* The sticky offset of the section ribbon. `AppLayout`/`Settings` measure
+     the real bar height into this variable; the fallback is the phone bar's
+     height so the ribbon never drops BELOW the bar and over the page before
+     the measurement lands. */
+  --folio-bar-h: 52px;
+  min-height: 100%;
+  color: hsl(var(--ink-soft));
+  font-family: var(--font-sans);
+  background: transparent;
+  background-image: none;
+}
+
+[data-theme="dark"] .st {
+  --folio-on-ink: hsl(var(--ink));
+  --folio-on-ink-ink: hsl(var(--card));
+}
+
+.st .settings-window {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: hsl(var(--card));
+  border: 0;
+  border-radius: 0;
+  animation: none;
+}
+
+/* --------------------------------------------------------------------------
+   Sticky bar
+   -------------------------------------------------------------------------- */
+
+.st .folio-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  background: hsl(var(--card) / 0.93);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border-bottom: 1px solid var(--st-hair);
+}
+
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  .st .folio-bar {
+    background: hsl(var(--card));
+  }
+}
+
+.st .folio-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.st .folio-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  color: hsl(var(--ink));
+  background: hsl(var(--brand) / 0.16);
+  border: 1.5px solid hsl(var(--brand) / 0.7);
+  overflow: hidden;
+}
+
+.st .folio-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.st .folio-mark.skeleton-line {
+  border-radius: 50%;
+}
+
+.st .folio-mark img {
+  border-radius: 50%;
+}
+
+.st .folio-id-copy {
+  min-width: 0;
+}
+
+.st .folio-main-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.0625rem, 2.2vw, 1.375rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: hsl(var(--ink));
+  text-wrap: balance;
+}
+
+.st .folio-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: hsl(var(--ink-mute));
+}
+
+.st .folio-shop,
+.st .folio-meta-dot {
+  display: none;
+}
+
+.st .folio-here {
+  color: hsl(var(--ink-soft));
+  font-weight: 500;
+}
+
+.st .folio-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.st .folio-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--st-hair);
+  background: var(--st-tint);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: hsl(var(--ink-mute));
+  white-space: nowrap;
+}
+
+.st .folio-state-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.st .folio-state.is-clean {
+  color: hsl(var(--ink));
+  border-color: hsl(var(--success) / 0.36);
+  background: hsl(var(--success) / 0.14);
+}
+
+.st .folio-state.is-dirty {
+  color: hsl(var(--ink));
+  border-color: hsl(var(--warning) / 0.42);
+  background: hsl(var(--warning) / 0.16);
+}
+
+/* The status colour lives in the dot; the label stays legible ink on the
+   tinted chip. */
+.st .folio-state.is-clean .folio-state-dot {
+  background: hsl(var(--success));
+}
+
+.st .folio-state.is-dirty .folio-state-dot {
+  background: hsl(var(--warning));
+}
+
+.st .folio-state.is-busy {
+  color: hsl(var(--ink-mute));
+  border-color: var(--st-hair);
+  background: var(--st-tint);
+}
+
+.st .folio-state.is-busy .folio-state-dot {
+  animation: stBusyPulse 1s ease-in-out infinite;
+}
+
+@keyframes stBusyPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.72); }
+}
+
+.st .folio-bar .btn {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.st .folio-bar .btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Rail + pane
+   -------------------------------------------------------------------------- */
+
+.st .folio-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  flex: 1;
+}
+
+.st .folio-rail {
+  position: sticky;
+  top: var(--folio-bar-h);
+  z-index: 15;
+  min-width: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom: 0;
+  box-shadow: none;
+}
+
+/* The black ribbon — the same glass sheet the phone's bottom navigation
+   uses: black at 85%, a white hairline ring and the multiply blend that
+   darkens the page behind it. It lives on its own layer (as it does in the
+   bottom nav) so the blend never tints the labels.
+
+   The soft shadow is cast UPWARD, towards the folio bar. The bottom nav's
+   pill floats at the bottom of the screen, so its shadow falls on the page;
+   here the ribbon sits at the top, and a downward shadow would fall across
+   the first section and make the page look obstructed. */
+.st .folio-rail::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: hsl(0 0% 0% / 0.85);
+  box-shadow:
+    0 -22px 44px -26px hsl(0 0% 0% / 0.65),
+    0 0 0 1px hsl(0 0% 100% / 0.06);
+  outline: 1px solid hsl(0 0% 100% / 0.1);
+  outline-offset: -1px;
+  mix-blend-mode: multiply;
+}
+
+.st .folio-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 9px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.st .folio-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.st .folio-group {
+  display: contents;
+}
+
+.st .folio-group-label {
+  display: none;
+}
+
+.st .folio-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid hsl(0 0% 100% / 0.18);
+  /* The strip is now see-through, so each chip carries its own dark backing
+     and the label keeps its contrast over a light page. */
+  background: hsl(0 0% 0% / 0.42);
+  color: hsl(0 0% 100% / 0.86);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.16s ease, background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.st .folio-nav-item:hover {
+  color: hsl(0 0% 100%);
+  background: hsl(0 0% 100% / 0.14);
+  border-color: hsl(0 0% 100% / 0.3);
+}
+
+.st .folio-nav-item.is-active {
+  color: var(--folio-on-ink-ink);
+  background: var(--folio-on-ink);
+  border-color: var(--folio-on-ink);
+}
+
+.st .folio-nav-item:focus-visible {
+  outline: 2px solid hsl(var(--brand));
+  outline-offset: 2px;
+}
+
+.st .folio-nav-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  stroke-width: 1.7;
+}
+
+.st .folio-nav-label {
+  display: none;
+}
+
+.st .folio-nav-short {
+  display: inline;
+}
+
+.st .folio-nav.is-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.st .folio-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0 16px 26px;
+}
+
+/* --------------------------------------------------------------------------
+   Section folio
+   -------------------------------------------------------------------------- */
+
+.st .folio-pane > .config-section {
+  width: 100%;
+  max-width: 1060px;
+}
+
+.st .config-section {
+  scroll-margin-top: calc(var(--folio-bar-h) + 58px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 22px 0 24px;
+  transition: none;
+}
+
+.st .config-section:hover {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.st .config-section + .config-section {
+  border-top: 1px solid var(--st-hair-soft);
+}
+
+.st .sec-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 10px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: hsl(var(--ink) / 0.05);
+}
+
+/* Each header wears the band of its own meaning. Every colour is a token of
+   the active skin, so the band follows the theme preset instead of forcing
+   one colour on all five. */
+.st .sec-head.tone-brand {
+  background: hsl(var(--brand) / 0.1);
+  border-color: hsl(var(--brand) / 0.24);
+}
+
+.st .sec-head.tone-cyan {
+  background: hsl(var(--reg-cyan) / 0.1);
+  border-color: hsl(var(--reg-cyan) / 0.24);
+}
+
+.st .sec-head.tone-magenta {
+  background: hsl(var(--reg-magenta) / 0.1);
+  border-color: hsl(var(--reg-magenta) / 0.22);
+}
+
+.st .sec-head.tone-warning {
+  background: hsl(var(--warning) / 0.12);
+  border-color: hsl(var(--warning) / 0.26);
+}
+
+.st .sec-head.tone-success {
+  background: hsl(var(--success) / 0.12);
+  border-color: hsl(var(--success) / 0.26);
+}
+
+/* The glyph tile carries the same hue as its band. */
+.st .sec-head.tone-brand .sec-glyph {
+  background: hsl(var(--brand) / 0.18);
+  border-color: hsl(var(--brand) / 0.42);
+}
+
+.st .sec-head.tone-cyan .sec-glyph {
+  background: hsl(var(--reg-cyan) / 0.18);
+  border-color: hsl(var(--reg-cyan) / 0.42);
+}
+
+.st .sec-head.tone-magenta .sec-glyph {
+  background: hsl(var(--reg-magenta) / 0.18);
+  border-color: hsl(var(--reg-magenta) / 0.4);
+}
+
+.st .sec-head.tone-warning .sec-glyph {
+  background: hsl(var(--warning) / 0.2);
+  border-color: hsl(var(--warning) / 0.44);
+}
+
+.st .sec-head.tone-success .sec-glyph {
+  background: hsl(var(--success) / 0.18);
+  border-color: hsl(var(--success) / 0.42);
+}
+
+.st .sec-head.tone-ink .sec-glyph {
+  background: hsl(var(--ink) / 0.08);
+  border-color: hsl(var(--ink) / 0.16);
+}
+
+/* On a tinted band the description reads a step closer to the ink so it
+   keeps its contrast in every skin. */
+.st .sec-head .sec-desc-text {
+  color: hsl(var(--ink-soft));
+}
+
+.st .sec-glyph {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  background: hsl(var(--brand) / 0.14);
+  border: 1px solid hsl(var(--brand) / 0.32);
+  color: hsl(var(--ink));
+}
+
+.st .sec-glyph svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.6;
+}
+
+.st .sec-glyph.skeleton-line {
+  border-radius: 8px;
+}
+
+.st .sec-head-copy {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.st .sec-title-text {
+  font-family: var(--font-display);
+  font-size: clamp(1.0625rem, 1.5vw, 1.25rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: hsl(var(--ink));
+  text-transform: none;
+}
+
+.st .sec-desc-text {
+  margin-top: 3px;
+  max-width: 74ch;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+}
+
+.st .sec-flag {
+  margin-left: auto;
+  flex-shrink: 0;
+  align-self: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  /* Neutral, so the marker reads on any of the header bands. */
+  border: 1px solid hsl(var(--ink) / 0.16);
+  background: hsl(var(--ink) / 0.07);
+  color: hsl(var(--ink-soft));
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.st .sec-body {
+  min-width: 0;
+}
+
+/* Direct blocks get one rhythm; inline `marginTop` on a grid still wins, so
+   nothing doubles up. */
+.st .sec-body > * + * {
+  margin-top: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Fields
+   -------------------------------------------------------------------------- */
+
+.st .field-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--ink-mute));
+  margin-bottom: 5px;
+}
+
+.st .field-label .req {
+  color: var(--st-danger);
+  font-weight: 800;
+}
+
+/* A field may carry a glyph beside its label. */
+.st .field-label.has-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.st .field-label .field-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* The dark skins' danger token lands at 4.48:1 on the card — a hair under
+   the 4.5:1 floor. Lifting it toward white keeps the marker legible without
+   changing the hue it signals. */
+[data-theme="dark"] .st .field-label .req {
+  color: color-mix(in oklch, hsl(var(--danger)) 88%, hsl(0 0% 100%));
+}
+
+.st .input {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--st-hair);
+  background: hsl(var(--card));
+  color: hsl(var(--ink));
+  padding: 0 10px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  caret-color: hsl(var(--ink));
+  box-shadow: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.st .input:hover:not(:focus):not(:disabled) {
+  border-color: hsl(var(--line) / 0.95);
+}
+
+.st .input:focus,
+.st .input:focus-visible {
+  outline: none;
+  border-color: hsl(var(--ink-mute));
+  box-shadow: 0 0 0 3px hsl(var(--brand) / 0.38);
+}
+
+.st .input:disabled {
+  background: var(--st-tint);
+  color: hsl(var(--ink-mute));
+}
+
+.st .input::placeholder {
+  color: hsl(var(--ink-mute));
+  font-weight: 400;
+  opacity: 1;
+}
+
+.st textarea.input {
+  min-height: 74px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.st .field-hint {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+  margin-top: 4px;
+}
+
+.st .field-error {
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: hsl(var(--danger));
+  margin-top: 4px;
+}
+
+.st .grid-2 {
+  gap: 12px 16px;
+}
+
+.st .grid-3 {
+  gap: 12px 16px;
+}
+
+.st ::selection {
+  background: hsl(var(--brand) / 0.45);
+  color: hsl(var(--ink));
+}
+
+.st :where(button, a, summary, [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--brand));
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+
+.st .btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  gap: 7px;
+  box-shadow: none;
+}
+
+.st .btn .icon,
+.st .btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.st .btn-sm {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  border-radius: 7px;
+}
+
+.st .btn:active:not(:disabled) {
+  transform: scale(0.985) !important;
+}
+
+.st .btn:disabled {
+  opacity: 0.42;
+}
+
+.st .btn-primary {
+  background: hsl(var(--ink));
+  border: 1px solid hsl(var(--ink));
+  color: hsl(var(--card));
+}
+
+.st .btn-primary:hover:not(:disabled) {
+  background: hsl(var(--ink-soft));
+  border-color: hsl(var(--ink-soft));
+  transform: none;
+  box-shadow: none;
+}
+
+.st .btn-outline {
+  background: hsl(var(--card));
+  border: 1px solid var(--st-hair);
+  color: hsl(var(--ink-soft));
+}
+
+.st .btn-outline:hover:not(:disabled) {
+  background: var(--st-tint);
+  border-color: hsl(var(--line) / 0.9);
+  color: hsl(var(--ink));
+  transform: none;
+}
+
+.st .btn-blue {
+  background: hsl(var(--brand));
+  border: 1px solid hsl(var(--brand));
+  color: hsl(var(--brand-foreground));
+  box-shadow: none;
+}
+
+.st .btn-blue:hover:not(:disabled) {
+  background: hsl(var(--brand) / 0.86);
+  transform: none;
+  box-shadow: none;
+}
+
+.st .btn-danger {
+  background: var(--st-danger);
+  border: 1px solid var(--st-danger);
+  color: hsl(0 0% 100%);
+  box-shadow: none;
+}
+
+.st .btn-danger:hover:not(:disabled) {
+  background: var(--st-danger-hover);
+  transform: none;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .st .btn-danger {
+  color: hsl(var(--brand-foreground));
+}
+
+.st .btn-ghost-danger {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--st-danger);
+}
+
+.st .btn-ghost-danger:hover:not(:disabled) {
+  background: hsl(var(--danger) / 0.1);
+  color: var(--st-danger-hover);
+}
+
+/* --------------------------------------------------------------------------
+   Checkboxes
+   -------------------------------------------------------------------------- */
+
+.st .checkbox-row {
+  gap: 9px;
+  padding: 3px 5px 3px 2px;
+  border-radius: 7px;
+}
+
+.st .checkbox-row:hover {
+  background: var(--st-tint);
+}
+
+.st .apple-checkbox-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid hsl(var(--line) / 0.85);
+  background: hsl(var(--card));
+  box-shadow: none;
+}
+
+.st .apple-checkbox-input:focus-visible + .apple-checkbox-box {
+  box-shadow: 0 0 0 3px hsl(var(--brand) / 0.45);
+}
+
+.st .apple-checkbox-input:checked + .apple-checkbox-box {
+  animation: stTickIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  background: hsl(var(--brand)) !important;
+  border-color: hsl(var(--brand)) !important;
+  box-shadow: none !important;
+}
+
+.st .apple-checkbox-box svg {
+  width: 12px;
+  height: 12px;
+  stroke: hsl(var(--brand-foreground));
+  stroke-width: 3.2;
+}
+
+@keyframes stTickIn {
+  from { transform: scale(0.86); }
+  to { transform: scale(1); }
+}
+
+.st .checkbox-row span.checkbox-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: hsl(var(--ink-soft));
+  will-change: auto;
+}
+
+.st .checkbox-row:hover span.checkbox-label {
+  color: hsl(var(--ink));
+}
+
+.st .checkbox-row input[type="checkbox"]:checked ~ span.checkbox-label {
+  animation: none;
+}
+
+.st .checkbox-row:active span.checkbox-label {
+  transform: none;
+}
+
+.st .checkbox-row:active .apple-checkbox-box {
+  transform: scale(0.94) !important;
+}
+
+.st .checkbox-group {
+  margin-top: 14px;
+  gap: 6px 22px;
+}
+
+/* --------------------------------------------------------------------------
+   Option cards
+   -------------------------------------------------------------------------- */
+
+.st .opt-cards-grid {
+  gap: 8px;
+}
+
+.st .opt-card {
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--st-hair);
+  background: hsl(var(--card));
+  gap: 2px;
+  box-shadow: none;
+  transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.st .opt-card:hover:not(.selected) {
+  border-color: hsl(var(--line) / 0.9);
+  background: var(--st-tint);
+  transform: none;
+}
+
+.st .opt-card.selected {
+  /* A solid brand fill cannot carry 4.5:1 text in every skin (Ember's
+     orange is a mid-luminance hue), so the selected card takes the app's
+     tinted-surface language instead: a brand wash, a brand border and
+     legible ink. */
+  background: hsl(var(--brand) / 0.16);
+  border-color: hsl(var(--brand) / 0.55);
+  color: hsl(var(--ink));
+  box-shadow: none;
+}
+
+.st .opt-card.selected .opt-title {
+  color: hsl(var(--ink));
+}
+
+.st .opt-card.selected .opt-sub {
+  /* The tinted surface keeps its text in ink (the app's `surface-*`
+     convention) — a muted ink on a brand wash drops under 4.5:1. */
+  color: hsl(var(--ink));
+}
+
+.st .opt-card .opt-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.st .opt-card .opt-sub {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: hsl(var(--ink-mute));
+}
+
+.st .opt-card.selected .opt-sub {
+  color: hsl(var(--ink));
+}
+
+.st .opt-card .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Chips
+   -------------------------------------------------------------------------- */
+
+.st .chip-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.st .item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 4px 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--st-hair);
+  background: var(--st-tint);
+  color: hsl(var(--ink-soft));
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.st .item-chip:hover {
+  border-color: hsl(var(--line) / 0.9);
+}
+
+.st .chip-remove-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: hsl(var(--ink-mute));
+  background: transparent;
+  transition: color 0.14s ease, background-color 0.14s ease;
+}
+
+.st .chip-remove-btn:hover {
+  background: hsl(var(--danger) / 0.14);
+  color: var(--st-danger);
+}
+
+.st .chip-remove-btn svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* --------------------------------------------------------------------------
+   Banners and inline notes
+   -------------------------------------------------------------------------- */
+
+.st .teal-banner-box {
+  padding: 12px 13px;
+  border-radius: 9px;
+  border: 1px solid var(--st-hair);
+  background: var(--st-tint);
+}
+
+.st .teal-header {
+  gap: 9px;
+}
+
+.st .teal-badge-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  background: hsl(var(--brand) / 0.2);
+  border: 1px solid hsl(var(--brand) / 0.4);
+  color: hsl(var(--ink));
+}
+
+.st .teal-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: hsl(var(--ink));
+}
+
+.st .teal-sub {
+  font-size: 11px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+}
+
+.st .teal-banner-box .checkbox-row {
+  margin-top: 9px;
+}
+
+.st .billing-alert {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--danger) / 0.3);
+  background: hsl(var(--danger) / 0.08);
+  color: hsl(var(--ink));
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.st .printer-inline-note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+  background: var(--st-tint);
+  border: 1px solid var(--st-hair-soft);
+  border-radius: 7px;
+  padding: 7px 9px;
+}
+
+.st .printer-inline-note.is-ok {
+  color: hsl(var(--success));
+  background: hsl(var(--success) / 0.07);
+  border-color: hsl(var(--success) / 0.28);
+}
+
+.st .printer-inline-note.is-warn {
+  color: hsl(var(--ink));
+  background: hsl(var(--warning) / 0.1);
+  border-color: hsl(var(--warning) / 0.32);
+}
+
+/* --------------------------------------------------------------------------
+   Printer block
+   -------------------------------------------------------------------------- */
+
+.st .printer-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.st .printer-block-label {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: hsl(var(--ink));
+}
+
+.st .printer-caps {
+  gap: 6px;
+}
+
+.st .printer-cap {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--st-hair);
+  background: var(--st-tint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: hsl(var(--ink-mute));
+}
+
+.st .printer-cap.is-ready {
+  color: hsl(var(--success));
+  background: hsl(var(--success) / 0.07);
+  border-color: hsl(var(--success) / 0.28);
+}
+
+.st .printer-cap-dot {
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+}
+
+.st .printer-bus-grid {
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+}
+
+.st .printer-summary {
+  margin-top: 12px;
+  padding: 12px 13px;
+  border-radius: 9px;
+  border: 1px solid var(--st-hair);
+  background: var(--st-tint);
+  gap: 12px;
+}
+
+.st .printer-summary-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: hsl(var(--brand) / 0.16);
+  border: 1px solid hsl(var(--brand) / 0.34);
+  color: hsl(var(--ink));
+  box-shadow: none;
+}
+
+.st .printer-summary-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.st .printer-summary-title {
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  color: hsl(var(--ink));
+}
+
+.st .printer-status {
+  height: 21px;
+  padding: 0 8px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  gap: 5px;
+}
+
+.st .printer-status.is-ready {
+  color: hsl(var(--success));
+  background: hsl(var(--success) / 0.08);
+  border-color: hsl(var(--success) / 0.3);
+}
+
+.st .printer-status.is-attention {
+  color: hsl(var(--ink));
+  background: hsl(var(--warning) / 0.12);
+  border-color: hsl(var(--warning) / 0.34);
+}
+
+.st .printer-summary-sub {
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+}
+
+.st .printer-test-note {
+  margin-top: 9px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--st-hair);
+  background: var(--st-tint);
+  color: hsl(var(--ink-soft));
+  font-size: 11.5px;
+}
+
+.st .printer-test-note.is-error {
+  border-color: hsl(var(--danger) / 0.3);
+  background: hsl(var(--danger) / 0.08);
+  color: var(--st-danger);
+}
+
+.st .printer-subpanel {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid var(--st-hair);
+  border-radius: 9px;
+  background: hsl(var(--card));
+}
+
+.st .printer-subpanel-title {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: hsl(var(--ink));
+}
+
+.st .printer-subpanel-sub {
+  font-size: 11px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+}
+
+.st .printer-subpanel-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--st-tint);
+  border: 1px solid var(--st-hair);
+  color: hsl(var(--ink-soft));
+}
+
+.st .printer-discovery,
+.st .printer-device {
+  padding: 10px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--st-hair-soft);
+  background: var(--st-tint);
+  gap: 9px;
+}
+
+.st .printer-discovery-icon,
+.st .printer-device-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: hsl(var(--card));
+  border: 1px solid var(--st-hair);
+  color: hsl(var(--ink-soft));
+}
+
+.st .printer-discovery-title,
+.st .printer-device-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--ink));
+}
+
+.st .printer-discovery-sub,
+.st .printer-device-meta,
+.st .printer-system-note {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+}
+
+/* --------------------------------------------------------------------------
+   Data panels (ImportDataModal inline + WipeDataPanel)
+   -------------------------------------------------------------------------- */
+
+.st .data-panels {
+  gap: 14px;
+}
+
+.st .data-panel {
+  border: 1px solid var(--st-hair);
+  border-radius: 9px;
+  background: var(--st-tint);
+  padding: 13px;
+}
+
+.st .data-panel-head {
+  gap: 9px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--st-hair-soft);
+}
+
+.st .data-panel-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: hsl(var(--card));
+  border: 1px solid var(--st-hair);
+  color: hsl(var(--ink-soft));
+}
+
+.st .data-panel-badge.is-import {
+  background: hsl(var(--brand) / 0.18);
+  border-color: hsl(var(--brand) / 0.4);
+  color: hsl(var(--ink));
+}
+
+.st .data-panel-badge.is-export {
+  background: hsl(var(--card));
+  border-color: var(--st-hair);
+  color: hsl(var(--ink-soft));
+}
+
+.st .data-panel-badge.is-danger {
+  background: hsl(var(--danger) / 0.1);
+  border-color: hsl(var(--danger) / 0.3);
+  color: var(--st-danger);
+}
+
+.st .data-panel-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: hsl(var(--ink));
+}
+
+.st .data-panel-sub {
+  font-size: 11px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+}
+
+.st .data-cat-list {
+  gap: 10px;
+}
+
+.st .data-cat-row {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--st-hair-soft);
+  background: hsl(var(--card));
+}
+
+.st .data-cat-row:hover {
+  border-color: hsl(var(--line) / 0.9);
+  background: hsl(var(--card));
+}
+
+.st .data-panel-empty {
+  padding: 16px 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--st-hair);
+  color: hsl(var(--ink-mute));
+  font-size: 11.5px;
+}
+
+.st .data-dropzone {
+  border: 1px dashed hsl(var(--line) / 0.8);
+  border-radius: 9px;
+  background: transparent;
+  padding: 18px 14px;
+}
+
+.st .data-dropzone:hover {
+  border-color: hsl(var(--ink-mute));
+  background: hsl(var(--brand) / 0.07);
+}
+
+.st .data-export-preview {
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--st-hair-soft);
+  background: hsl(var(--card));
+}
+
+.st .data-export-preview-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: hsl(var(--ink));
+}
+
+.st .data-import-cta-hint {
+  font-size: 10.5px;
+  color: hsl(var(--ink-mute));
+  white-space: normal;
+}
+
+.st .data-panel-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.st .data-inline-foot {
+  border-top: 1px solid var(--st-hair-soft);
+  padding-top: 10px;
+  margin-top: 12px;
+}
+
+.st .data-wipe-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--st-hair-soft);
+}
+
+.st .picker-notice {
+  font-size: 11.5px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--st-hair);
+  background: var(--st-tint);
+  color: hsl(var(--ink-soft));
+}
+
+.st .picker-notice.is-error {
+  border-color: hsl(var(--danger) / 0.3);
+  background: hsl(var(--danger) / 0.08);
+  color: var(--st-danger);
+}
+
+.st .picker-notice-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* --------------------------------------------------------------------------
+   Billing
+   -------------------------------------------------------------------------- */
+
+.st .billing-hero {
+  padding: 13px;
+  border: 1px solid var(--st-hair);
+  border-radius: 9px;
+  background: var(--st-tint);
+  gap: 12px;
+}
+
+.st .billing-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: hsl(var(--ink-mute));
+}
+
+.st .billing-plan-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: hsl(var(--ink));
+}
+
+.st .billing-status {
+  font-size: 11.5px;
+  color: hsl(var(--ink-mute));
+}
+
+.st .billing-limits {
+  margin-top: 10px;
+}
+
+.st .billing-limit {
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--st-hair-soft);
+  background: hsl(var(--card));
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.st .billing-limit-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--ink-mute));
+}
+
+.st .billing-limit-value {
+  margin-top: auto;
+  padding-top: 1px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: hsl(var(--ink));
+}
+
+.st .billing-plans {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: hsl(var(--ink-mute));
+}
+
+.st .billing-plans summary {
+  font-weight: 600;
+  color: hsl(var(--ink-soft));
+}
+
+.st .billing-plans-list {
+  margin-top: 6px;
+  gap: 2px;
+}
+
+.st .billing-plans-list .current {
+  color: hsl(var(--ink));
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Theme previews
+   -------------------------------------------------------------------------- */
+
+.st .theme-skin-grid {
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 8px;
+}
+
+.st .theme-skin-card {
+  gap: 5px;
+  padding: 8px;
+}
+
+.st .theme-skin-stage {
+  height: 52px;
+  border-radius: 6px;
+}
+
+.st .theme-skin-surface {
+  border-radius: 4px;
+}
+
+.st .theme-skin-pill {
+  font-size: 9px;
+  padding: 2px 6px;
+}
+
+.st .theme-swatches {
+  gap: 3px;
+}
+
+.st .theme-swatches span {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.st .theme-mode-tag {
+  font-size: 7.5px;
+  letter-spacing: 0.1em;
+}
+
+.st .theme-preview {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  gap: 8px;
+}
+
+.st .theme-preview span {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.st .theme-preview-v3 span {
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Logo upload
+   -------------------------------------------------------------------------- */
+
+.st .logo-upload-cluster {
+  gap: 12px;
+}
+
+.st .logo-avatar-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--st-hair);
+  background: var(--st-tint);
+}
+
+.st .logo-meta {
+  font-size: 11px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+}
+
+/* --------------------------------------------------------------------------
+   Footer status line
+   -------------------------------------------------------------------------- */
+
+.st .folio-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 16px calc(11px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--st-hair);
+  font-size: 10.5px;
+  color: hsl(var(--ink-mute));
+}
+
+.st .folio-foot-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.st .folio-foot-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.st .folio-foot-dot.is-clean {
+  background: hsl(var(--success));
+}
+
+.st .folio-foot-dot.is-dirty {
+  background: hsl(var(--warning));
+}
+
+.st .folio-foot-brand {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: hsl(var(--ink-mute));
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Empty state
+   -------------------------------------------------------------------------- */
+
+.st .folio-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 64px 20px;
+  gap: 4px;
+}
+
+.st .folio-empty-glyph {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: hsl(var(--brand) / 0.14);
+  border: 1px solid hsl(var(--brand) / 0.36);
+  color: hsl(var(--ink));
+  margin-bottom: 8px;
+}
+
+.st .folio-empty-glyph svg {
+  width: 20px;
+  height: 20px;
+}
+
+.st .folio-empty-title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: hsl(var(--ink));
+}
+
+.st .folio-empty-text {
+  max-width: 34ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: hsl(var(--ink-mute));
+}
+
+/* --------------------------------------------------------------------------
+   Skeleton + toast
+   -------------------------------------------------------------------------- */
+
+.st .skeleton-line {
+  background: hsl(var(--ink) / 0.06);
+}
+
+.st .skeleton-line.is-square {
+  border-radius: 8px;
+}
+
+.st .toast-notice {
+  bottom: 84px;
+  padding: 9px 13px;
+  border-radius: 9px;
+  border: 1px solid hsl(0 0% 0% / 0.12);
+  background: hsl(var(--ink));
+  color: hsl(var(--card));
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 18px 44px -22px hsl(0 0% 0% / 0.55);
+  transform: translateX(-50%) translateY(12px);
+  transition: opacity 0.18s ease, transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.st .toast-notice .icon {
+  width: 14px;
+  height: 14px;
+  color: hsl(var(--brand));
+  stroke-width: 2.4;
+}
+
+.st .toast-notice.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================================================
+   Paired fields
+   --------------------------------------------------------------------------
+   Two across on a phone. `pair-mobile` keeps the tablet and desktop
+   arrangement exactly as it was — a `grid-3` is still three across from
+   768px up — and only changes the phone. A field that would be left alone on
+   the last row takes the full width (`pair-mobile-full`).
+
+   The business profile and the allowance policy need mixed row widths (a
+   full-width field, a pair and a triple), so they use area templates: the
+   same fields land on different lines per breakpoint without a second copy
+   of the markup.
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .st .grid-2.pair-mobile,
+  .st .grid-3.pair-mobile {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .st .pair-mobile > .pair-mobile-full {
+    grid-column: 1 / -1;
+  }
+
+  /* Phone field in a half-width cell: no flag, a tight country-code box, and
+     the digits get the space the flag used to take. */
+  .st .phone-dial__flag {
+    display: none;
+  }
+
+  .st .phone-dial {
+    gap: 2px;
+    padding-left: 6px;
+    padding-right: 4px;
+    font-size: 12px;
+  }
+
+  .st .phone-dial .num {
+    font-size: 12px;
+  }
+
+  .st .phone-dial__chevron {
+    width: 12px;
+    height: 12px;
+  }
+
+  .st .phone-row {
+    gap: 4px;
+  }
+
+  .st .phone-row__number {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  /* A half-width cell cannot hold a timezone or a preset label at its
+     natural size. The trigger keeps the full text in its tooltip and in the
+     open menu; the chip itself ellipsizes instead of spilling over the
+     chevron. */
+  .st .select-glass > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Business profile ---------------------------------------------------------- */
+
+.st .biz-grid {
+  display: grid;
+  gap: 12px 16px;
+}
+
+.st .biz-grid > .biz-shop {
+  grid-area: shop;
+}
+
+.st .biz-grid > .biz-type {
+  grid-area: type;
+}
+
+.st .biz-grid > .biz-country {
+  grid-area: country;
+}
+
+.st .biz-grid > .biz-tz {
+  grid-area: tz;
+}
+
+.st .biz-grid > .biz-week {
+  grid-area: week;
+}
+
+.st .biz-grid > .biz-email {
+  grid-area: email;
+}
+
+.st .biz-grid > .biz-mobile {
+  grid-area: mobile;
+}
+
+.st .biz-grid > .biz-office {
+  grid-area: office;
+}
+
+.st .biz-grid > .biz-whatsapp {
+  grid-area: whatsapp;
+}
+
+.st .biz-grid > .biz-address {
+  grid-area: address;
+}
+
+@media (max-width: 767px) {
+  .st .biz-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "shop type"
+      "country tz"
+      "week email"
+      "mobile office"
+      "whatsapp address";
+  }
+}
+
+@media (min-width: 768px) {
+  .st .biz-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-areas:
+      "shop shop shop type type type"
+      "country country tz tz week week"
+      "email email email address address address"
+      "mobile mobile office office whatsapp whatsapp";
+  }
+}
+
+/* Transaction allowance policy --------------------------------------------- */
+
+.st .allow-grid {
+  display: grid;
+  gap: 12px 16px;
+}
+
+.st .allow-grid > .al-threshold {
+  grid-area: threshold;
+}
+
+.st .allow-grid > .al-period {
+  grid-area: period;
+}
+
+.st .allow-grid > .al-name {
+  grid-area: name;
+}
+
+.st .allow-grid > .al-amount {
+  grid-area: amount;
+}
+
+.st .allow-grid > .al-type {
+  grid-area: type;
+}
+
+.st .allow-grid > .al-approver {
+  grid-area: approver;
+}
+
+@media (max-width: 767px) {
+  .st .allow-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-areas:
+      "threshold threshold threshold threshold threshold threshold"
+      "period period period name name name"
+      "amount amount type type approver approver";
+  }
+}
+
+@media (min-width: 768px) {
+  .st .allow-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-areas:
+      "threshold threshold period period name name"
+      "amount amount type type approver approver";
+  }
+}
+
+/* ==========================================================================
+   Money & number format
+   --------------------------------------------------------------------------
+   On a phone the format block reads as pairs: tax with precision, the two
+   separators together, the grouping standard with the preset. Currency, the
+   date format and the till line own a full row. From tablet up the original
+   three-column arrangement returns.
+   ========================================================================== */
+
+.st .money-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.st .money-wide {
+  grid-column: 1 / -1;
+}
+
+/* --------------------------------------------------------------------------
+   Borderless controls
+   --------------------------------------------------------------------------
+   The dropdowns and the contact fields read as lines, not as boxes: no
+   outline around the text, a hairline underneath that carries the field.
+   The focus ring moves onto that hairline, so the control is still clearly
+   keyboard-reachable.
+   -------------------------------------------------------------------------- */
+
+.st .select-glass,
+.st .biz-country button.input {
+  border: 0;
+  border-bottom: 1px solid var(--st-hair);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 18px;
+}
+
+.st .select-glass:hover,
+.st .biz-country button.input:hover {
+  border-bottom-color: hsl(var(--line) / 0.95);
+  background: transparent;
+}
+
+.st .select-glass:focus,
+.st .select-glass:focus-visible,
+.st .biz-country button.input:focus-visible {
+  outline: none;
+  border-bottom-color: hsl(var(--brand));
+  box-shadow: 0 1px 0 0 hsl(var(--brand));
+}
+
+/* Flat fields: one hairline under the control, never a frame. Used by the
+   contact fields and by any text field that should read as a line rather
+   than a box. */
+.st .flat-field .input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.st .flat-field > .input {
+  border-bottom: 1px solid var(--st-hair);
+}
+
+.st .flat-field .phone-row {
+  border-bottom: 1px solid var(--st-hair);
+  padding-bottom: 2px;
+}
+
+.st .flat-field .input:hover {
+  border-bottom-color: hsl(var(--line) / 0.95);
+}
+
+.st .flat-field .input:focus,
+.st .flat-field .input:focus-visible {
+  outline: none;
+  border-bottom-color: hsl(var(--brand));
+  box-shadow: 0 1px 0 0 hsl(var(--brand));
+}
+
+/* The address is a textarea so a long address wraps instead of scrolling
+   sideways. */
+.st .flat-field textarea.input {
+  min-height: 62px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+/* --------------------------------------------------------------------------
+   Expense categories (the category pool the manager edits)
+   -------------------------------------------------------------------------- */
+
+.st .expense-categories {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--st-hair-soft);
+}
+
+.st .expense-categories-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.st .expense-categories-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--ink-mute));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Format preview                                                            */
+/* -------------------------------------------------------------------------- */
+
+.st .format-preview {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--st-hair);
+  border-radius: 10px;
+  background: var(--st-tint);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.st .format-preview-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--ink-mute));
+}
+
+.st .format-preview-sub {
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: hsl(var(--ink-mute));
+  max-width: 46ch;
+}
+
+.st .format-preview-figures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  min-width: 0;
+}
+
+/* The applied format is printed in ink. The brand colour vanished against
+   the tinted surface, which left the preview unreadable. */
+.st .format-preview-value {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: hsl(var(--ink));
+}
+
+.st .format-preview-date {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--ink));
+}
+
+.st .format-preview-date-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--ink-mute));
+}
+
+/* ==========================================================================
+   Breakpoints — mobile <768 · tablet 768–1023 · laptop 1024–1279 ·
+   desktop ≥1280. Each band is deliberate; md: is not a substitute.
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .st .folio-state {
+    padding: 0 7px;
+  }
+
+  .st .folio-state-text {
+    display: none;
+  }
+
+  .st .folio-bar-actions .btn-outline {
+    width: 34px;
+    padding: 0;
+  }
+
+  .st .folio-bar-actions .folio-btn-label {
+    display: none;
+  }
+
+  .st .sec-flag {
+    margin-left: 38px;
+  }
+
+  .st .format-preview {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+  }
+
+  .st .format-preview-figures {
+    align-items: flex-start;
+  }
+}
+
+/* The plan limits stay on one line on a phone: branches, users and items
+   read across, then client billing, API and payroll. */
+@media (max-width: 768px) {
+  .st .billing-limits {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .st .billing-limit {
+    padding: 8px 9px;
+  }
+
+  .st .billing-limit-label {
+    font-size: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  .st .billing-limit-value {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .st .folio-bar {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .st .folio-mark {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+  }
+
+  .st .folio-bar .btn {
+    padding: 0 10px;
+  }
+}
+
+@media (min-width: 768px) {
+  .st .money-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .st .money-wide {
+    grid-column: auto;
+  }
+
+  /* Desktop keeps the original reading order: currency, tax and precision on
+     the first row; the grouping standard with the two separators on the
+     second; the preset, the date format and the till line on the third. */
+  .st .m-currency {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .st .m-tax {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .st .m-decimals {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .st .m-grouping {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .st .m-thousand {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .st .m-decimalpoint {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .st .m-preset {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .st .m-dateformat {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .st .m-till {
+    grid-column: 3;
+    grid-row: 3;
+  }
+
+  .st .settings-window {
+    /* `width: 100%` plus the margin pushed the window 28px past the
+       viewport, so the page scrolled sideways. An auto width lets the flex
+       stretch fill the column minus the margins. */
+    width: auto;
+    margin: 14px;
+    border: 1px solid var(--st-hair);
+    border-radius: 18px;
+    box-shadow: 0 1px 0 hsl(0 0% 0% / 0.03), 0 24px 60px -46px hsl(0 0% 0% / 0.6);
+  }
+
+  .st .folio-bar {
+    padding: 11px 20px;
+    border-radius: 17px 17px 0 0;
+  }
+
+  .st .folio-meta {
+    font-size: 11.5px;
+  }
+
+  .st .folio-rail {
+    border-radius: 0;
+  }
+
+  .st .folio-nav {
+    padding: 9px 20px 10px;
+  }
+
+  .st .folio-pane {
+    padding: 0 24px 30px;
+  }
+
+  .st .config-section {
+    padding: 24px 0 26px;
+  }
+
+  .st .sec-title-text {
+    font-size: 19px;
+  }
+
+  .st .folio-foot {
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-radius: 0 0 17px 17px;
+  }
+}
+
+@media (min-width: 640px) {
+  .st .folio-state-text {
+    display: inline;
+  }
+}
+
+@media (min-width: 1024px) {
+  .st .folio-grid {
+    grid-template-columns: 236px minmax(0, 1fr);
+  }
+
+  .st .folio-rail {
+    position: static;
+    align-self: stretch;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-bottom: 0;
+    border-right: 1px solid var(--st-hair);
+    box-shadow: none;
+  }
+
+  /* The ribbon is a phone-and-tablet device; the desktop rail sits on the
+     card, so the glass sheet is not drawn there. */
+  .st .folio-rail::before {
+    display: none;
+  }
+
+  .st .folio-nav {
+    display: block;
+    position: sticky;
+    top: calc(var(--folio-bar-h) + 0px);
+    max-height: calc(100dvh - var(--folio-bar-h) - 16px);
+    padding: 18px 12px 18px 16px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .st .folio-nav::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+
+  .st .folio-nav::-webkit-scrollbar-thumb {
+    background: hsl(var(--line) / 0.45);
+    border-radius: 999px;
+  }
+
+  .st .folio-group {
+    display: block;
+  }
+
+  .st .folio-group + .folio-group {
+    margin-top: 18px;
+  }
+
+  .st .folio-group-label {
+    display: block;
+    padding: 0 10px;
+    margin-bottom: 5px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: hsl(var(--ink-mute));
+  }
+
+  .st .folio-nav-item {
+    display: flex;
+    width: 100%;
+    height: 33px;
+    padding: 0 10px;
+    gap: 9px;
+    justify-content: flex-start;
+    border-radius: 8px;
+    border-color: transparent;
+    font-size: 12.5px;
+    /* Back on the card surface, so the label returns to the skin's ink and
+       the chip loses its glass backing. */
+    color: hsl(var(--ink-mute));
+    background: transparent;
+  }
+
+  .st .folio-nav-item:hover {
+    color: hsl(var(--ink));
+    background: var(--st-tint);
+    border-color: hsl(var(--line) / 0.8);
+  }
+
+  /* Back on the card surface the active destination takes the brand wash,
+     matching the selected option cards. */
+  .st .folio-nav-item.is-active {
+    color: hsl(var(--ink));
+    background: hsl(var(--brand) / 0.16);
+    border-color: hsl(var(--brand) / 0.55);
+  }
+
+  .st .folio-nav-item + .folio-nav-item {
+    margin-top: 2px;
+  }
+
+  .st .folio-nav-label {
+    display: inline;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .st .folio-nav-short {
+    display: none;
+  }
+
+  .st .folio-nav-icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .st .folio-nav.is-skeleton {
+    display: flex;
+    padding: 20px 16px;
+  }
+
+  .st .folio-pane {
+    padding: 0 32px 34px;
+  }
+
+  .st .config-section {
+    scroll-margin-top: calc(var(--folio-bar-h) + 16px);
+    padding: 26px 0 28px;
+  }
+
+  .st .sec-title-text {
+    font-size: 20px;
+  }
+
+  .st .sec-desc-text {
+    font-size: 12.5px;
+  }
+
+  .st .folio-shop,
+  .st .folio-meta-dot {
+    display: inline;
+  }
+
+  .st .toast-notice {
+    bottom: 24px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .st .settings-window {
+    margin: 18px 22px;
+  }
+
+  .st .folio-bar {
+    padding: 12px 26px;
+  }
+
+  .st .folio-nav {
+    padding: 22px 14px 22px 20px;
+  }
+
+  .st .folio-grid {
+    grid-template-columns: 252px minmax(0, 1fr);
+  }
+
+  .st .folio-pane {
+    padding: 0 40px 40px;
+  }
+
+  .st .folio-pane > .config-section {
+    max-width: 1080px;
+  }
+
+  .st .config-section {
+    padding: 30px 0 32px;
+  }
+
+  .st .sec-head {
+    margin-bottom: 18px;
+  }
+
+  .st .sec-title-text {
+    font-size: 21px;
+  }
+
+  .st .sec-desc-text {
+    font-size: 13px;
+  }
+
+  .st .folio-foot {
+    padding: 13px 26px calc(13px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st *,
+  .st *::before,
+  .st *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 

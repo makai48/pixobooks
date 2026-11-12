@@ -2,6 +2,8 @@ import type { Sale, Settings, SalePayment } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { formatDateByPreference, formatDateTimeByPreference } from "@/lib/dateFormat";
+import { formatPlainNumber } from "@/lib/numberFormat";
+import type { GroupingSystem } from "@/lib/referenceData";
 
 type Variant = "receipt" | "invoice" | "auto";
 
@@ -88,24 +90,18 @@ function ReceiptLayout({
   // amount one, so the amounts sit exactly under the TOTAL header.
   const labelSpan = isNarrow ? "col-span-2" : "col-span-3";
   // Thermal design: plain numbers everywhere (currency implied by the shop),
-  // formatted with the shop's own separators/grouping. Only the big TOTAL keeps
-  // the currency code so the amount is unambiguous at a glance.
-  const plain = (n: number): string => {
-    const places = Math.min(4, Math.max(0, settings.decimalPlaces ?? 2));
-    const fixed = Math.abs(n).toFixed(places);
-    const [ip, fp] = fixed.split(".");
-    const th = settings.thousandSeparator || ",";
-    const dec = settings.decimalSeparator || ".";
-    let grouped: string;
-    if ((settings.digitGrouping || "western") === "indian") {
-      const last3 = ip.slice(-3);
-      const rest = ip.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, th);
-      grouped = (rest ? rest + th : "") + last3;
-    } else {
-      grouped = ip.replace(/\B(?=(\d{3})+(?!\d))/g, th);
-    }
-    return `${n < 0 ? "-" : ""}${grouped}${places > 0 ? dec + (fp || "") : ""}`;
-  };
+  // formatted with the shop's own separators/grouping — the same helper the
+  // rest of the app uses, so a receipt can never disagree with the ledger.
+  // Only the big TOTAL keeps the currency code so the amount is unambiguous
+  // at a glance.
+  const plain = (n: number): string =>
+    formatPlainNumber(n, {
+      thousand: settings.thousandSeparator || ",",
+      decimal: settings.decimalSeparator || ".",
+      places: Math.min(4, Math.max(0, settings.decimalPlaces ?? 2)),
+      grouping: (settings.digitGrouping || "western") as GroupingSystem,
+      currency: settings.currency,
+    });
 
   return (
     <div
@@ -140,7 +136,7 @@ function ReceiptLayout({
           <div className="text-[10px] leading-tight break-words">
             {settings.phone && <>Tel: {settings.phone}</>}
             {settings.phone && settings.email && <> · </>}
-            {settings.email && <>{settings.email}</>}
+            {settings.email && <span className="break-all">{settings.email}</span>}
           </div>
         )}
       </div>
@@ -405,7 +401,9 @@ function InvoiceLayout({
               <div className="text-[10px] text-gray-600">Tel: {settings.phone}</div>
             )}
             {settings.email && (
-              <div className="text-[10px] text-gray-600">{settings.email}</div>
+              <div className="text-[10px] text-gray-600 break-all">
+                {settings.email}
+              </div>
             )}
           </div>
         </div>

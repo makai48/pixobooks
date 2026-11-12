@@ -62,12 +62,18 @@ export function formatStamp(iso: string, timeZone?: string, dateFormat: DateForm
       month: "short",
       ...(timeZone ? { timeZone } : {}),
     }).format(date);
+    const longMonthName = new Intl.DateTimeFormat("en-GB", {
+      month: "long",
+      ...(timeZone ? { timeZone } : {}),
+    }).format(date);
     const datePart = composeDateByPreference(
       pick("day"),
       pick("month"),
       pick("year"),
       monthName,
-      dateFormat
+      dateFormat,
+      false,
+      longMonthName
     );
     return `${datePart} ${pick("hour")}:${pick("minute")}`;
   } catch {

@@ -19,6 +19,7 @@ import { itemHint } from "@/lib/businessClues";
 import { processImageFile } from "@/lib/imageUpload";
 import SearchableSelect from "./SearchableSelect";
 import BarcodeScanButton from "@/components/common/BarcodeScanButton";
+import AmountInput from "@/components/ui/AmountInput";
 import "./item-modal.css";
 
 type Props = {
@@ -1132,15 +1133,14 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
                         </label>
                         <div className="input-currency-wrapper">
                           <span className="currency-prefix">{currencySymbol}</span>
-                          <input
+                          <AmountInput
                             className="input-control num"
                             id="purchasePrice"
                             min={0}
-                            onChange={(e) => update({ purchasePrice: e.target.value })}
+                            onChange={(v) => update({ purchasePrice: String(v) })}
                             placeholder="0.00"
                             required
                             step={100}
-                            type="number"
                             value={form.purchasePrice}
                           />
                         </div>
@@ -1173,14 +1173,13 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
                       </label>
                       <div className="input-currency-wrapper">
                         <span className="currency-prefix">{currencySymbol}</span>
-                        <input
+                        <AmountInput
                           className="input-control num"
                           id="salePrice"
                           min={0}
-                          onChange={(e) => update({ price: e.target.value })}
+                          onChange={(v) => update({ price: String(v) })}
                           placeholder="0.00"
                           step={50}
-                          type="number"
                           value={form.price}
                         />
                       </div>
@@ -1269,17 +1268,16 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
                         </div>
                         <div className="input-currency-wrapper">
                           <span className="currency-prefix">{currencySymbol}</span>
-                          <input
+                          <AmountInput
                             className="input-control num"
                             id="costOfSale"
                             min={0}
-                            onChange={(e) => update({ cost: e.target.value })}
+                            onChange={(v) => update({ cost: String(v) })}
                             placeholder="0.00"
                             readOnly={isKit}
                             ref={costRef}
                             required
                             step={10}
-                            type="number"
                             value={form.cost}
                           />
                         </div>

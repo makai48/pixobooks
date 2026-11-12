@@ -5,6 +5,8 @@ import TopBar from "./TopBar";
 import MobileBottomNav from "./MobileBottomNav";
 import InventoryTabs from "./InventoryTabs";
 import ImportJobBanner from "@/components/features/settings/ImportJobBanner";
+import NotificationClickListener from "@/components/notifications/NotificationClickListener";
+import { useNotificationRuntime } from "@/hooks/useNotificationRuntime";
 import {
   setActiveBusiness,
   useActiveBusiness,
@@ -14,6 +16,7 @@ import { useItems } from "@/hooks/useItems";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { DEFAULT_DATE_FORMAT, setActiveDateFormat } from "@/lib/dateFormat";
+import { setActiveNumberFormat } from "@/lib/numberFormat";
 import { useUoms } from "@/hooks/useUoms";
 import { useUnitConversions } from "@/hooks/useUnitConversions";
 import { useBranches } from "@/hooks/useBranches";
@@ -44,6 +47,9 @@ export type AppOutletContext = {
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Keeps the business rules under observation and announces anything new
+  // that reaches this person's inbox. Mounted once, for every route.
+  useNotificationRuntime();
   // Sidebar collapse state is now user-driven ONLY. It never toggles
   // automatically on route changes — the collapse button is the single
   // source of truth. The last user choice is persisted across reloads.
@@ -68,6 +74,16 @@ export default function AppLayout() {
     enabled: activeBusiness !== "none",
   });
   setActiveDateFormat(shopSettings?.dateFormat ?? DEFAULT_DATE_FORMAT);
+  // The saved number format is app-wide too: money printed anywhere in the
+  // workspace uses the shop's separators, precision and digit grouping — the
+  // same values the Settings preview shows.
+  setActiveNumberFormat({
+    thousand: shopSettings?.thousandSeparator,
+    decimal: shopSettings?.decimalSeparator,
+    places: shopSettings?.decimalPlaces,
+    grouping: shopSettings?.digitGrouping,
+    currency: shopSettings?.currency,
+  });
 
   useEffect(() => {
     if (businesses.length === 0) return;
@@ -137,6 +153,7 @@ export default function AppLayout() {
           <Outlet context={{ collapsed, setCollapsed } satisfies AppOutletContext} />
         </main>
         <ImportJobBanner />
+        <NotificationClickListener />
         <div className="lg:hidden">
           <MobileBottomNav onOpenMore={() => setMobileOpen(true)} />
         </div>

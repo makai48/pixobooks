@@ -2,7 +2,7 @@ import { jsPDF } from "jspdf";
 import type { DocKind, Sale, SalePayment, Settings } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { formatDateByPreference, formatDateTimeByPreference } from "@/lib/dateFormat";
-import { formatMoney } from "@/lib/referenceData";
+import { formatPlainNumber } from "@/lib/numberFormat";
 import { supabase, SUPABASE_URL, SUPABASE_KEY } from "@/lib/supabase";
 
 export type PdfOptions = {
@@ -29,11 +29,12 @@ function money(n: number, currency: string): string {
 }
 
 function plain(n: number, s: Settings): string {
-  return formatMoney(n, {
+  return formatPlainNumber(n, {
     thousand: s.thousandSeparator || ",",
     decimal: s.decimalSeparator || ".",
     places: Math.min(4, Math.max(0, s.decimalPlaces ?? 2)),
     grouping: s.digitGrouping || "western",
+    currency: s.currency,
   });
 }
 

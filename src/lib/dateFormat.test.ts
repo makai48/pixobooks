@@ -3,6 +3,7 @@ import {
   DEFAULT_DATE_FORMAT,
   formatDateByPreference,
   formatDateTimeByPreference,
+  formatMonthByPreference,
   getActiveDateFormat,
   setActiveDateFormat,
 } from "./dateFormat";
@@ -17,7 +18,7 @@ describe("formatDateByPreference", () => {
   it("renders every presets the settings screen offers", () => {
     expect(formatDateByPreference(sample, "DD/MM/YYYY")).toBe("07/11/2026");
     expect(formatDateByPreference(sample, "DD MMM YYYY")).toBe("07 Nov 2026");
-    expect(formatDateByPreference(sample, "DD MMMM YYYY")).toBe("07 Nov 2026");
+    expect(formatDateByPreference(sample, "DD MMMM YYYY")).toBe("07 November 2026");
     expect(formatDateByPreference(sample, "D MMM YYYY")).toBe("07 Nov 2026");
     expect(formatDateByPreference(sample, "MM/DD/YYYY")).toBe("11/07/2026");
     expect(formatDateByPreference(sample, "YYYY-MM-DD")).toBe("2026-11-07");
@@ -38,6 +39,22 @@ describe("formatDateByPreference", () => {
     expect(getActiveDateFormat()).toBe("YYYY-MM-DD");
     setActiveDateFormat(null);
     expect(getActiveDateFormat()).toBe(DEFAULT_DATE_FORMAT);
+  });
+});
+
+describe("formatMonthByPreference", () => {
+  it("follows the preset for YYYY-MM keys and date values", () => {
+    expect(formatMonthByPreference("2026-11", "DD/MM/YYYY")).toBe("11/2026");
+    expect(formatMonthByPreference("2026-11", "MM/DD/YYYY")).toBe("11/2026");
+    expect(formatMonthByPreference("2026-11", "YYYY-MM-DD")).toBe("2026-11");
+    expect(formatMonthByPreference("2026-11", "DD MMM YYYY")).toBe("Nov 2026");
+    expect(formatMonthByPreference("2026-11", "D MMM YYYY")).toBe("Nov 2026");
+    expect(formatMonthByPreference("2026-11", "DD MMMM YYYY")).toBe("November 2026");
+    expect(formatMonthByPreference(sample, "YYYY-MM-DD")).toBe("2026-11");
+  });
+
+  it("returns an em dash for invalid input", () => {
+    expect(formatMonthByPreference("nope", "DD/MM/YYYY")).toBe("—");
   });
 });
 

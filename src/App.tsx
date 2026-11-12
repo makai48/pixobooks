@@ -31,6 +31,7 @@ const PayrollHistoryPage = lazy(() => import("@/pages/PayrollHistory"));
 const FinancialStatementsPage = lazy(() => import("@/pages/FinancialStatements"));
 const StockTaking = lazy(() => import("@/pages/StockTaking"));
 const ClientBilling = lazy(() => import("@/pages/ClientBilling"));
+const Notifications = lazy(() => import("@/pages/Notifications"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function PageFallback() {
@@ -125,6 +126,7 @@ export default function App() {
           <Route path="password-resets" element={<Suspense fallback={<PageFallback />}><PasswordResetsPage /></Suspense>} />
           <Route path="account-approvals" element={<Suspense fallback={<PageFallback />}><AccountApprovalsPage /></Suspense>} />
           <Route path="settings" element={<Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>} />
+          <Route path="notifications" element={<Suspense fallback={<PageFallback />}><Notifications /></Suspense>} />
         </Route>
         <Route path="*" element={<Suspense fallback={<PageFallback />}><NotFound /></Suspense>} />
       </Routes>

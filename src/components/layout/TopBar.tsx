@@ -5,6 +5,7 @@ import { formatDateTime } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import BusinessSwitcher from "@/components/layout/BusinessSwitcher";
 import OfflineIndicator from "@/components/layout/OfflineIndicator";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 const TITLES: Record<string, string> = {
   "/": "Sales Counter",
@@ -26,6 +27,7 @@ const TITLES: Record<string, string> = {
   "/account-approvals": "Account Approvals",
   "/settings": "Shop Settings",
   "/suppliers": "Suppliers",
+  "/notifications": "Notifications",
 };
 
 type Props = {
@@ -86,6 +88,7 @@ export default function TopBar({ onOpenMenu, collapsed, onToggleCollapse }: Prop
           <RefreshCw className="w-5 h-5" />
           {formatDateTime(now)}
         </div>
+        <NotificationBell />
         <button
           className="btn btn-primary btn-sm md:h-9 md:px-4"
           onClick={async () => {

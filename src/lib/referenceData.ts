@@ -428,25 +428,29 @@ export const TIMEZONES = [
 
 /** "GMT+03:00 Africa/Kampala" — GMT prefix first, IANA name second. */
 export function timezoneLabel(tz: string): string {
-  if (tz === "UTC") return "GMT+00:00 UTC";
+  if (tz === "UTC") return "GMT+0 UTC";
+  // The continent is noise in a shop's dropdown: "GMT+3 Kampala" reads
+  // faster than "GMT+03:00 Africa/Kampala".
+  const city = tz.split("/").slice(1).join("/").replace(/_/g, " ") || tz;
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
       timeZoneName: "shortOffset",
     }).formatToParts(new Date());
     const name = parts.find((p) => p.type === "timeZoneName")?.value ?? "";
-    if (name === "GMT") return `GMT+00:00 ${tz}`;
+    if (name === "GMT") return `GMT+0 ${city}`;
     const m = /GMT([+-]\d{1,2})(?::(\d{2}))?/.exec(name);
     if (m) {
       const sign = m[1][0];
       const h = Math.abs(parseInt(m[1], 10));
       const mm = m[2] ?? "00";
-      return `GMT${sign}${String(h).padStart(2, "0")}:${mm} ${tz}`;
+      // "GMT+3", not "GMT+03:00"; half-hour zones keep their minutes.
+      return `GMT${sign}${h}${mm === "00" ? "" : `:${mm}`} ${city}`;
     }
   } catch {
-    /* unknown zone — fall through */
+    /* unknown zone - fall through */
   }
-  return tz;
+  return city;
 }
 
 export const TIMEZONE_OPTIONS = TIMEZONES.map((z) => ({

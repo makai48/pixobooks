@@ -14,13 +14,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import {
   EXPENSE_CATEGORIES,
+  type DateFormat,
   type Expense,
   type PaymentMethod,
   computeEmployeeSalary,
 } from "@/types";
 import { todayISO, formatCurrency } from "@/lib/utils";
-import { DEFAULT_DATE_FORMAT, formatDateByPreference } from "@/lib/dateFormat";
+import {
+  DEFAULT_DATE_FORMAT,
+  formatDateByPreference,
+  formatMonthByPreference,
+} from "@/lib/dateFormat";
 import MoneyText from "@/components/ui/MoneyText";
+import AmountInput from "@/components/ui/AmountInput";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassMonthPicker from "@/components/ui/GlassMonthPicker";
 import GlassSelect from "@/components/ui/GlassSelect";
@@ -34,11 +40,10 @@ function currentMonthISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function formatMonthLabel(monthISO: string) {
+function formatMonthLabel(monthISO: string, dateFormat: DateFormat) {
   const [y, m] = monthISO.split("-").map(Number);
   if (!y || !m) return monthISO;
-  const d = new Date(y, m - 1, 1);
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  return formatMonthByPreference(monthISO, dateFormat);
 }
 
 function monthISOToLastDay(monthISO: string) {
@@ -61,6 +66,7 @@ export default function ExpenseModal({
   const upsert = useUpsertExpense();
   const { data: employees = [] } = useEmployees();
   const { data: settings } = useShopSettings();
+  const dateFormat = settings?.dateFormat ?? DEFAULT_DATE_FORMAT;
 
   const [form, setForm] = useState({
     category: preselectCategory || "General",
@@ -121,7 +127,7 @@ export default function ExpenseModal({
     const emp = employees.find((e) => e.id === employeeId);
     if (!emp) return;
     const amount = Math.round(computeEmployeeSalary(emp.salary) * 100) / 100;
-    const monthLabel = formatMonthLabel(salaryMonth);
+    const monthLabel = formatMonthLabel(salaryMonth, dateFormat);
     setForm((f) => ({
       ...f,
       amount,
@@ -130,7 +136,7 @@ export default function ExpenseModal({
       vendor: "",
     }));
     setSalaryAutoSynced(true);
-  }, [employeeId, salaryMonth, isSalary, employees]);
+  }, [employeeId, salaryMonth, isSalary, employees, dateFormat]);
 
   const salaryEmployee = useMemo(
     () => employees.find((e) => e.id === employeeId),
@@ -152,7 +158,6 @@ export default function ExpenseModal({
     return base;
   }, [settings?.expenseCategories, form.category]);
 
-  const dateFormat = settings?.dateFormat ?? DEFAULT_DATE_FORMAT;
   const methodLabels: Record<string, string> = {
     cash: "Cash",
     card: "Card",
@@ -414,17 +419,15 @@ export default function ExpenseModal({
             <div>
               <label htmlFor="exp-amount" className={FIELD_LABEL}>Amount</label>
               <div className="relative">
-                <input
+                <AmountInput
                   id="exp-amount"
-                  type="number"
                   step="0.01"
                   min={0}
                   required
-                  inputMode="decimal"
                   value={form.amount}
-                  onFocus={(event) => event.currentTarget.select()}
-                  onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
+                  onChange={(v) => setForm({ ...form, amount: v })}
                   className="input expense-amount num w-full pr-12 text-right"
+                  ariaLabel="Expense amount"
                 />
                 <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[8.5px] font-semibold uppercase tracking-wide text-ink-mute">
                   {settings?.currency || "USD"}

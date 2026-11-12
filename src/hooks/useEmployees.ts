@@ -8,11 +8,13 @@ import { logAudit } from "@/lib/audit";
 import { useActiveBusiness } from "@/hooks/useBusinesses";
 
 /** Map a free-text job title to a tenant membership role. */
-function membershipRole(role: string): "admin" | "manager" | "staff" {
+function membershipRole(role: string): "owner" | "admin" | "manager" | "staff" {
   const r = (role || "").trim().toLowerCase();
-  // "admin" is the backend tier name; both "Admin" (legacy) and "Admin"
-  // map to it so the RLS mirror stays valid.
-  if (r === "admin" || r === "admin") return "admin";
+  // `owner` is the workspace creator; `admin` is the app's Admin tier.
+  // Both are privileged, and the database helper accepts both (see
+  // 20261112000001_shop_settings_save_repair.sql).
+  if (r === "owner") return "owner";
+  if (r === "admin") return "admin";
   if (r === "manager") return "manager";
   return "staff";
 }

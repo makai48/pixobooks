@@ -31,3 +31,6 @@ dist-ssr
 tatus
 .env
 .env.local
+
+# Vercel CLI project link
+.vercel
