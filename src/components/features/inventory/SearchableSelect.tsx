@@ -49,7 +49,7 @@ export default function SearchableSelect({
   const [highlight, setHighlight] = useState(-1);
 
   const labelFor = (v: string) => {
-    if (!v) return emptyLabel ?? "";
+    if (!v) return "";
     return options.find((o) => o.value === v)?.label ?? v;
   };
 
@@ -127,7 +127,7 @@ export default function SearchableSelect({
           aria-controls={`${id}-menu`}
           aria-autocomplete="list"
           className={cn("searchable-input", invalid && "field-error")}
-          placeholder={placeholder}
+          placeholder={emptyLabel && !text ? emptyLabel : placeholder}
           value={text}
           onChange={(e) => {
             setDirty(true);

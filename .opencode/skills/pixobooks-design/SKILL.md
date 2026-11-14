@@ -207,6 +207,27 @@ available for other deliberate uses, but Sales does not opt into them.
   listbox to `83%` of its calculated menu width (17% narrower); other GlassSelect menus
   remain unchanged.
 
+## Inventory & purchasing forms
+
+- The PO editor (`POModal`) is the purchasing source of truth for the catalog: its item
+  picker lists every item whose Purchase Orders channel is enabled (`canPurchase !==
+  false`), excluding services and kits. It refetches items on open, so a material added
+  in Inventory appears without a reload. `Add line` prepends the new line.
+- A new PO line is deliberate: it starts completely blank (`materialId`, name, quantity,
+  unit and cost all empty) instead of borrowing the first catalog item. Empty pickers
+  carry an explicit `Select material…` / `Unit` placeholder so nothing is silently
+  preselected, an incomplete row shows `—` as its line total, and the row keeps a brand
+  ring plus `data-po-active` until the next line is created. Neither `Add line` nor
+  `Create PO` proceeds while any line has a missing field — the first missing field is
+  named in the toast. Lines saved before the unit was required are shown with the
+  material's packing unit once the catalog loads.
+- `ItemModal` hides `Sale Price` when `Point of Sale` is unchecked; the stored price is
+  preserved for quotes/invoices. The Preferred Supplier picker lists the whole supplier
+  register, offers a `＋ New` button and a `Create "…"` row, and opens the supplier
+  sheet in place; the saved supplier is selected immediately.
+- `SearchableSelect` treats `emptyLabel` as a placeholder/clear row, not as the input's
+  value. An empty value must focus to the full option list, ready for type-to-search.
+
 ## Auth composition (login/register)
 
 - One centred column, `max-width: 420px`; page padding

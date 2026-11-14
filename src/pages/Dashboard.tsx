@@ -627,19 +627,23 @@ export default function Dashboard() {
         </div>
         <div className="paper-card p-2 md:p-4 space-y-1.5 md:space-y-3">
           <div className="relative">
-            <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <input
               ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleSearchKeydown}
-              placeholder="Scan barcode or search products, SKUs and press Enter..."
-              className="pos-search pr-16"
+              placeholder="Scan barcode or search products, SKUs..."
+              enterKeyHint="search"
+              autoComplete="off"
+              spellCheck={false}
+              aria-label="Search products"
+              className="input pl-9 pr-12"
             />
             <BarcodeScanButton
               onScan={handleScan}
               label="Scan barcode into the sales counter"
-              className="absolute right-2 top-1/2 -translate-y-1/2"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2"
             />
           </div>
 
@@ -1282,11 +1286,11 @@ export default function Dashboard() {
       </aside>
 
       {showCartMobile && (
-        <div className="md:hidden fixed inset-0 bg-ink/40 z-30" onClick={() => setShowCartMobile(false)} />
+        <div className="md:hidden fixed inset-0 bg-ink/45 backdrop-blur-[2px] z-30" onClick={() => setShowCartMobile(false)} />
       )}
 
       {holdDialogOpen && (
-        <div className="fixed inset-0 z-50 bg-ink/40 flex items-end md:items-center justify-center p-2 md:p-4 animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-ink/45 backdrop-blur-[2px] flex items-end md:items-center justify-center p-2 md:p-4 animate-fade-in">
           <div className="paper-card glass-sheet p-2.5 md:p-5 w-full max-w-sm max-h-[94dvh] overflow-auto animate-fade-in">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -1381,7 +1385,7 @@ function PartialPaymentModal({ total, currency, onClose, onConfirm, pending }: {
   const [amount, setAmount] = useState(Math.round(total / 2));
   const due = Math.max(0, total - amount);
   return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-end md:items-center justify-center p-2 md:p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-ink/45 backdrop-blur-[2px] flex items-end md:items-center justify-center p-2 md:p-4 animate-fade-in">
       <div className="paper-card glass-sheet w-full max-w-sm overflow-hidden max-h-[94dvh] md:max-h-[92vh] flex flex-col">
         <div className="px-2.5 md:px-5 py-2 md:py-4 border-b flex items-center justify-between gap-2 shrink-0">
           <div className="min-w-0">
@@ -1499,34 +1503,34 @@ function ReceiptModal({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4 animate-fade-in no-print"
+        className="fixed inset-0 z-50 bg-ink/45 backdrop-blur-[2px] flex items-center justify-center p-4 animate-fade-in no-print"
         onPointerDown={() => setHeld(true)}
         onFocusCapture={() => setHeld(true)}
         onWheel={() => setHeld(true)}
       >
-        <div className={cn("bg-white rounded-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[95dvh]", isInvoice ? "max-w-3xl" : "max-w-md")}>
-          <div className="p-4 border-b flex items-center justify-between shrink-0">
+        <div className={cn("bg-card rounded-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[95dvh] border border-line", isInvoice ? "max-w-3xl" : "max-w-md")}>
+          <div className="p-4 border-b border-line flex items-center justify-between shrink-0">
             <div>
-              <div className="text-[11px] uppercase tracking-widest text-gray-500">
+              <div className="text-[11px] uppercase tracking-widest text-ink-mute">
                 {isInvoice ? "Credit invoice" : "Sale complete"}
               </div>
-              <div className="font-display text-lg font-bold text-gray-900">{sale.number}</div>
+              <div className="font-display text-lg font-bold text-ink">{sale.number}</div>
             </div>
-            <button onClick={onClose} className="rounded-md h-8 w-8 flex items-center justify-center hover:bg-gray-100 text-gray-700">
+            <button onClick={onClose} className="rounded-md h-8 w-8 flex items-center justify-center hover:bg-paper text-ink">
               <X className="w-4 h-4" />
             </button>
           </div>
           {sale.id.startsWith("offline-") && (
-            <div className="px-4 py-2 bg-amber-50 border-b text-xs text-amber-800 text-center no-print">
+            <div className="px-4 py-2 bg-warning/10 border-b border-warning/30 text-xs text-warning text-center no-print">
               Queued offline — pending sync. Numbers match what will be saved.
             </div>
           )}
           {printError && (
-            <div className="px-4 py-2 bg-red-50 border-b text-xs text-red-700 text-center no-print">
+            <div className="px-4 py-2 bg-danger/10 border-b border-danger/30 text-xs text-danger text-center no-print">
               {printError}
             </div>
           )}
-          <div className="overflow-auto bg-gray-100">
+          <div className="overflow-auto bg-paper">
             <DocumentView sale={sale} settings={settings} payments={payments} />
           </div>
           <ReceiptActions sale={sale} settings={settings} payments={payments} onClose={onClose} />
@@ -1547,13 +1551,23 @@ function CategoryManagerModal({ existingItemCategories, customCategories, onClos
   const [draft, setDraft] = useState("");
   const [renameFrom, setRenameFrom] = useState<string | null>(null);
   const [renameTo, setRenameTo] = useState("");
+  const [armed, setArmed] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const counts = useMemo(() => {
+    const next: Record<string, number> = {};
+    existingItemCategories.forEach((name) => {
+      if (name) next[name] = (next[name] ?? 0) + 1;
+    });
+    return next;
+  }, [existingItemCategories]);
 
   const add = () => {
     const c = draft.trim();
     if (!c) return toast.error("Enter a category name");
     if (pool.some((p) => p.toLowerCase() === c.toLowerCase())) return toast.error("Already exists");
-    setPool([...pool, c]); setDraft("");
+    setPool([...pool, c]);
+    setDraft("");
   };
 
   const rename = async () => {
@@ -1567,15 +1581,18 @@ function CategoryManagerModal({ existingItemCategories, customCategories, onClos
       const { error } = await q;
       if (error) throw error;
       setPool(pool.map((p) => (p === renameFrom ? to : p)));
-      setRenameFrom(null); setRenameTo("");
+      setRenameFrom(null);
+      setRenameTo("");
       qc.invalidateQueries({ queryKey: ["items"] });
       toast.success(`Renamed to ${to}`);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "Rename failed"); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Rename failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const remove = async (name: string) => {
-    if (!confirm(`Delete "${name}"? Items currently in this category will move to "General".`)) return;
     setSaving(true);
     try {
       const businessId = currentBusinessId();
@@ -1584,10 +1601,14 @@ function CategoryManagerModal({ existingItemCategories, customCategories, onClos
       const { error } = await q;
       if (error) throw error;
       setPool(pool.filter((p) => p !== name));
+      setArmed(null);
       qc.invalidateQueries({ queryKey: ["items"] });
       toast.success(`Deleted "${name}"`);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "Delete failed"); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const save = () => {
@@ -1598,39 +1619,93 @@ function CategoryManagerModal({ existingItemCategories, customCategories, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-ink/45 backdrop-blur-[2px] flex items-center justify-center p-4 animate-fade-in">
       <div className="paper-card glass-sheet w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden">
-        <div className="p-4 border-b flex items-center justify-between shrink-0">
+        <div className="p-4 border-b border-line flex items-center justify-between shrink-0">
           <div>
             <div className="text-[11px] uppercase tracking-widest text-ink-mute">POS categories</div>
-            <h2 className="font-display text-lg font-bold">Manage categories</h2>
+            <h2 className="font-display text-lg font-bold text-ink">Manage categories</h2>
           </div>
-          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="btn btn-ghost h-9 w-9 p-0" aria-label="Close">
+            <X className="w-4 h-4" />
+          </button>
         </div>
         <div className="p-4 space-y-3 overflow-auto scroll-lined">
           <div className="flex gap-2">
-            <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="New category name" className="input flex-1" onKeyDown={(e) => e.key === "Enter" && add()} />
-            <button onClick={add} className="btn btn-primary"><Plus className="w-4 h-4" /> Add</button>
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="New category name"
+              className="input flex-1"
+              onKeyDown={(e) => e.key === "Enter" && add()}
+            />
+            <button onClick={add} className="btn btn-primary shrink-0">
+              <Plus className="w-4 h-4" /> Add
+            </button>
           </div>
-          <div className="border rounded-md divide-y">
+          <div className="border border-line rounded-md divide-y divide-line overflow-hidden">
             {pool.length === 0 ? (
               <div className="p-4 text-sm text-ink-mute text-center">No categories yet.</div>
             ) : (
               pool.map((p) => (
-                <div key={p} className="p-2.5 flex items-center gap-2">
+                <div key={p} className="p-2.5 flex items-center gap-2 min-h-[40px]">
                   {renameFrom === p ? (
                     <>
-                      <input autoFocus value={renameTo} onChange={(e) => setRenameTo(e.target.value)} placeholder="New name" className="input h-8 flex-1" />
-                      <button onClick={rename} disabled={saving} className="btn btn-primary h-8 px-3 text-xs">Save</button>
-                      <button onClick={() => { setRenameFrom(null); setRenameTo(""); }} className="btn btn-ghost h-8 px-2 text-xs">Cancel</button>
+                      <input
+                        autoFocus
+                        value={renameTo}
+                        onChange={(e) => setRenameTo(e.target.value)}
+                        placeholder="New name"
+                        className="input h-8 flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void rename();
+                          if (e.key === "Escape") { setRenameFrom(null); setRenameTo(""); }
+                        }}
+                      />
+                      <button onClick={() => void rename()} disabled={saving || !renameTo.trim() || renameTo.trim() === p} className="btn btn-primary h-8 px-3 text-xs">
+                        Save
+                      </button>
+                      <button onClick={() => { setRenameFrom(null); setRenameTo(""); }} className="btn btn-ghost h-8 px-2 text-xs">
+                        Cancel
+                      </button>
+                    </>
+                  ) : armed === p ? (
+                    <>
+                      <span className="flex-1 text-sm font-medium text-danger">
+                        Move items to General?
+                      </span>
+                      <button
+                        onClick={() => void remove(p)}
+                        disabled={saving}
+                        className="btn btn-outline h-8 px-3 text-xs text-danger border-danger/40 hover:bg-danger/5"
+                      >
+                        {saving ? "Deleting..." : "Delete"}
+                      </button>
+                      <button onClick={() => setArmed(null)} disabled={saving} className="btn btn-ghost h-8 px-2 text-xs">
+                        Keep
+                      </button>
                     </>
                   ) : (
                     <>
-                      <span className="flex-1 text-sm font-medium">{p}</span>
-                      <button onClick={() => { setRenameFrom(p); setRenameTo(p); }} className="btn btn-ghost h-8 w-8 p-0" title="Rename">
+                      <span className="flex-1 text-sm font-medium text-ink truncate">{p}</span>
+                      <span className="text-[10px] uppercase tracking-widest text-ink-mute tabular-nums">
+                        {counts[p] ? `${counts[p]} ${counts[p] === 1 ? "item" : "items"}` : "No items"}
+                      </span>
+                      <button
+                        onClick={() => { setRenameFrom(p); setRenameTo(p); setArmed(null); }}
+                        className="btn btn-ghost h-8 w-8 p-0"
+                        title="Rename"
+                        aria-label={`Rename ${p}`}
+                      >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => remove(p)} disabled={saving} className="btn btn-ghost h-8 w-8 p-0 text-danger" title="Delete">
+                      <button
+                        onClick={() => setArmed(p)}
+                        disabled={saving}
+                        className="btn btn-ghost h-8 w-8 p-0 text-danger"
+                        title="Delete"
+                        aria-label={`Delete ${p}`}
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </>
@@ -1643,9 +1718,11 @@ function CategoryManagerModal({ existingItemCategories, customCategories, onClos
             Renaming updates every item in that category. Deleting reassigns them to "General".
           </p>
         </div>
-        <div className="p-4 border-t flex justify-end gap-2 shrink-0">
+        <div className="p-4 border-t border-line flex justify-end gap-2 shrink-0">
           <button onClick={onClose} className="btn btn-outline">Cancel</button>
-          <button onClick={save} disabled={updateSettings.isPending} className="btn btn-primary">Save category list</button>
+          <button onClick={save} disabled={updateSettings.isPending} className="btn btn-primary">
+            {updateSettings.isPending ? "Saving..." : "Save category list"}
+          </button>
         </div>
       </div>
     </div>

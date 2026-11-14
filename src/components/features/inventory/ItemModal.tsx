@@ -18,6 +18,7 @@ import { currencyByCode } from "@/lib/referenceData";
 import { itemHint } from "@/lib/businessClues";
 import { processImageFile } from "@/lib/imageUpload";
 import SearchableSelect from "./SearchableSelect";
+import SupplierModal from "@/components/features/suppliers/SupplierModal";
 import BarcodeScanButton from "@/components/common/BarcodeScanButton";
 import AmountInput from "@/components/ui/AmountInput";
 import "./item-modal.css";
@@ -195,7 +196,7 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
   const { data: items = [] } = useItems();
   const { data: conversions = [] } = useUnitConversions();
   const { data: uoms = [] } = useUoms();
-  const { data: suppliersRegister = [] } = useSuppliers();
+  const { data: suppliersRegister = [], refetch: refetchSuppliers } = useSuppliers();
   const upsert = useUpsertItem();
 
   const source = item || cloneFrom;
@@ -223,6 +224,8 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
   /** Clone opens behind a mandatory "new identity" prompt: a duplicate must
    *  not start life with the source item's SKU or barcode. */
   const [cloneSetupOpen, setCloneSetupOpen] = useState(!!cloneFrom);
+  /** Preferred-supplier "+ New" sheet: creates a supplier and selects it. */
+  const [newSupplierDraft, setNewSupplierDraft] = useState<string | null>(null);
   const [toastState, setToastState] = useState<{ message: string; tone: string; show: boolean }>({
     message: "",
     tone: "#34c759",
@@ -262,6 +265,12 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
   useEffect(() => {
     setImageBroken(false);
   }, [form.imageUrl]);
+
+  // The supplier picker must always reflect the current register, including a
+  // supplier added in another tab while this sheet was closed.
+  useEffect(() => {
+    void refetchSuppliers();
+  }, [refetchSuppliers]);
 
   const update = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -320,8 +329,13 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
       .map((c) => ({ value: c, label: c }));
   }, [settings?.categories, form.category]);
 
+  // The full supplier register, alphabetical, so every saved supplier can be
+  // picked here — not only vendors previously used on an item.
   const supplierOptions = useMemo(
-    () => suppliersRegister.map((s) => ({ value: s.id, label: s.name })),
+    () =>
+      [...suppliersRegister]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((s) => ({ value: s.id, label: s.name })),
     [suppliersRegister]
   );
 
@@ -1063,9 +1077,20 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
                 </div>
                 <div className="form-grid-2" id="supplierAndAlertRow">
                   <div className="form-group" id="preferredSupplierField">
-                    <label className="label" htmlFor="prefSupplier">
-                      Preferred Supplier <span className="req">*</span>
-                    </label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="label" htmlFor="prefSupplier" style={{ marginBottom: 0 }}>
+                        Preferred Supplier <span className="req">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        className="btn-add-line"
+                        style={{ height: 24, padding: "0 8px", fontSize: 11 }}
+                        onClick={() => setNewSupplierDraft("")}
+                        title="Add a new supplier to the register"
+                      >
+                        ＋ New
+                      </button>
+                    </div>
                     <SearchableSelect
                       allowFreeText
                       emptyLabel="Select vendor..."
@@ -1077,6 +1102,7 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
                           preferredSupplierName: record?.name || v,
                         });
                       }}
+                      onCreate={(name) => setNewSupplierDraft(name)}
                       options={supplierOptions}
                       placeholder="Search or choose..."
                       value={form.preferredSupplierId || form.preferredSupplierName}
@@ -1167,23 +1193,28 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
                         value={form.saleUnit}
                       />
                     </div>
-                    <div className="form-group">
-                      <label className="label" htmlFor="salePrice">
-                        Sale Price <span className="req">*</span>
-                      </label>
-                      <div className="input-currency-wrapper">
-                        <span className="currency-prefix">{currencySymbol}</span>
-                        <AmountInput
-                          className="input-control num"
-                          id="salePrice"
-                          min={0}
-                          onChange={(v) => update({ price: String(v) })}
-                          placeholder="0.00"
-                          step={50}
-                          value={form.price}
-                        />
+                    {/* No POS channel means no shelf price to capture. Quotes
+                        and invoices keep using the stored price when one
+                        already exists. */}
+                    {form.posVisible && (
+                      <div className="form-group">
+                        <label className="label" htmlFor="salePrice">
+                          Sale Price <span className="req">*</span>
+                        </label>
+                        <div className="input-currency-wrapper">
+                          <span className="currency-prefix">{currencySymbol}</span>
+                          <AmountInput
+                            className="input-control num"
+                            id="salePrice"
+                            min={0}
+                            onChange={(v) => update({ price: String(v) })}
+                            placeholder="0.00"
+                            step={50}
+                            value={form.price}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -1648,6 +1679,21 @@ export default function ItemModal({ item, cloneFrom, onClose }: Props) {
           onConfirm={resolveDuplicate}
           original={dupPrompt.original}
           pending={upsert.isPending}
+        />
+      )}
+
+      {newSupplierDraft !== null && (
+        <SupplierModal
+          supplier={null}
+          defaultName={newSupplierDraft}
+          onSaved={(saved) => {
+            update({
+              preferredSupplierId: saved.id,
+              preferredSupplierName: saved.name,
+            });
+            showToast(`Supplier "${saved.name}" added and selected`);
+          }}
+          onClose={() => setNewSupplierDraft(null)}
         />
       )}
 

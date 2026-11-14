@@ -7,7 +7,7 @@ import { useUpsertPO } from "@/hooks/usePurchaseOrders";
 import { useUnitConversions } from "@/hooks/useUnitConversions";
 import { useUoms } from "@/hooks/useUoms";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import GlassDatePicker from "@/components/ui/GlassDatePicker";
 import GlassSelect from "@/components/ui/GlassSelect";
 import AmountInput from "@/components/ui/AmountInput";
@@ -24,7 +24,7 @@ export default function POModal({
   onClose: () => void;
 }) {
   const { profile } = useAuth();
-  const { data: items = [] } = useItems();
+  const { data: items = [], refetch: refetchItems } = useItems();
   const { data: settings } = useShopSettings();
   const { data: conversions = [] } = useUnitConversions();
   const { data: uoms = [] } = useUoms();
@@ -38,8 +38,18 @@ export default function POModal({
       .sort((a, b) => a.localeCompare(b));
   };
 
+  // Every purchasable inventory item is orderable — not only rows flagged as
+  // raw materials. An item added in Inventory (including a "ready" product)
+  // must appear here as soon as the modal opens, so the list follows the
+  // Purchase Orders channel rather than the older isMaterial flag.
   const materials = useMemo(
-    () => items.filter((i) => i.isMaterial && i.canPurchase !== false),
+    () =>
+      items.filter(
+        (i) =>
+          i.canPurchase !== false &&
+          i.productCategory !== "service" &&
+          i.productCategory !== "kit"
+      ),
     [items]
   );
   const [vendor, setVendor] = useState("");
@@ -47,6 +57,8 @@ export default function POModal({
   const [status, setStatus] = useState<POStatus>("draft");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<POLine[]>([]);
+  /** The freshly added line stays highlighted until another one is created. */
+  const [activeLine, setActiveLine] = useState<POLine | null>(null);
 
   useEffect(() => {
     if (po) {
@@ -55,30 +67,81 @@ export default function POModal({
       setStatus(po.status);
       setNotes(po.notes || "");
       setLines(po.lines);
+      setActiveLine(null);
     }
   }, [po]);
 
-  const addLine = () => {
-    const first = materials[0];
-    if (!first) return toast.error("Add materials in Inventory first");
-    setLines([
-      ...lines,
-      {
-        materialId: first.id,
-        name: first.name,
-        qty: 1,
-        unit: first.purchaseUnit || first.baseUnit,
-        unitCost: first.cost,
-      },
-    ]);
+  // Always read the live catalog when the editor opens: an item created after
+  // this screen was last visited must be selectable without a page reload.
+  useEffect(() => {
+    void refetchItems();
+  }, [refetchItems]);
+
+  // Older lines were saved before the unit was required on every row. Once the
+  // catalog is known, show their effective packing unit so the picker never
+  // reads "Unit" on a row that already has a material and cost.
+  useEffect(() => {
+    if (!materials.length) return;
+    setLines((prev) => {
+      let changed = false;
+      const next = prev.map((l) => {
+        if (l.unit || !l.materialId) return l;
+        const m = materials.find((x) => x.id === l.materialId);
+        if (!m) return l;
+        changed = true;
+        return { ...l, unit: m.purchaseUnit || m.baseUnit };
+      });
+      return changed ? next : prev;
+    });
+  }, [materials]);
+
+  /** First missing field on a line, in the order the row reads. */
+  const lineIssue = (l: POLine): string | null => {
+    if (!l.materialId) return "Select a material on the new line first";
+    if (!(l.qty > 0)) return `Enter a quantity for "${l.name}"`;
+    if (!l.unit) return `Choose a unit for "${l.name}"`;
+    if (!(l.unitCost > 0)) return `Enter a unit cost for "${l.name}"`;
+    return null;
   };
 
-  const updateLine = (idx: number, patch: Partial<POLine>) =>
-    setLines(lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+  const addLine = () => {
+    if (!materials.length) return toast.error("Add a purchasable item in Inventory first");
+    // A new line cannot start until the highlighted one is complete.
+    if (activeLine && lines.includes(activeLine)) {
+      const issue = lineIssue(activeLine);
+      if (issue) return toast.error(issue);
+    }
+    const line: POLine = {
+      materialId: "",
+      name: "",
+      qty: 0,
+      unit: "",
+      unitCost: 0,
+    };
+    setLines((prev) => [line, ...prev]);
+    setActiveLine(line);
+  };
+
+  const updateLine = (idx: number, patch: Partial<POLine>) => {
+    const current = lines[idx];
+    if (!current) return;
+    const next = { ...current, ...patch };
+    setLines(lines.map((l, i) => (i === idx ? next : l)));
+    if (activeLine === current) setActiveLine(next);
+  };
+
+  const removeLine = (idx: number) => {
+    const removed = lines[idx];
+    setLines(lines.filter((_, i) => i !== idx));
+    if (activeLine === removed) setActiveLine(null);
+  };
 
   const selectMat = (idx: number, matId: string) => {
     const m = materials.find((x) => x.id === matId);
-    if (!m) return;
+    if (!m) {
+      updateLine(idx, { materialId: "", name: "", unit: "", unitCost: 0 });
+      return;
+    }
     updateLine(idx, {
       materialId: matId,
       name: m.name,
@@ -96,8 +159,11 @@ export default function POModal({
     if (!vendor.trim()) return toast.error("Vendor is required");
     if (!lines.length) return toast.error("Add at least one line");
     // Central UOM gate: ordered unit must be family-compatible with the
-    // material's base unit, and ordered qty must satisfy its rule.
+    // material's base unit, and ordered qty must satisfy its rule. Every
+    // field on every line must be filled first.
     for (const l of lines) {
+      const issue = lineIssue(l);
+      if (issue) return toast.error(issue);
       const mat = materials.find((m) => m.id === l.materialId);
       const base = mat?.baseUnit || "pc";
       const unit = l.unit || mat?.purchaseUnit || base;
@@ -230,10 +296,32 @@ export default function POModal({
                 </div>
               ) : (
                 lines.map((l, idx) => {
-                  const mat = materials.find((m) => m.id === l.materialId);
-                  const unit = l.unit || mat?.purchaseUnit || mat?.baseUnit || "pc";
+                  const isActive = activeLine === l;
+                  const complete =
+                    !!l.materialId && l.qty > 0 && !!l.unit && l.unitCost > 0;
+                  const lineTotal = l.qty * l.unitCost;
+                  // A blank row must not silently inherit the catalog's first
+                  // item, so every picker starts on an explicit empty choice.
+                  const materialChoices = [
+                    { value: "", label: materials.length ? "Select material…" : "No items" },
+                    ...materials.map((m) => ({ value: m.id, label: m.name })),
+                  ];
+                  const unitChoices = [
+                    { value: "", label: "Unit" },
+                    ...(l.materialId
+                      ? unitOptions(l.materialId).map((u) => ({ value: u, label: u }))
+                      : []),
+                  ];
+                  const lineName = l.name || "new line";
                   return (
-                    <div key={idx} className="p-1.5 md:p-2 border rounded-md bg-card">
+                    <div
+                      key={idx}
+                      data-po-active={isActive ? "true" : undefined}
+                      className={cn(
+                        "p-1.5 md:p-2 border rounded-md bg-card transition-colors",
+                        isActive && "border-brand/50 ring-2 ring-brand/40 bg-brand/[0.04]"
+                      )}
+                    >
                       {/* Mobile: two pinned lines — material+remove, then qty · unit · cost · line total */}
                       <div className="md:hidden space-y-1">
                         <div className="flex items-center gap-1">
@@ -241,14 +329,14 @@ export default function POModal({
                             value={l.materialId}
                             onChange={(v) => selectMat(idx, v)}
                             ariaLabel="Material"
-                            options={materials.map((m) => ({ value: m.id, label: m.name }))}
+                            options={materialChoices}
                             className="input select-glass input-sm flex-1 min-w-0"
                           />
                           <button
                             type="button"
-                            onClick={() => setLines(lines.filter((_, i) => i !== idx))}
+                            onClick={() => removeLine(idx)}
                             className="btn btn-ghost btn-sm w-7 shrink-0 px-0 text-danger"
-                            aria-label={`Remove ${l.name}`}
+                            aria-label={`Remove ${lineName}`}
                             title="Remove line"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -265,31 +353,35 @@ export default function POModal({
                             type="number"
                             min={1}
                             step="any"
-                            value={l.qty}
+                            value={l.qty > 0 ? l.qty : ""}
                             onChange={(e) => updateLine(idx, { qty: Number(e.target.value) })}
                             className="input input-sm num w-14 shrink-0 text-right"
-                            aria-label={`Quantity for ${l.name}`}
+                            aria-label={`Quantity for ${lineName}`}
                           />
                           <GlassSelect
-                            value={unit}
+                            value={l.unit ?? ""}
                             onChange={(v) => updateLine(idx, { unit: v })}
-                            ariaLabel={`Order unit for ${l.name} (cost applies per this unit)`}
-                            options={unitOptions(l.materialId).map((u) => ({ value: u, label: u }))}
+                            ariaLabel={`Order unit for ${lineName} (cost applies per this unit)`}
+                            options={unitChoices}
                             className="input select-glass input-sm w-[52px] shrink-0 px-1 text-[11px]"
                           />
                           <AmountInput
-                            step="0.001"
-                            min={0}
-                            value={l.unitCost}
-                            onChange={(v) => updateLine(idx, { unitCost: v })}
+                            ariaLabel={`Unit cost for ${lineName} (per ${l.unit || "unit"})`}
                             className="input input-sm num flex-1 min-w-0 text-right"
-                            ariaLabel={`Unit cost for ${l.name} (per ${unit})`}
+                            onChange={(v) => updateLine(idx, { unitCost: v })}
+                            placeholder="0.00"
+                            step="0.001"
+                            value={l.unitCost > 0 ? l.unitCost : ""}
                           />
                           <span
                             className="num w-16 shrink-0 truncate text-right text-[11px] font-semibold"
-                            title={formatCurrency(l.qty * l.unitCost, settings?.currency)}
+                            title={complete ? formatCurrency(lineTotal, settings?.currency) : "Fill every field"}
                           >
-                            <MoneyText value={formatCurrency(l.qty * l.unitCost, settings?.currency)} />
+                            {complete ? (
+                              <MoneyText value={formatCurrency(lineTotal, settings?.currency)} />
+                            ) : (
+                              <span className="text-ink-mute">—</span>
+                            )}
                           </span>
                         </div>
                       </div>
@@ -300,7 +392,7 @@ export default function POModal({
                           value={l.materialId}
                           onChange={(v) => selectMat(idx, v)}
                           ariaLabel="Material"
-                          options={materials.map((m) => ({ value: m.id, label: m.name }))}
+                          options={materialChoices}
                           className="input select-glass col-span-3"
                         />
                         <div className="col-span-2 flex items-center gap-1">
@@ -308,39 +400,42 @@ export default function POModal({
                             type="number"
                             min={1}
                             step="any"
-                            value={l.qty}
+                            value={l.qty > 0 ? l.qty : ""}
                             onChange={(e) => updateLine(idx, { qty: Number(e.target.value) })}
                             className="input num text-right"
-                            aria-label={`Quantity for ${l.name}`}
+                            aria-label={`Quantity for ${lineName}`}
                           />
                         </div>
                         <GlassSelect
-                          value={unit}
+                          value={l.unit ?? ""}
                           onChange={(v) => updateLine(idx, { unit: v })}
-                          ariaLabel={`Order unit for ${l.name} (cost applies per this unit)`}
-                          options={unitOptions(l.materialId).map((u) => ({ value: u, label: u }))}
+                          ariaLabel={`Order unit for ${lineName} (cost applies per this unit)`}
+                          options={unitChoices}
                           className="input select-glass col-span-2 text-xs"
                         />
-                        <input
-                          type="number"
-                          step="0.001"
-                          min={0}
-                          value={l.unitCost}
-                          onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
+                        <AmountInput
+                          ariaLabel={`Unit cost for ${lineName} (per ${l.unit || "unit"})`}
                           className="input col-span-2 num text-right"
-                          aria-label={`Unit cost for ${l.name} (per ${unit})`}
+                          onChange={(v) => updateLine(idx, { unitCost: v })}
+                          placeholder="0.00"
+                          step="0.001"
+                          value={l.unitCost > 0 ? l.unitCost : ""}
                         />
                         <div
                           className="col-span-2 text-right num text-sm font-semibold truncate"
-                          title={formatCurrency(l.qty * l.unitCost, settings?.currency)}
+                          title={complete ? formatCurrency(lineTotal, settings?.currency) : "Fill every field"}
                         >
-                          <MoneyText value={formatCurrency(l.qty * l.unitCost, settings?.currency)} />
+                          {complete ? (
+                            <MoneyText value={formatCurrency(lineTotal, settings?.currency)} />
+                          ) : (
+                            <span className="text-ink-mute">—</span>
+                          )}
                         </div>
                         <button
                           type="button"
-                          onClick={() => setLines(lines.filter((_, i) => i !== idx))}
+                          onClick={() => removeLine(idx)}
                           className="col-span-1 btn btn-ghost text-danger h-8 w-8 p-0 justify-self-end"
-                          aria-label={`Remove ${l.name}`}
+                          aria-label={`Remove ${lineName}`}
                           title="Remove line"
                         >
                           <Trash2 className="w-4 h-4" />

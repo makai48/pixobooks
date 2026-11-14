@@ -3,7 +3,7 @@
  * Same-origin GET assets are cache-first so lazy route chunks survive a
  * hard refresh while offline. API/backend calls are never cached.
  * Navigations fall back to cached index.html. */
-const CACHE_NAME = "pixobooks-shell-v18";
+const CACHE_NAME = "pixobooks-shell-v20";
 
 // Never cache when served from localhost/dev — stale transformed modules
 // break module identity (duplicate React). This also lets a fresh worker

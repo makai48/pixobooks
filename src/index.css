@@ -648,20 +648,6 @@
   .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
   .scrollbar-none::-webkit-scrollbar { display: none; }
 
-  /* Spacious POS search bar */
-  .pos-search {
-    @apply w-full rounded-lg border pl-11 pr-4 text-base font-medium outline-none;
-    height: 52px;
-    background: hsl(var(--surface-elevated));
-    border-color: hsl(var(--ink) / 0.45);
-    color: hsl(var(--ink));
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
-  }
-  .pos-search:focus {
-    border-color: hsl(var(--ink));
-    box-shadow: 0 0 0 4px hsl(var(--ink) / 0.12);
-  }
-
   /* POS ticket panel */
   .pos-ticket__body { font-size: 80%; }
   .pos-ticket__body .num { font-size: 0.85rem; }
@@ -890,7 +876,6 @@
   .input { @apply h-10; }
   .btn.btn-sm { @apply h-7 gap-1 px-2 text-[11px]; }
   .input.input-sm { @apply h-7 text-[13px]; }
-  .pos-search { height: 48px; }
   .pos-tile-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
   .pos-thumb-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 5px; }
   .pos-thumb__ribbon { padding: 3px 4px 4px; }

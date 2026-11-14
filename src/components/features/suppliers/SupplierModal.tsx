@@ -48,9 +48,15 @@ type Draft = {
 export default function SupplierModal({
   supplier,
   onClose,
+  defaultName = "",
+  onSaved,
 }: {
   supplier: SupplierRecord | null;
   onClose: () => void;
+  /** Seeds the name when opened from another form (e.g. a typed supplier). */
+  defaultName?: string;
+  /** Reports the saved record so the opener can select it immediately. */
+  onSaved?: (supplier: SupplierRecord) => void;
 }) {
   const { profile } = useAuth();
   const { data: items = [] } = useItems();
@@ -59,7 +65,7 @@ export default function SupplierModal({
   const [uploading, setUploading] = useState(false);
 
   const [form, setForm] = useState<Draft>({
-    name: "",
+    name: defaultName,
     contactPerson: "",
     email: "",
     phone: "",
@@ -136,7 +142,7 @@ export default function SupplierModal({
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Supplier name required");
     try {
-      await upsert.mutateAsync({
+      const saved = await upsert.mutateAsync({
         id: supplier?.id,
         name: form.name.trim(),
         contactPerson: form.contactPerson.trim() || null,
@@ -150,6 +156,7 @@ export default function SupplierModal({
         createdBy: profile?.id,
       });
       toast.success(supplier ? "Supplier updated" : "Supplier added");
+      onSaved?.(saved);
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");
