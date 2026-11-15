@@ -16,8 +16,7 @@ export function useSuppliers() {
       const { data, error } = await q;
       if (error) throw error;
       return (data || []).map(mapSupplier);
-    },
-    refetchInterval: 30000,
+    }
   });
 }
 

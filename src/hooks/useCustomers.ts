@@ -16,8 +16,7 @@ export function useCustomers() {
       const { data, error } = await q;
       if (error) throw error;
       return (data || []).map(mapCustomer);
-    },
-    refetchInterval: 30000,
+    }
   });
 }
 

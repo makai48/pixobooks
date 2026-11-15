@@ -2,8 +2,9 @@ import { supabase } from "./supabase";
 
 const BUCKET = "shop-images";
 
-// 100KB threshold for embedded base64; larger goes to Storage
-const BASE64_INLINE_LIMIT = 100 * 1024;
+/** Storage object names are unique and never overwritten, so browsers/CDNs
+ * can safely retain uploaded images for a long time without stale content. */
+const IMAGE_CACHE_SECONDS = 31_536_000;
 
 /** Storage folders mirror entity types so images stay organized per domain. */
 export type ImageFolder = "logos" | "items" | "avatars" | "customers" | "suppliers";
@@ -20,7 +21,7 @@ export async function uploadImage(
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(filename, file, {
-      cacheControl: "3600",
+      cacheControl: String(IMAGE_CACHE_SECONDS),
       upsert: false,
       contentType: file.type,
     });
@@ -40,8 +41,11 @@ export async function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Smart handler: small images → base64 inline, larger → uploaded to Storage.
- * Users can also paste a URL or base64 directly.
+ * Upload images to Storage instead of embedding base64 in Postgres rows.
+ *
+ * Inline base64 made every catalog query carry the full image payload again,
+ * even when the browser already had the image displayed. Storage URLs keep
+ * catalog records small and let the browser/CDN cache image bytes separately.
  */
 export async function processImageFile(
   file: File,
@@ -52,9 +56,6 @@ export async function processImageFile(
   }
   if (file.size > 5 * 1024 * 1024) {
     throw new Error("Image must be under 5MB");
-  }
-  if (file.size < BASE64_INLINE_LIMIT) {
-    return fileToBase64(file);
   }
   return uploadImage(file, folder);
 }
