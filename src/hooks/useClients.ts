@@ -429,7 +429,10 @@ export function useClientInvoices(params?: {
       if (error) throw error;
       return (data || []).map(mapClientInvoice);
     },
-    refetchInterval: 5000,
+    // Invoice lists are accounting screens, not a live till feed. Local
+    // mutations invalidate this cache immediately; a 60s refresh is enough to
+    // keep two open tabs in step without re-downloading 500 rows every 5s.
+    refetchInterval: 60000,
     refetchOnWindowFocus: true,
   });
 }
@@ -991,7 +994,10 @@ export function useClientInvoicePayments(params?: {
       if (error) throw error;
       return (data || []).map(mapClientInvoicePayment);
     },
-    refetchInterval: 5000,
+    // Invoice lists are accounting screens, not a live till feed. Local
+    // mutations invalidate this cache immediately; a 60s refresh is enough to
+    // keep two open tabs in step without re-downloading 500 rows every 5s.
+    refetchInterval: 60000,
     refetchOnWindowFocus: true,
   });
 }

@@ -37,6 +37,10 @@ export function useSales(limit = 500) {
   const branchId = branch === "all" ? null : branch;
   const active = useActiveBusiness();
   const businessId = active === "none" ? null : active;
+  // Only the POS-sized feed needs to refresh on a timer. Report feeds (5,000
+  // rows, or every sale) are read-only and cost several paginated requests per
+  // refresh, so they load on mount and after a sale/void invalidation instead.
+  const live = limit > 0 && limit <= 500;
   return useQuery({
     queryKey: ["sales", businessId, limit, branchId],
     queryFn: async () => {
@@ -64,9 +68,10 @@ export function useSales(limit = 500) {
       }
       return rows.map(mapSale);
     },
-    // Large report feeds (5,000 rows) refresh far less aggressively than the
-    // POS-sized 500-row feed to keep mobile pages responsive.
-    refetchInterval: limit <= 500 ? 20000 : 60000,
+    // Large report feeds (5,000 rows) never poll. The 500-row feed refreshes
+    // every 30s while it is visible; both refresh on focus only when live.
+    refetchInterval: live ? 30_000 : false,
+    refetchOnWindowFocus: live,
   });
 }
 
