@@ -228,6 +228,18 @@ available for other deliberate uses, but Sales does not opt into them.
 - `SearchableSelect` treats `emptyLabel` as a placeholder/clear row, not as the input's
   value. An empty value must focus to the full option list, ready for type-to-search.
 
+## Media & egress
+
+- Every image goes to the public `shop-images` bucket; nothing is inlined as base64 in
+  a row. `processImageFile` re-encodes photos over 300KB to at most 1600px (WebP, q0.82)
+  before upload, so a phone photo costs ~200KB instead of 3–5MB. Object names are unique
+  and cached for a year (`IMAGE_CACHE_SECONDS`), so browser and CDN keep them.
+- The bucket and its policies are migration `20261115000001_shop_images_bucket.sql`
+  (public read; writes require a signed-in user). Rows that still hold inline base64 are
+  migrated once with `npm run migrate:images`.
+- Report feeds never poll: `useSales` refreshes only the ≤500-row feed (30s). The
+  5,000-row and `limit=0` feeds load on mount and after a sale/void invalidation.
+
 ## Auth composition (login/register)
 
 - One centred column, `max-width: 420px`; page padding
