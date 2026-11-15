@@ -25,10 +25,9 @@ const COLLAPSE_KEY = "pixobooks:sidebar_collapsed";
 
 /**
  * Warm the cache for the POS / inventory catalog as soon as the active
- * business is known. These are the queries every selling screen needs, so
- * opening POS, Inventory or Statistics paints from cache instead of a
- * spinner. The hooks stay mounted (they are cheap, low-frequency polls) and
- * share the same cache entries as the pages.
+ * business is known. These queries share cached results with routed pages.
+ * They do not run fixed polling loops; stale data refreshes on focus,
+ * reconnect, or explicit mutation invalidation.
  */
 function CorePrefetch() {
   useItems();
