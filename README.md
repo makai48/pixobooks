@@ -34,6 +34,12 @@ npm run test       # Vitest tests
 - **Offline-first:** mutations queue in IndexedDB (`src/lib/offlineQueue.ts`) and replay through `src/lib/syncEngine.ts`. Catalog, settings, and branches persist across refreshes via `src/lib/queryPersist.ts`. The PWA service worker is production-only (`src/lib/pwa.ts`).
 - **Units of measure (UOM):** conversion logic is centralized in `src/lib/uom.ts`; UOM families, reference ratios, and precision are represented in the UOM tables.
 - **Forms:** associate every `<label>` with its control. Use `src/components/common/Field.tsx` for automatic `htmlFor`/`id` handling.
+- **Images:** every upload goes to the public `shop-images` storage bucket (never base64 in a row) and photos over 300KB are re-encoded to at most 1600px before upload (`src/lib/imageUpload.ts`). The bucket and its policies ship in `supabase/migrations/20261115000001_shop_images_bucket.sql`. Rows written before that change may still hold inline base64; migrate them once with:
+  ```sh
+  SUPABASE_SERVICE_ROLE_KEY=... npm run migrate:images -- --dry-run   # report only
+  SUPABASE_SERVICE_ROLE_KEY=... npm run migrate:images               # upload + rewrite
+  ```
+  The service-role key bypasses RLS, so pass it on the command line only and never put it in `.env`. Re-running is safe.
 - **Secrets:** do not commit `.env` files. Server-side keys belong in Supabase Edge Function secrets.
 
 ## Deployment
