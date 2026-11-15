@@ -11,8 +11,8 @@ import { QueryClient, keepPreviousData } from "@tanstack/react-query";
  * Flicker-free policy (applies to every screen + device):
  * - Cached data paints instantly and is KEPT while background refreshes
  *   resolve (keepPreviousData) — never flash back to skeletons.
- * - No refetch storm every time the window regains focus (POS devices
- *   switch apps constantly); per-hook polling + reconnect cover freshness.
+ * - No fixed polling loops: cached data is refreshed on focus after it
+ *   becomes stale, on reconnect, and immediately after local mutations.
  * - structuralSharing (default) skips re-renders when payloads are identical.
  */
 export const queryClient = new QueryClient({
@@ -23,7 +23,7 @@ export const queryClient = new QueryClient({
       // full-page loader for data we already have.
       staleTime: 60_000,
       gcTime: 60 * 60_000,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
       refetchOnReconnect: true,
       placeholderData: keepPreviousData,
       retry: 1,
