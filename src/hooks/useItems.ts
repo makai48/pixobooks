@@ -17,8 +17,7 @@ export function useItems() {
       const { data, error } = await q;
       if (error) throw error;
       return (data || []).map(mapItem);
-    },
-    refetchInterval: 15000,
+    }
   });
 }
 
